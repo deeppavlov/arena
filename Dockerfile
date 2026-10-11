@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
 COPY common ./common
 COPY prompts ./prompts
 COPY cases ./cases
-COPY README.md AGENTS.md RPD.md ./
+COPY README.md AGENTS.md ./
 USER 10001:10001
 WORKDIR /workspace
 CMD ["bash"]
