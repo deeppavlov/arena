@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.env
+*.pyc
+private/
+state/
+secrets/
+runs/
+cases/*/results/*
+!cases/*/results/README.md
+cases/*/artifacts/*
+!cases/*/artifacts/README.md

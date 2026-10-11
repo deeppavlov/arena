@@ -1,0 +1,148 @@
+name: arena
+
+x-runtime: &runtime
+  init: true
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 128
+  mem_limit: 2g
+  cpus: 2
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=128m,mode=1777
+  restart: unless-stopped
+
+services:
+  public:
+    <<: *runtime
+    profiles: [public]
+    build:
+      context: .
+      target: public
+    image: arena-public:local
+    stdin_open: true
+    tty: true
+    restart: "no"
+    environment:
+      HOME: /tmp
+      MLFLOW_TRACKING_URI: ${ARENA_PUBLIC_MLFLOW_URL:-http://gpu6:5050}
+    volumes:
+      - type: bind
+        source: ${ARENA_PUBLIC_WORKSPACE:-/srv/arena/public}
+        target: /workspace
+        bind:
+          create_host_path: false
+    networks: [public]
+
+  evaluator:
+    <<: *runtime
+    profiles: [private]
+    build:
+      context: .
+      target: evaluator
+    image: arena-evaluator:local
+    command: [python, -m, evaluator]
+    group_add:
+      - ${ARENA_DOCKER_GID:-999}
+    depends_on:
+      model-gateway:
+        condition: service_healthy
+    environment:
+      ARENA_DATASET_PATH: /private/dataset.jsonl
+      ARENA_METRIC_PATH: /private/metric.json
+      ARENA_STATE_DIR: ${ARENA_STATE_DIR:-/srv/arena/state}
+      ARENA_TOKEN_FILE: /run/secrets/submit-token
+      ARENA_MODEL: ${ARENA_MODEL:-unset}
+      ARENA_MODEL_BASE_URL: ${ARENA_MODEL_BASE_URL:-http://internal-model.invalid/v1}
+      ARENA_MODEL_API_KEY_FILE: /run/secrets/model-api-key
+      ARENA_RUNNER_IMAGE: ${ARENA_RUNNER_IMAGE:-unset}
+      ARENA_RUNNER_NETWORK: ${ARENA_RUNNER_NETWORK:-arena-runners}
+      ARENA_RUNNER_MODEL_BASE_URL: http://model-gateway:8081/v1
+      ARENA_ASSETS_DIR: ${ARENA_ASSETS_DIR:-/srv/arena/assets}
+      ARENA_RELEASE_ID: ${ARENA_RELEASE_ID:-unset}
+      ARENA_FINALISTS: ${ARENA_FINALISTS:-5}
+      ARENA_PARAMETERS: ${ARENA_PARAMETERS:-{}}
+    volumes:
+      - type: bind
+        source: ${ARENA_DATASET_PATH:-/srv/arena/private/dataset.jsonl}
+        target: /private/dataset.jsonl
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ARENA_METRIC_PATH:-/srv/arena/private/metric.json}
+        target: /private/metric.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ARENA_STATE_DIR:-/srv/arena/state}
+        target: ${ARENA_STATE_DIR:-/srv/arena/state}
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ARENA_ASSETS_DIR:-/srv/arena/assets}
+        target: ${ARENA_ASSETS_DIR:-/srv/arena/assets}
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ARENA_SUBMIT_TOKEN_FILE:-/srv/arena/secrets/submit-token}
+        target: /run/secrets/submit-token
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ARENA_MODEL_API_KEY_FILE:-/srv/arena/secrets/model-api-key}
+        target: /run/secrets/model-api-key
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ARENA_DOCKER_SOCKET:-/var/run/docker.sock}
+        target: /var/run/docker.sock
+        bind:
+          create_host_path: false
+    ports:
+      - "127.0.0.1:${ARENA_EVALUATOR_PORT:-8080}:8080"
+    networks: [backend]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  model-gateway:
+    <<: *runtime
+    profiles: [private]
+    build:
+      context: .
+      target: evaluator
+    image: arena-evaluator:local
+    command: [python, -m, evaluator.gateway]
+    environment:
+      MODEL_BASE_URL: ${ARENA_MODEL_BASE_URL:-http://internal-model.invalid/v1}
+      MODEL_NAME: ${ARENA_MODEL:-unset}
+      MODEL_API_KEY_FILE: /run/secrets/model-api-key
+      MODEL_PARAMETERS_JSON: ${ARENA_PARAMETERS:-{}}
+    volumes:
+      - type: bind
+        source: ${ARENA_MODEL_API_KEY_FILE:-/srv/arena/secrets/model-api-key}
+        target: /run/secrets/model-api-key
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [workers, backend]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  public: {}
+  backend: {}
+  workers:
+    name: ${ARENA_RUNNER_NETWORK:-arena-runners}
+    internal: true
