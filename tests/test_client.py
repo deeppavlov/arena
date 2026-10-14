@@ -144,3 +144,107 @@ def test_invalid_bundle_is_not_echoed(tmp_path: Path, capsys: pytest.CaptureFixt
     output = capsys.readouterr()
     assert "never-print-me" not in output.err
     assert "invalid bundle" in output.err
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize(
+    ("environment", "override", "expected"),
+    [(None, None, 3600), ("7200", None, 7200), ("invalid-secret", 10800, 10800)],
+)
+def test_request_timeout_configuration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    environment: str | None,
+    override: float | None,
+    expected: float,
+) -> None:
+    token = tmp_path / "token"
+    token.write_text("test-token", encoding="utf-8")
+    if environment is None:
+        monkeypatch.delenv("ARENA_EVALUATOR_TIMEOUT", raising=False)
+    else:
+        monkeypatch.setenv("ARENA_EVALUATOR_TIMEOUT", environment)
+    received: list[httpx.Request] = []
+
+    def handle(outgoing: httpx.Request) -> httpx.Response:
+        received.append(outgoing)
+        return httpx.Response(202, json={"status": "running"})
+
+    original_client = httpx.Client
+    monkeypatch.setattr(
+        httpx,
+        "Client",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    result = request(method, "http://evaluator", token, timeout=override)
+    assert result == {"status": "running"}
+    assert received[0].extensions["timeout"] == {
+        key: expected for key in ("connect", "read", "write", "pool")
+    }
+    assert len(received) == 1
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "-inf", "", "private-secret"])
+@pytest.mark.parametrize("source", ["environment", "argument"])
+def test_invalid_timeout_is_rejected_before_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, value: str, source: str
+) -> None:
+    monkeypatch.setenv("ARENA_EVALUATOR_TIMEOUT", value if source == "environment" else "3600")
+    with pytest.raises(ClientError, match="^evaluator timeout must be positive and finite$"):
+        request(
+            "GET",
+            "http://evaluator",
+            tmp_path / "missing-token",
+            timeout=value if source == "argument" else None,
+        )
+
+
+@pytest.mark.parametrize("command", ["submit", "status"])
+@pytest.mark.parametrize("value", ["7200", "nan", "private-secret"])
+def test_cli_timeout_option(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+    value: str,
+) -> None:
+    token = tmp_path / "token"
+    token.write_text("test-token", encoding="utf-8")
+    bundle = tmp_path / "bundle.json"
+    bundle.write_text(
+        json.dumps({"candidates": [{"id": "idea", "files": {"a": "eA=="}}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ARENA_EVALUATOR_TIMEOUT", "invalid-env-secret")
+    received: list[httpx.Request] = []
+
+    def handle(outgoing: httpx.Request) -> httpx.Response:
+        received.append(outgoing)
+        return httpx.Response(202, json={"status": "running"})
+
+    original_client = httpx.Client
+    monkeypatch.setattr(
+        httpx,
+        "Client",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    arguments = [
+        command,
+        "--url",
+        "http://evaluator",
+        "--token-file",
+        str(token),
+        "--timeout",
+        value,
+    ]
+    if command == "submit":
+        arguments.extend(["--bundle", str(bundle)])
+    assert main(arguments) == (0 if value == "7200" else 1)
+    output = capsys.readouterr()
+    if value == "7200":
+        assert received[0].extensions["timeout"]["read"] == 7200
+        assert received[0].method == ("POST" if command == "submit" else "GET")
+    else:
+        assert not received
+        assert output.err == "arena client: evaluator timeout must be positive and finite\n"

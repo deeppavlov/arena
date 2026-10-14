@@ -27,6 +27,11 @@ services:
     environment:
       HOME: /tmp
       MLFLOW_TRACKING_URI: ${ARENA_PUBLIC_MLFLOW_URL:-http://gpu6:5050}
+      ARENA_MODEL_TIMEOUT: ${ARENA_MODEL_TIMEOUT:-21600}
+      ARENA_RUNNER_TIMEOUT: ${ARENA_RUNNER_TIMEOUT:-604800}
+      ARENA_PREPARE_TIMEOUT: ${ARENA_PREPARE_TIMEOUT:-172800}
+      ARENA_RETRY_DELAY: ${ARENA_RETRY_DELAY:-30}
+      ARENA_EVALUATOR_TIMEOUT: ${ARENA_EVALUATOR_TIMEOUT:-3600}
     volumes:
       - type: bind
         source: ${ARENA_PUBLIC_WORKSPACE:-/srv/arena/public}
@@ -52,6 +57,7 @@ services:
       ARENA_DATASET_PATH: /private/dataset.jsonl
       ARENA_METRIC_PATH: /private/metric.json
       ARENA_STATE_DIR: ${ARENA_STATE_DIR:-/srv/arena/state}
+      ARENA_USAGE_DIR: ${ARENA_USAGE_DIR:-/srv/arena/usage}
       ARENA_TOKEN_FILE: /run/secrets/submit-token
       ARENA_MODEL: ${ARENA_MODEL:-unset}
       ARENA_MODEL_BASE_URL: ${ARENA_MODEL_BASE_URL:-http://internal-model.invalid/v1}
@@ -63,6 +69,10 @@ services:
       ARENA_RELEASE_ID: ${ARENA_RELEASE_ID:-unset}
       ARENA_FINALISTS: ${ARENA_FINALISTS:-5}
       ARENA_PARAMETERS: ${ARENA_PARAMETERS:-{}}
+      ARENA_MODEL_TIMEOUT: ${ARENA_MODEL_TIMEOUT:-21600}
+      ARENA_RUNNER_TIMEOUT: ${ARENA_RUNNER_TIMEOUT:-604800}
+      ARENA_PREPARE_TIMEOUT: ${ARENA_PREPARE_TIMEOUT:-172800}
+      ARENA_RETRY_DELAY: ${ARENA_RETRY_DELAY:-30}
     volumes:
       - type: bind
         source: ${ARENA_DATASET_PATH:-/srv/arena/private/dataset.jsonl}
@@ -85,6 +95,11 @@ services:
         source: ${ARENA_ASSETS_DIR:-/srv/arena/assets}
         target: ${ARENA_ASSETS_DIR:-/srv/arena/assets}
         read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${ARENA_USAGE_DIR:-/srv/arena/usage}
+        target: ${ARENA_USAGE_DIR:-/srv/arena/usage}
         bind:
           create_host_path: false
       - type: bind
@@ -126,7 +141,15 @@ services:
       MODEL_NAME: ${ARENA_MODEL:-unset}
       MODEL_API_KEY_FILE: /run/secrets/model-api-key
       MODEL_PARAMETERS_JSON: ${ARENA_PARAMETERS:-{}}
+      MODEL_TIMEOUT: ${ARENA_MODEL_TIMEOUT:-21600}
+      MODEL_RETRY_DELAY: ${ARENA_RETRY_DELAY:-30}
+      MODEL_USAGE_DIR: ${ARENA_USAGE_DIR:-/srv/arena/usage}
     volumes:
+      - type: bind
+        source: ${ARENA_USAGE_DIR:-/srv/arena/usage}
+        target: ${ARENA_USAGE_DIR:-/srv/arena/usage}
+        bind:
+          create_host_path: false
       - type: bind
         source: ${ARENA_MODEL_API_KEY_FILE:-/srv/arena/secrets/model-api-key}
         target: /run/secrets/model-api-key

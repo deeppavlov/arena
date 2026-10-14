@@ -2,14 +2,14 @@ import base64
 import fcntl
 import hashlib
 import json
-import math
 import os
 import secrets
 import tempfile
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, cast
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -18,7 +18,19 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from evaluator.contracts import Example, Metric, Submission
 from evaluator.judge import ModelClient, judge_answer
-from evaluator.runner import DockerRunner
+from evaluator.ranking import RANKING_POLICY, choose_winner
+from evaluator.reliability import (
+    MODEL_RETRIES,
+    MODEL_TIMEOUT,
+    PREPARE_TIMEOUT,
+    RETRY_DELAY,
+    RUNNER_TIMEOUT,
+    add_usage,
+    empty_usage,
+    parse_usage,
+    validate_timing,
+)
+from evaluator.runner import DockerRunner, RunnerError, SolveResult
 
 MAX_BODY_BYTES = 70 * 1024 * 1024
 
@@ -36,7 +48,11 @@ class Settings:
     model_api_key: str = field(default="", repr=False)
     runner_network: str = "none"
     runner_model_base_url: str = "http://model-gateway:8081/v1"
-    runner_timeout: float = 300
+    runner_timeout: float = RUNNER_TIMEOUT
+    model_timeout: float = MODEL_TIMEOUT
+    prepare_timeout: float = PREPARE_TIMEOUT
+    retry_delay: float = RETRY_DELAY
+    usage_dir: Path | None = None
     assets_dir: Path | None = None
     finalists: int = 5
     parameters: dict[str, Any] = field(default_factory=dict)
@@ -48,8 +64,9 @@ class Settings:
             raise ValueError("token, model, endpoint, runner image and release ID are required")
         if not 1 <= self.finalists <= 5:
             raise ValueError("finalists must be between 1 and 5")
-        if not math.isfinite(self.runner_timeout) or self.runner_timeout <= 0:
-            raise ValueError("runner timeout must be positive and finite")
+        for name in ("runner_timeout", "model_timeout", "prepare_timeout"):
+            validate_timing(getattr(self, name), name)
+        validate_timing(self.retry_delay, "retry_delay", allow_zero=True)
         if not isinstance(self.parameters, dict):
             raise ValueError("parameters must be a JSON object")
 
@@ -66,6 +83,7 @@ class Settings:
             return result
 
         assets = value("ASSETS_DIR", "")
+        usage = value("USAGE_DIR", "")
         return cls(
             dataset_path=Path(value("DATASET_PATH")),
             metric_path=Path(value("METRIC_PATH")),
@@ -78,7 +96,11 @@ class Settings:
             model_api_key=value("MODEL_API_KEY", ""),
             runner_network=value("RUNNER_NETWORK", "none"),
             runner_model_base_url=value("RUNNER_MODEL_BASE_URL", "http://model-gateway:8081/v1"),
-            runner_timeout=float(value("RUNNER_TIMEOUT", "300")),
+            runner_timeout=float(value("RUNNER_TIMEOUT", str(RUNNER_TIMEOUT))),
+            model_timeout=float(value("MODEL_TIMEOUT", str(MODEL_TIMEOUT))),
+            prepare_timeout=float(value("PREPARE_TIMEOUT", str(PREPARE_TIMEOUT))),
+            retry_delay=float(value("RETRY_DELAY", str(RETRY_DELAY))),
+            usage_dir=Path(usage) if usage else None,
             assets_dir=Path(assets) if assets else None,
             finalists=int(value("FINALISTS", "5")),
             parameters=json.loads(value("PARAMETERS", "{}")),
@@ -157,10 +179,24 @@ def _public(record: dict[str, Any]) -> dict[str, Any]:
     return {"status": "complete", "scores": record["scores"], "winner": record["winner"]}
 
 
+def _usage(value: dict[str, int]) -> dict[str, int]:
+    parsed = parse_usage(value)
+    for key in ("attempts", "unreported_attempts"):
+        count = value.get(key)
+        if type(count) is not int or count < 0:
+            raise ValueError("usage must include nonnegative integer attempt counts")
+        parsed[key] = count
+    if parsed["unreported_attempts"] > parsed["attempts"]:
+        raise ValueError("unreported attempts exceed total attempts")
+    if parsed["attempts"] == 0 and parsed["total_tokens"]:
+        raise ValueError("token usage requires a model attempt")
+    return parsed
+
+
 def create_app(
     settings: Settings,
-    solve: Callable[[Path, str], str] | None = None,
-    complete: Callable[[list[dict[str, str]]], str] | None = None,
+    solve: Callable[[Path, str], SolveResult] | None = None,
+    complete: ModelClient | Callable[[list[dict[str, str]]], str] | None = None,
 ) -> FastAPI:
     dataset_bytes = settings.dataset_path.read_bytes()
     examples = [
@@ -181,20 +217,41 @@ def create_app(
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     root.chmod(0o700)
     candidate_root = root / "candidates"
+    usage_dir = (settings.usage_dir or root / "usage").resolve()
+    if usage_dir.is_relative_to(candidate_root):
+        raise ValueError("usage directory must be outside candidate directories")
     for private_path in (settings.dataset_path, settings.metric_path):
         if private_path.resolve().is_relative_to(candidate_root):
             raise ValueError("private data must be outside candidate directories")
     if settings.assets_dir is not None:
         assets = settings.assets_dir.resolve()
-        private_paths = (settings.dataset_path.resolve(), settings.metric_path.resolve(), root)
+        private_paths = (
+            settings.dataset_path.resolve(), settings.metric_path.resolve(), root, usage_dir,
+        )
         if any(path.is_relative_to(assets) for path in private_paths):
             raise ValueError("assets must not contain private data or evaluator state")
-        if assets.is_relative_to(root):
-            raise ValueError("assets must be outside evaluator state")
+        if assets.is_relative_to(root) or assets.is_relative_to(usage_dir):
+            raise ValueError("assets must be outside evaluator state and usage directory")
     model_client = ModelClient(
         settings.model_base_url, settings.model, settings.model_api_key, settings.parameters,
+        timeout=settings.model_timeout, retries=MODEL_RETRIES, retry_delay=settings.retry_delay,
     )
-    complete = complete or model_client.complete
+    judge_complete = complete or model_client
+    usage_owner = (
+        judge_complete if isinstance(judge_complete, ModelClient)
+        else getattr(judge_complete, "__self__", None)
+    )
+    if isinstance(usage_owner, ModelClient):
+        judge_usage = usage_owner.usage
+    else:
+        judge_usage = empty_usage()
+        callback = cast(Callable[[list[dict[str, str]]], str], judge_complete)
+
+        def tracked_complete(messages: list[dict[str, str]]) -> str:
+            add_usage(judge_usage, None)
+            return callback(messages)
+
+        judge_complete = tracked_complete
     solve = solve or DockerRunner(
         image=settings.runner_image,
         network=settings.runner_network,
@@ -202,6 +259,10 @@ def create_app(
         model_base_url=settings.runner_model_base_url,
         assets_dir=settings.assets_dir,
         timeout=settings.runner_timeout,
+        model_timeout=settings.model_timeout,
+        prepare_timeout=settings.prepare_timeout,
+        retry_delay=settings.retry_delay,
+        usage_dir=usage_dir,
     )
     directory = root / dataset_digest
     directory.mkdir(mode=0o700, exist_ok=True)
@@ -216,6 +277,12 @@ def create_app(
         "runner_network": settings.runner_network,
         "runner_model_base_url": settings.runner_model_base_url,
         "runner_timeout": settings.runner_timeout,
+        "model_timeout": settings.model_timeout,
+        "prepare_timeout": settings.prepare_timeout,
+        "model_retries": MODEL_RETRIES,
+        "retry_delay": settings.retry_delay,
+        "usage_dir": str(usage_dir),
+        "ranking_policy": RANKING_POLICY,
         "assets_dir": str(settings.assets_dir.resolve()) if settings.assets_dir else None,
         "finalists": settings.finalists,
     }
@@ -255,28 +322,111 @@ def create_app(
             for candidate in record["candidates"]:
                 details = []
                 for example in examples:
-                    answer = solve(Path(candidate["path"]), example.input)
-                    if answer.strip():
-                        result = judge_answer(metric, example, answer, complete)
-                    else:
-                        result = {"score": 0.0, "criteria": {}, "failure": "candidate_failure"}
-                    details.append({"example_id": example.id, "answer": answer, **result})
-                    _write_json(
-                        directory / "details" / f"{candidate['id']}.json", {"examples": details},
+                    try:
+                        solved = solve(Path(candidate["path"]), example.input)
+                    except Exception as error:
+                        failed_usage = None
+                        failed_seconds = None
+                        run_id = None
+                        if isinstance(error, RunnerError):
+                            if error.usage is not None:
+                                try:
+                                    failed_usage = _usage(error.usage)
+                                except ValueError:
+                                    pass
+                            if isinstance(error.wall_seconds, (int, float)):
+                                try:
+                                    failed_seconds = validate_timing(
+                                        error.wall_seconds, "solver wall time", allow_zero=True,
+                                    )
+                                except ValueError:
+                                    pass
+                            if isinstance(error.run_id, str) and len(error.run_id) <= 64:
+                                run_id = error.run_id
+                        details.append({
+                            "example_id": example.id, "failure": "solver_failure",
+                            "error_type": type(error).__name__[:100],
+                            "resources_complete": False, "run_id": run_id,
+                            "resources": {
+                                "solver": {"usage": failed_usage, "wall_seconds": failed_seconds},
+                                "judge": {"usage": empty_usage(), "wall_seconds": 0.0},
+                            },
+                        })
+                        _write_json(
+                            directory / "details" / f"{candidate['id']}.json",
+                            {"candidate_id": candidate["id"], "examples": details},
+                        )
+                        raise
+                    if not isinstance(solved, SolveResult) or not isinstance(solved.answer, str):
+                        raise ValueError("solver must return an answer with measured resources")
+                    solver_usage = _usage(solved.usage)
+                    if not isinstance(solved.wall_seconds, (int, float)):
+                        raise ValueError("solver wall time must be numeric")
+                    solver_seconds = validate_timing(
+                        solved.wall_seconds, "solver wall time", allow_zero=True,
                     )
+                    before_judge = _usage(judge_usage)
+                    started = time.monotonic()
+                    result: dict[str, Any] = {"failure": "judge_failure"}
+                    try:
+                        if solved.answer.strip():
+                            result = judge_answer(
+                                metric, example, solved.answer, judge_complete,
+                                retries=MODEL_RETRIES, retry_delay=settings.retry_delay,
+                            )
+                        else:
+                            result = {"score": 0.0, "criteria": {}, "failure": "candidate_failure"}
+                    finally:
+                        judge_seconds = validate_timing(
+                            time.monotonic() - started, "judge wall time", allow_zero=True,
+                        )
+                        after_judge = _usage(judge_usage)
+                        example_judge_usage = _usage({
+                            key: after_judge[key] - before_judge[key] for key in before_judge
+                        })
+                        details.append({
+                            "example_id": example.id, "answer": solved.answer, **result,
+                            "resources": {
+                                "solver": {"usage": solver_usage, "wall_seconds": solver_seconds},
+                                "judge": {
+                                    "usage": example_judge_usage, "wall_seconds": judge_seconds,
+                                },
+                            },
+                        })
+                        _write_json(
+                            directory / "details" / f"{candidate['id']}.json",
+                            {"candidate_id": candidate["id"], "examples": details},
+                        )
                 scores.append({
                     "candidate_id": candidate["id"],
                     "digest": candidate["digest"],
                     "score": sum(item["score"] for item in details) / len(details),
+                    **{
+                        f"{role}_{name}": sum(
+                            item["resources"][role]["usage"][key] for item in details
+                        )
+                        for role in ("solver", "judge")
+                        for name, key in (
+                            ("tokens", "total_tokens"),
+                            ("unreported_attempts", "unreported_attempts"),
+                        )
+                    },
+                    **{
+                        f"{role}_seconds": validate_timing(
+                            sum(item["resources"][role]["wall_seconds"] for item in details),
+                            f"{role} total time", allow_zero=True,
+                        )
+                        for role in ("solver", "judge")
+                    },
                 })
             record["scores"] = scores
-            best_score = max(item["score"] for item in scores)
-            winners = [item["candidate_id"] for item in scores if item["score"] == best_score]
-            record["winner"] = winners[0] if len(winners) == 1 else None
+            record["winner"] = choose_winner(scores)
             record["status"] = "complete"
         except Exception as error:
             record["status"] = "failed"
-            record["failure"] = {"type": type(error).__name__, "message": str(error)}
+            record["failure"] = {
+                "type": type(error).__name__[:100], "message": str(error)[:2000],
+            }
         finally:
             try:
                 _write_json(record_path, record)

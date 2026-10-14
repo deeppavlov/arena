@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 
 from fastapi.testclient import TestClient
 
+from evaluator.runner import SolveResult
 from evaluator.service import Settings, create_app
 
 
@@ -15,10 +16,13 @@ def main() -> None:
     solve_calls: list[tuple[str, str]] = []
     judge_calls: list[tuple[str, str]] = []
 
-    def solve(candidate: Path, task: str) -> str:
+    def solve(candidate: Path, task: str) -> SolveResult:
         prompt = (candidate / "prompt.txt").read_text()
         solve_calls.append((prompt, task))
-        return json.dumps({"prompt": prompt, "task": task, "private": canary})
+        return SolveResult(json.dumps({"prompt": prompt, "task": task, "private": canary}), {
+            "prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5,
+            "attempts": 1, "unreported_attempts": 0,
+        }, 1.0)
 
     def complete(messages: list[dict[str, str]]) -> str:
         payload = json.loads(messages[-1]["content"])
@@ -66,6 +70,8 @@ def main() -> None:
             result = final.json()
             assert result["status"] == "complete", result
             assert result["winner"] == "alpha", result
+            assert all(item["solver_tokens"] == 10 for item in result["scores"]), result
+            assert all(item["solver_seconds"] == 2.0 for item in result["scores"]), result
             scores = {item["candidate_id"]: item["score"] for item in result["scores"]}
             assert set(scores) == {"alpha", "beta"}, result
             assert math.isclose(scores["alpha"], 3.5), result

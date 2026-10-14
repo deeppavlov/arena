@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from asyncio import sleep
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -11,6 +12,15 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from evaluator.reliability import (
+    MODEL_TIMEOUT,
+    RETRY_DELAY,
+    parse_usage,
+    retry_delays,
+    validate_timing,
+)
+from evaluator.usage import add_usage, begin_request, end_request, ensure_open
+
 
 @dataclass(frozen=True)
 class GatewaySettings:
@@ -19,7 +29,9 @@ class GatewaySettings:
     api_key: str | None = field(default=None, repr=False)
     parameters: dict[str, object] = field(default_factory=dict)
     max_body_bytes: int = 2 * 1024 * 1024
-    timeout_seconds: float = 120
+    timeout_seconds: float = MODEL_TIMEOUT
+    retry_delay: float = RETRY_DELAY
+    usage_dir: Path | None = None
 
     def __post_init__(self) -> None:
         url = urlsplit(self.base_url)
@@ -34,8 +46,14 @@ class GatewaySettings:
         ):
             raise ValueError("MODEL_BASE_URL must be an internal HTTP(S) /v1 endpoint")
         object.__setattr__(self, "base_url", self.base_url.rstrip("/"))
-        if not self.model.strip() or self.max_body_bytes < 1 or self.timeout_seconds <= 0:
+        if not self.model.strip() or self.max_body_bytes < 1:
             raise ValueError("Invalid model gateway configuration")
+        object.__setattr__(
+            self, "timeout_seconds", validate_timing(self.timeout_seconds, "timeout")
+        )
+        object.__setattr__(
+            self, "retry_delay", validate_timing(self.retry_delay, "retry_delay", allow_zero=True)
+        )
         if not isinstance(self.parameters, dict):
             raise ValueError("MODEL_PARAMETERS_JSON must be an object")
         if self.parameters.keys() & {"model", "messages", "stream"}:
@@ -56,6 +74,11 @@ class GatewaySettings:
             model=os.environ["MODEL_NAME"],
             api_key=Path(key_file).read_text(encoding="utf-8").strip() if key_file else None,
             parameters=parameters,
+            timeout_seconds=float(os.environ.get("MODEL_TIMEOUT", str(MODEL_TIMEOUT))),
+            retry_delay=float(os.environ.get("MODEL_RETRY_DELAY", str(RETRY_DELAY))),
+            usage_dir=Path(os.environ["MODEL_USAGE_DIR"])
+            if os.environ.get("MODEL_USAGE_DIR")
+            else None,
         )
 
 
@@ -83,14 +106,14 @@ class Choice(BaseModel):
 
 class Usage(BaseModel):
     model_config = ConfigDict(strict=True)
-    prompt_tokens: int | None = Field(default=None, ge=0)
-    completion_tokens: int | None = Field(default=None, ge=0)
-    total_tokens: int | None = Field(default=None, ge=0)
+    prompt_tokens: int = Field(ge=0)
+    completion_tokens: int = Field(ge=0)
+    total_tokens: int = Field(ge=0)
 
 
 class ModelResponse(BaseModel):
     choices: list[Choice] = Field(min_length=1, max_length=16)
-    usage: Usage | None = None
+    usage: Usage
 
 
 def create_gateway(
@@ -106,6 +129,38 @@ def create_gateway(
 
     @app.post("/v1/chat/completions")
     async def completions(request: Request) -> dict[str, object]:
+        if settings.usage_dir is not None:
+            raise HTTPException(status_code=403, detail="Model usage scope required")
+        return await complete(request, None)
+
+    @app.post("/runs/{run_id}/v1/chat/completions")
+    async def scoped_completions(request: Request, run_id: str) -> dict[str, object]:
+        if settings.usage_dir is None:
+            raise HTTPException(status_code=404, detail="Unknown model usage scope")
+        try:
+            begin_request(settings.usage_dir, run_id)
+        except (FileNotFoundError, ValueError):
+            raise HTTPException(status_code=404, detail="Unknown model usage scope") from None
+        except OSError:
+            raise HTTPException(status_code=503, detail="Model accounting unavailable") from None
+        try:
+            return await complete(request, run_id)
+        finally:
+            try:
+                end_request(settings.usage_dir, run_id)
+            except (OSError, ValueError):
+                raise HTTPException(
+                    status_code=503, detail="Model accounting unavailable"
+                ) from None
+
+    def ensure_running(run_id: str | None) -> None:
+        if settings.usage_dir is not None and run_id is not None:
+            try:
+                ensure_open(settings.usage_dir, run_id)
+            except (OSError, ValueError):
+                raise HTTPException(status_code=502, detail="Model unavailable") from None
+
+    async def complete(request: Request, run_id: str | None) -> dict[str, object]:
         body = bytearray()
         async for chunk in request.stream():
             if len(body) + len(chunk) > settings.max_body_bytes:
@@ -123,32 +178,53 @@ def create_gateway(
             "model": settings.model,
             "messages": [message.model_dump() for message in parsed.messages],
         }
-        try:
-            async with asyncio.timeout(settings.timeout_seconds):
-                async with httpx.AsyncClient(
-                    transport=transport,
-                    timeout=settings.timeout_seconds,
-                    follow_redirects=False,
-                    trust_env=False,
-                ) as client:
-                    async with client.stream(
-                        "POST",
-                        f"{settings.base_url}/chat/completions",
-                        headers=headers,
-                        json=payload,
-                    ) as response:
-                        if response.status_code != 200:
-                            raise ValueError("Upstream failure")
-                        output = bytearray()
-                        async for chunk in response.aiter_bytes():
-                            if len(output) + len(chunk) > settings.max_body_bytes:
-                                raise ValueError("Upstream response too large")
-                            output.extend(chunk)
-            return ModelResponse.model_validate_json(output).model_dump(
-                exclude_none=True, exclude_unset=True
-            )
-        except (httpx.HTTPError, TimeoutError, ValueError):
-            raise HTTPException(status_code=502, detail="Model unavailable") from None
+        delays = retry_delays(retry_delay=settings.retry_delay)
+        for attempt in range(len(delays) + 1):
+            ensure_running(run_id)
+            usage = None
+            try:
+                async with asyncio.timeout(settings.timeout_seconds):
+                    async with httpx.AsyncClient(
+                        transport=transport,
+                        timeout=settings.timeout_seconds,
+                        follow_redirects=False,
+                        trust_env=False,
+                    ) as client:
+                        async with client.stream(
+                            "POST",
+                            f"{settings.base_url}/chat/completions",
+                            headers=headers,
+                            json=payload,
+                        ) as response:
+                            output = bytearray()
+                            async for chunk in response.aiter_bytes():
+                                if len(output) + len(chunk) > settings.max_body_bytes:
+                                    raise ValueError("Upstream response too large")
+                                output.extend(chunk)
+                decoded = json.loads(output)
+                if not isinstance(decoded, dict):
+                    raise ValueError("Invalid model response")
+                usage = parse_usage(decoded.get("usage"))
+                if response.status_code != 200:
+                    raise ValueError("Upstream failure")
+                result = ModelResponse.model_validate(decoded)
+                if any(not choice.message.content.strip() for choice in result.choices):
+                    raise ValueError("Empty model response")
+                return result.model_dump(exclude_none=True, exclude_unset=True)
+            except (httpx.HTTPError, TimeoutError, ValueError):
+                if attempt == len(delays):
+                    raise HTTPException(status_code=502, detail="Model unavailable") from None
+            finally:
+                if settings.usage_dir is not None and run_id is not None:
+                    try:
+                        add_usage(settings.usage_dir, run_id, usage)
+                    except (OSError, ValueError):
+                        raise HTTPException(
+                            status_code=503, detail="Model accounting unavailable"
+                        ) from None
+            ensure_running(run_id)
+            await sleep(delays[attempt])
+        raise HTTPException(status_code=502, detail="Model unavailable")
 
     return app
 

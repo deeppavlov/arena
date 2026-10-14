@@ -1,12 +1,31 @@
 import asyncio
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from evaluator.gateway import GatewaySettings, create_gateway
+
+
+@pytest.fixture(autouse=True)
+def retry_waits(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    waits: list[float] = []
+
+    async def sleep(delay: float) -> None:
+        waits.append(delay)
+
+    monkeypatch.setattr("evaluator.gateway.sleep", sleep, raising=False)
+    return waits
+
+
+def valid_response(answer: str = "Answer") -> dict[str, object]:
+    return {
+        "choices": [{"message": {"content": answer}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 12, "completion_tokens": 3, "total_tokens": 15},
+    }
 
 
 def request_body() -> dict[str, object]:
@@ -108,7 +127,7 @@ def test_gateway_does_not_follow_redirects_or_expose_errors(status: int) -> None
         response = client.post("/v1/chat/completions", json=request_body())
     assert response.status_code == 502
     assert response.json() == {"detail": "Model unavailable"}
-    assert calls == ["http://internal-model/v1/chat/completions"]
+    assert calls == ["http://internal-model/v1/chat/completions"] * 6
 
 
 @pytest.mark.parametrize(
@@ -123,7 +142,9 @@ def test_gateway_does_not_follow_redirects_or_expose_errors(status: int) -> None
 def test_gateway_rejects_malformed_upstream_response(payload: dict[str, object]) -> None:
     app = create_gateway(
         GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
-        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=payload)),
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json={**valid_response(), **payload})
+        ),
     )
     with TestClient(app) as client:
         response = client.post("/v1/chat/completions", json=request_body())
@@ -151,7 +172,7 @@ def test_gateway_limits_request_and_response_before_parsing() -> None:
     assert oversized.status_code == 413
     assert malformed.status_code == 400
     assert too_large_response.status_code == 502
-    assert len(calls) == 1
+    assert len(calls) == 6
 
 
 def test_gateway_exposes_no_state_or_api_documentation() -> None:
@@ -223,22 +244,20 @@ def test_gateway_bounds_entire_upstream_call_time() -> None:
 
 
 @pytest.mark.parametrize("finish_reason", [{}, {"finish_reason": "stop"}])
-def test_gateway_accepts_response_without_usage(finish_reason: dict[str, str]) -> None:
+def test_gateway_rejects_response_without_usage(finish_reason: dict[str, str]) -> None:
     app = create_gateway(
         GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
         transport=httpx.MockTransport(
             lambda request: httpx.Response(
                 200,
-                json={
-                    "choices": [{"message": {"content": "complete"}, **finish_reason}]
-                },
+                json={"choices": [{"message": {"content": "complete"}, **finish_reason}]},
             )
         ),
     )
     with TestClient(app) as client:
         response = client.post("/v1/chat/completions", json=request_body())
-    assert response.status_code == 200
-    assert response.json() == {"choices": [{"message": {"content": "complete"}, **finish_reason}]}
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Model unavailable"}
 
 
 @pytest.mark.parametrize(
@@ -251,6 +270,7 @@ def test_gateway_rejects_incomplete_responses(finish_reason: str | None) -> None
             lambda request: httpx.Response(
                 200,
                 json={
+                    **valid_response(),
                     "choices": [{"message": {"content": "partial"}, "finish_reason": finish_reason}]
                 },
             )
@@ -272,7 +292,7 @@ def test_gateway_forwards_operator_specific_model_parameters() -> None:
 
     def upstream(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(200, json={"choices": [{"message": {"content": "complete"}}]})
+        return httpx.Response(200, json=valid_response("complete"))
 
     app = create_gateway(
         GatewaySettings(
@@ -320,3 +340,276 @@ def test_gateway_hides_transport_errors() -> None:
         response = client.post("/v1/chat/completions", json=request_body())
     assert response.status_code == 502
     assert response.json() == {"detail": "Model unavailable"}
+
+
+def test_gateway_retries_transient_failures_and_preserves_request(retry_waits: list[float]) -> None:
+    requests: list[httpx.Request] = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) == 1:
+            raise httpx.ReadTimeout("slow model")
+        if len(requests) == 2:
+            return httpx.Response(503, json={"error": "temporarily unavailable"})
+        if len(requests) == 3:
+            return httpx.Response(200, json={**valid_response(), "choices": []})
+        if len(requests) == 4:
+            return httpx.Response(200, json=valid_response("   "))
+        if len(requests) == 5:
+            return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+        return httpx.Response(200, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json=request_body())
+    assert response.status_code == 200
+    assert response.json() == valid_response()
+    assert len(requests) == 6
+    assert all(request.content == requests[0].content for request in requests)
+    assert retry_waits == [30, 60, 120, 240, 300]
+
+
+def test_gateway_stops_after_five_retries(retry_waits: list[float]) -> None:
+    requests: list[httpx.Request] = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=valid_response(""))
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json=request_body())
+    assert response.status_code == 502
+    assert len(requests) == 6
+    assert len(retry_waits) == 5
+
+
+def test_gateway_reads_long_timeout_and_retry_delay_from_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("MODEL_BASE_URL", "http://internal-model/v1")
+    monkeypatch.setenv("MODEL_NAME", "fixed-model")
+    assert GatewaySettings.from_env().timeout_seconds == 21600
+    monkeypatch.setenv("MODEL_TIMEOUT", "43200")
+    monkeypatch.setenv("MODEL_RETRY_DELAY", "60")
+    monkeypatch.setenv("MODEL_USAGE_DIR", str(tmp_path))
+    settings = GatewaySettings.from_env()
+    assert settings.timeout_seconds == 43200
+    assert settings.retry_delay == 60
+    assert settings.usage_dir == tmp_path
+
+
+@pytest.mark.parametrize("value", [0, -1, float("inf"), float("nan")])
+def test_gateway_rejects_invalid_timeout(value: float) -> None:
+    with pytest.raises(ValueError):
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", timeout_seconds=value
+        )
+
+
+def test_scoped_gateway_accounts_all_attempts_and_calls(tmp_path: Path) -> None:
+    from evaluator.usage import create_usage, read_usage
+
+    run_id = str(uuid4())
+    create_usage(tmp_path, run_id)
+    calls = 0
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(200, json={**valid_response(), "choices": []})
+        if calls == 2:
+            raise httpx.ConnectError("internal issue")
+        return httpx.Response(200, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        for _ in range(2):
+            response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+            assert response.status_code == 200
+            assert response.json() == valid_response()
+    assert read_usage(tmp_path, run_id) == {
+        "prompt_tokens": 36,
+        "completion_tokens": 9,
+        "total_tokens": 45,
+        "attempts": 4,
+        "unreported_attempts": 1,
+    }
+
+
+def test_scoped_gateway_rejects_missing_scope_and_does_not_create_ledgers(tmp_path: Path) -> None:
+    from evaluator.usage import create_usage, read_usage
+
+    run_id = str(uuid4())
+    create_usage(tmp_path, run_id)
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Missing scope must not reach model")
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        assert client.post("/v1/chat/completions", json=request_body()).status_code == 403
+        for invalid_id in (str(uuid4()), "invalid-id", "%2e%2e"):
+            assert (
+                client.post(
+                    f"/runs/{invalid_id}/v1/chat/completions", json=request_body()
+                ).status_code
+                == 404
+            )
+        assert client.get(f"/runs/{run_id}/usage").status_code == 404
+        assert (
+            client.post(
+                f"/runs/{run_id}/v1/chat/completions", json={**request_body(), "model": "other"}
+            ).status_code
+            == 400
+        )
+    assert read_usage(tmp_path, run_id)["attempts"] == 0
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        None,
+        {},
+        {"prompt_tokens": 12, "completion_tokens": 3, "total_tokens": 14},
+        {"prompt_tokens": True, "completion_tokens": 3, "total_tokens": 4},
+    ],
+)
+def test_scoped_gateway_counts_unreported_usage_as_unknown(tmp_path: Path, usage: object) -> None:
+    from evaluator.usage import create_usage, read_usage
+
+    run_id = str(uuid4())
+    create_usage(tmp_path, run_id)
+    calls = 0
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            200, json={**valid_response(), "usage": usage} if calls == 1 else valid_response()
+        )
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+    assert response.status_code == 200
+    assert read_usage(tmp_path, run_id) == {
+        "prompt_tokens": 12,
+        "completion_tokens": 3,
+        "total_tokens": 15,
+        "attempts": 2,
+        "unreported_attempts": 1,
+    }
+
+
+def test_scoped_gateway_rejects_sealed_scope(tmp_path: Path) -> None:
+    from evaluator.usage import create_usage, seal_usage
+
+    run_id = str(uuid4())
+    create_usage(tmp_path, run_id)
+    seal_usage(tmp_path, run_id)
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Sealed scope must not reach model")
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("status", [200, 502])
+def test_scoped_gateway_tracks_active_calls_until_all_attempts_end(
+    tmp_path: Path, status: int, retry_waits: list[float]
+) -> None:
+    from evaluator.usage import create_usage, seal_usage
+
+    run_id = str(uuid4())
+    create_usage(tmp_path, run_id)
+    calls = 0
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        with pytest.raises(ValueError):
+            seal_usage(tmp_path, run_id)
+        return httpx.Response(status, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+    assert response.status_code == status
+    usage = seal_usage(tmp_path, run_id)
+    assert usage["attempts"] == calls == 1
+    assert usage["total_tokens"] == 15 * calls
+    assert retry_waits == []
+
+
+def test_scoped_gateway_stops_retrying_when_closed_during_backoff(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from evaluator.usage import create_usage, seal_usage
+
+    run_id = str(uuid4())
+    create_usage(tmp_path, run_id)
+    calls = 0
+    waits: list[float] = []
+
+    async def sleep(delay: float) -> None:
+        waits.append(delay)
+        with pytest.raises(ValueError):
+            seal_usage(tmp_path, run_id)
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(500, json=valid_response())
+
+    monkeypatch.setattr("evaluator.gateway.sleep", sleep)
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Model unavailable"}
+    assert calls == 1
+    assert waits == [30]
+    usage = seal_usage(tmp_path, run_id)
+    assert usage["attempts"] == 1
+    assert usage["total_tokens"] == 15

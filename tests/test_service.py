@@ -9,7 +9,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from evaluator.runner import RunnerError
+from evaluator.judge import ModelClient
+from evaluator.reliability import empty_usage
+from evaluator.runner import RunnerError, SolveResult
 from evaluator.service import Settings, create_app
 
 
@@ -41,10 +43,17 @@ def submission(value: str = "a") -> dict[str, object]:
     }}]}
 
 
+def solved(answer="answer", tokens=3, seconds=2.0, unreported=0) -> SolveResult:
+    return SolveResult(answer, {
+        "prompt_tokens": tokens, "completion_tokens": 0, "total_tokens": tokens,
+        "attempts": 1, "unreported_attempts": unreported,
+    }, seconds)
+
+
 def client(settings: Settings, solve=None, complete=None) -> TestClient:
     return TestClient(create_app(
         settings,
-        solve=solve or (lambda candidate, task: "answer"),
+        solve=solve or (lambda candidate, task: solved()),
         complete=complete or (lambda messages: '{"score": 4, "reason": "secret-reason"}'),
     ), headers={"Authorization": "Bearer test-token"})
 
@@ -57,7 +66,7 @@ def test_evaluates_once_and_exposes_only_final_scores(settings: Settings):
         calls.append((candidate, task))
         assert (candidate / "prompt.txt").read_text() == "a"
         assert (candidate / "prompt.txt").stat().st_mode & 0o777 == 0o644
-        return "private-answer"
+        return solved("private-answer")
 
     def complete(messages):
         judges.append(messages)
@@ -70,7 +79,17 @@ def test_evaluates_once_and_exposes_only_final_scores(settings: Settings):
     assert result["status"] == "complete"
     assert result["winner"] == "candidate"
     assert len(result["scores"]) == 1
-    assert set(result["scores"][0]) == {"candidate_id", "digest", "score"}
+    assert set(result["scores"][0]) == {
+        "candidate_id", "digest", "score", "solver_tokens", "solver_seconds",
+        "solver_unreported_attempts", "judge_tokens", "judge_seconds", "judge_unreported_attempts",
+    }
+    resources = result["scores"][0]
+    assert resources["solver_tokens"] == 6
+    assert resources["solver_seconds"] == 4.0
+    assert resources["solver_unreported_attempts"] == 0
+    assert resources["judge_tokens"] == 0
+    assert resources["judge_seconds"] >= 0
+    assert resources["judge_unreported_attempts"] == 6
     assert len(calls) == 2
     assert len(judges) == 6
     public = json.dumps(result)
@@ -113,7 +132,7 @@ def test_blank_answer_scores_zero_without_judge(settings: Settings):
     def complete(messages):
         pytest.fail("blank answer must not reach judge")
 
-    api = client(settings, solve=lambda candidate, task: "  ", complete=complete)
+    api = client(settings, solve=lambda candidate, task: solved("  "), complete=complete)
     api.post("/v1/evaluations", json=submission())
     result = api.get("/v1/evaluations").json()
     assert result["status"] == "complete"
@@ -143,7 +162,7 @@ def test_concurrent_reservation_and_no_intermediate_scores(settings: Settings):
         calls.append(task)
         started.set()
         assert finish.wait(5)
-        return "answer"
+        return solved()
 
     api = client(settings, solve=solve)
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -217,7 +236,9 @@ def test_from_env_reads_file_secrets(settings: Settings, monkeypatch):
         "STATE_DIR": str(settings.state_dir), "TOKEN_FILE": str(token_file),
         "MODEL": "internal", "MODEL_BASE_URL": "http://internal/v1",
         "RUNNER_IMAGE": "fixed-runner", "RELEASE_ID": "release",
-        "PARAMETERS": '{"temperature": 0}',
+        "PARAMETERS": '{"temperature": 0}', "MODEL_TIMEOUT": "30000",
+        "RUNNER_TIMEOUT": "900000", "PREPARE_TIMEOUT": "200000", "RETRY_DELAY": "12",
+        "USAGE_DIR": str(settings.state_dir / "accounting"),
     }
     for name, value in values.items():
         monkeypatch.setenv("ARENA_" + name, value)
@@ -225,13 +246,18 @@ def test_from_env_reads_file_secrets(settings: Settings, monkeypatch):
     assert loaded.token == "from-file"
     assert loaded.parameters == {"temperature": 0}
     assert loaded.runner_model_base_url == "http://model-gateway:8081/v1"
+    assert loaded.model_timeout == 30000
+    assert loaded.runner_timeout == 900000
+    assert loaded.prepare_timeout == 200000
+    assert loaded.retry_delay == 12
+    assert loaded.usage_dir == settings.state_dir / "accounting"
 
 
 def test_nested_candidate_directories_are_readable_with_restrictive_umask(settings: Settings):
     def solve(candidate, task):
         assert (candidate / "nested").stat().st_mode & 0o777 == 0o755
         assert (candidate / "nested" / "deep").stat().st_mode & 0o777 == 0o755
-        return "answer"
+        return solved()
 
     mask = os.umask(0o077)
     try:
@@ -283,8 +309,11 @@ def test_settings_repr_excludes_credentials(settings: Settings):
     assert "secret-model-key" not in value
 
 
-def test_tied_best_scores_have_no_arbitrary_winner(settings: Settings):
-    api = client(replace(settings, finalists=2))
+def test_tied_scores_choose_cheaper_candidate_regardless_of_submission_order(settings: Settings):
+    api = client(
+        replace(settings, finalists=2),
+        solve=lambda candidate, task: solved(tokens=7 if candidate.name == "first" else 3),
+    )
     data = {"candidates": [
         {"id": "first", "files": {"prompt.txt": "YQ=="}},
         {"id": "second", "files": {"prompt.txt": "Yg=="}},
@@ -293,4 +322,189 @@ def test_tied_best_scores_have_no_arbitrary_winner(settings: Settings):
     result = api.get("/v1/evaluations").json()
     assert result["status"] == "complete"
     assert len(result["scores"]) == 2
-    assert result["winner"] is None
+    assert result["winner"] == "second"
+
+
+@pytest.mark.parametrize("field", ["model_timeout", "runner_timeout", "prepare_timeout"])
+@pytest.mark.parametrize("value", [0, -1, float("inf"), float("nan"), True])
+def test_settings_reject_invalid_timeouts(settings: Settings, field, value):
+    with pytest.raises(ValueError):
+        replace(settings, **{field: value})
+
+
+@pytest.mark.parametrize("value", [-1, float("inf"), float("nan"), True])
+def test_settings_reject_invalid_retry_delay(settings: Settings, value):
+    with pytest.raises(ValueError):
+        replace(settings, retry_delay=value)
+
+
+def test_settings_allow_zero_retry_delay_and_long_defaults(settings: Settings):
+    assert settings.model_timeout == 21600
+    assert settings.runner_timeout == 604800
+    assert settings.prepare_timeout == 172800
+    assert settings.retry_delay == 30
+    assert replace(settings, retry_delay=0).retry_delay == 0
+
+
+def test_plain_solver_response_without_measurements_fails_closed(settings: Settings):
+    api = client(settings, solve=lambda candidate, task: "unmeasured-answer")
+    api.post("/v1/evaluations", json=submission())
+    assert api.get("/v1/evaluations").json() == {"status": "failed"}
+
+
+def test_persists_resource_measurements_and_freezes_ranking_policy(settings: Settings):
+    api = client(settings)
+    api.post("/v1/evaluations", json=submission())
+    details = json.loads(next(settings.state_dir.glob("*/details/candidate.json")).read_text())
+    example = details["examples"][0]
+    assert example["resources"]["solver"] == {
+        "usage": solved().usage, "wall_seconds": 2.0,
+    }
+    assert example["resources"]["judge"]["usage"]["unreported_attempts"] == 3
+    assert example["resources"]["judge"]["wall_seconds"] >= 0
+    record = json.loads(next(settings.state_dir.glob("*/record.json")).read_text())
+    assert record["provenance"]["ranking_policy"]
+    record["provenance"]["ranking_policy"] = "changed-policy"
+    next(settings.state_dir.glob("*/record.json")).write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="frozen"):
+        client(settings)
+
+
+def test_judge_resource_deltas_do_not_accumulate_between_examples(settings: Settings, monkeypatch):
+    import evaluator.service as service
+
+    model_client = ModelClient("http://internal/v1", "internal-model")
+
+    def judge(metric, example, answer, complete, **kwargs):
+        assert complete is model_client
+        complete.usage["prompt_tokens"] += 5
+        complete.usage["completion_tokens"] += 2
+        complete.usage["total_tokens"] += 7
+        complete.usage["attempts"] += 3
+        return {"score": 4.0, "criteria": {}}
+
+    monkeypatch.setattr(service, "judge_answer", judge)
+    api = client(settings, complete=model_client)
+    api.post("/v1/evaluations", json=submission())
+    score = api.get("/v1/evaluations").json()["scores"][0]
+    assert score["judge_tokens"] == 14
+    assert score["judge_unreported_attempts"] == 0
+    details = json.loads(next(settings.state_dir.glob("*/details/candidate.json")).read_text())
+    assert [item["resources"]["judge"]["usage"]["total_tokens"]
+            for item in details["examples"]] == [7, 7]
+
+
+def test_runner_receives_configurable_long_limits_and_usage_path(settings: Settings, monkeypatch):
+    import evaluator.service as service
+
+    captured = {}
+
+    def runner(**kwargs):
+        captured.update(kwargs)
+        return lambda candidate, task: solved()
+
+    def judge(metric, example, answer, complete, **kwargs):
+        assert isinstance(complete, ModelClient)
+        assert complete.timeout == 30000
+        assert complete.retry_delay == 0
+        return {"score": 4.0, "criteria": {}}
+
+    monkeypatch.setattr(service, "DockerRunner", runner)
+    monkeypatch.setattr(service, "judge_answer", judge)
+    configured = replace(
+        settings, model_timeout=30000, runner_timeout=900000, prepare_timeout=200000,
+        retry_delay=0, usage_dir=settings.state_dir.parent / "accounting",
+    )
+    api = TestClient(create_app(configured), headers={"Authorization": "Bearer test-token"})
+    api.post("/v1/evaluations", json=submission())
+    assert api.get("/v1/evaluations").json()["status"] == "complete"
+    assert captured["timeout"] == 900000
+    assert captured["model_timeout"] == 30000
+    assert captured["prepare_timeout"] == 200000
+    assert captured["retry_delay"] == 0
+    assert captured["usage_dir"] == configured.usage_dir
+
+
+def test_assets_cannot_expose_resource_ledger(settings: Settings, tmp_path):
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    with pytest.raises(ValueError, match="assets"):
+        client(replace(settings, assets_dir=assets, usage_dir=assets / "accounting"))
+
+
+def test_candidate_storage_cannot_contain_resource_ledger(settings: Settings):
+    with pytest.raises(ValueError, match="usage"):
+        client(replace(settings, usage_dir=settings.state_dir / "candidates" / "accounting"))
+
+
+@pytest.mark.parametrize("key,value", [
+    ("prompt_tokens", True), ("completion_tokens", -1), ("total_tokens", 10),
+    ("attempts", 1.5), ("unreported_attempts", 2),
+])
+def test_invalid_solver_measurements_fail_closed(settings: Settings, key, value):
+    def solve(candidate, task):
+        usage = {**empty_usage(), "attempts": 1}
+        usage[key] = value
+        return SolveResult("answer", usage, 2.0)
+
+    api = client(settings, solve=solve)
+    api.post("/v1/evaluations", json=submission())
+    assert api.get("/v1/evaluations").json() == {"status": "failed"}
+
+
+@pytest.mark.parametrize("seconds", [-1, float("inf"), float("nan"), True, "1"])
+def test_invalid_solver_time_fails_closed(settings: Settings, seconds):
+    api = client(settings, solve=lambda candidate, task: solved(seconds=seconds))
+    api.post("/v1/evaluations", json=submission())
+    assert api.get("/v1/evaluations").json() == {"status": "failed"}
+
+
+def test_failed_judging_preserves_usage_from_all_attempts(settings: Settings):
+    api = client(replace(settings, retry_delay=0), complete=lambda messages: "invalid vote")
+    api.post("/v1/evaluations", json=submission())
+    assert api.get("/v1/evaluations").json() == {"status": "failed"}
+    details = json.loads(next(settings.state_dir.glob("*/details/candidate.json")).read_text())
+    assert len(details["examples"]) == 1
+    example = details["examples"][0]
+    assert example["failure"] == "judge_failure"
+    assert example["resources"]["solver"]["usage"]["total_tokens"] == 3
+    assert example["resources"]["judge"]["usage"]["attempts"] == 6
+    assert example["resources"]["judge"]["usage"]["unreported_attempts"] == 6
+
+
+@pytest.mark.parametrize("measured", [False, True])
+def test_failed_solver_preserves_private_measurements_and_ledger_reference(
+    settings: Settings, measured,
+):
+    run_id = "9225c5f1-2f6c-4303-a4bf-ec2c7aa65c31" if measured else None
+    usage = {
+        "prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10,
+        "attempts": 6, "unreported_attempts": 2,
+    } if measured else None
+    seconds = 43200.5 if measured else None
+
+    def solve(candidate, task):
+        raise RunnerError(
+            "private-failure" * 1000, usage=usage, wall_seconds=seconds, run_id=run_id,
+        )
+
+    def complete(messages):
+        pytest.fail("failed solver must not reach judge")
+
+    api = client(settings, solve=solve, complete=complete)
+    api.post("/v1/evaluations", json=submission())
+    assert api.get("/v1/evaluations").json() == {"status": "failed"}
+    assert api.post("/v1/evaluations", json=submission()).json() == {"status": "failed"}
+    assert api.post("/v1/evaluations", json=submission("new")).status_code == 409
+    details = json.loads(next(settings.state_dir.glob("*/details/candidate.json")).read_text())
+    assert details["candidate_id"] == "candidate"
+    assert len(details["examples"]) == 1
+    example = details["examples"][0]
+    assert example["example_id"] == "secret-0"
+    assert example["failure"] == "solver_failure"
+    assert example["resources_complete"] is False
+    assert example["run_id"] == run_id
+    assert example["resources"]["solver"] == {"usage": usage, "wall_seconds": seconds}
+    assert example["resources"]["judge"] == {"usage": empty_usage(), "wall_seconds": 0.0}
+    record = json.loads(next(settings.state_dir.glob("*/record.json")).read_text())
+    assert len(record["failure"]["message"]) <= 2000

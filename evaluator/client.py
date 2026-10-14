@@ -1,6 +1,7 @@
 import argparse
 import base64
 import json
+import math
 import os
 import stat
 import sys
@@ -62,7 +63,17 @@ def request(
     base_url: str,
     token_file: Path,
     payload: Mapping[str, object] | None = None,
+    *,
+    timeout: float | str | None = None,
 ) -> dict[str, object]:
+    try:
+        seconds = float(
+            os.environ.get("ARENA_EVALUATOR_TIMEOUT", "3600") if timeout is None else timeout
+        )
+    except (TypeError, ValueError):
+        raise ClientError("evaluator timeout must be positive and finite") from None
+    if isinstance(timeout, bool) or not math.isfinite(seconds) or seconds <= 0:
+        raise ClientError("evaluator timeout must be positive and finite")
     try:
         url = httpx.URL(base_url)
     except httpx.InvalidURL as error:
@@ -85,7 +96,7 @@ def request(
         raise ClientError("invalid evaluator token file")
     endpoint = url.copy_with(path=url.path.rstrip("/") + "/v1/evaluations")
     try:
-        with httpx.Client(follow_redirects=False, trust_env=False, timeout=30) as client:
+        with httpx.Client(follow_redirects=False, trust_env=False, timeout=seconds) as client:
             response = client.request(
                 method, endpoint, headers={"Authorization": f"Bearer {token}"}, json=payload
             )
@@ -114,6 +125,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     for command in (submit, status):
         command.add_argument("--url", required=True)
         command.add_argument("--token-file", type=Path, required=True)
+        command.add_argument(
+            "--timeout",
+            help="HTTP timeout in seconds; overrides ARENA_EVALUATOR_TIMEOUT (default: 3600)",
+        )
     arguments = parser.parse_args(argv)
     try:
         if arguments.command == "pack":
@@ -148,10 +163,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             except (OSError, ValidationError) as error:
                 raise ClientError("invalid bundle") from error
             result = request(
-                "POST", arguments.url, arguments.token_file, submission.model_dump(mode="json")
+                "POST",
+                arguments.url,
+                arguments.token_file,
+                submission.model_dump(mode="json"),
+                timeout=arguments.timeout,
             )
         else:
-            result = request("GET", arguments.url, arguments.token_file)
+            result = request("GET", arguments.url, arguments.token_file, timeout=arguments.timeout)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except ClientError as error:

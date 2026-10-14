@@ -24,10 +24,18 @@ def solve(task: dict) -> str:
         with tempfile.TemporaryFile() as output:
             subprocess.run(
                 [sys.executable, "-I", str(preparation)],
-                input=json.dumps({"input": task["input"], "assets_dir": "/assets"}).encode(),
+                input=json.dumps(
+                    {
+                        "input": task["input"],
+                        "assets_dir": "/assets",
+                        "model": task["model"],
+                        "model_base_url": task["model_base_url"],
+                        "model_request_timeout": task["model_request_timeout"],
+                    }
+                ).encode(),
                 stdout=output,
                 stderr=subprocess.DEVNULL,
-                timeout=120,
+                timeout=task["prepare_timeout"],
                 check=True,
                 cwd="/tmp",
             )
@@ -50,7 +58,7 @@ def solve(task: dict) -> str:
         method="POST",
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open(request, timeout=120) as response:
+    with opener.open(request, timeout=task["model_request_timeout"]) as response:
         body = response.read(MAX_BYTES + 1)
     if len(body) > MAX_BYTES:
         raise ValueError("response too large")

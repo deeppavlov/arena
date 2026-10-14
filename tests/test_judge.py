@@ -1,4 +1,5 @@
 import json
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -7,6 +8,19 @@ import pytest
 
 from evaluator.contracts import Criterion, Example, Metric
 from evaluator.judge import ModelClient, judge_answer
+
+
+@pytest.fixture(autouse=True)
+def no_retry_wait(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+
+
+def response_payload(content: str, **extra: Any) -> dict[str, Any]:
+    return {
+        "choices": [{"message": {"content": content}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+        **extra,
+    }
 
 
 @pytest.fixture
@@ -132,7 +146,7 @@ def test_client_uses_exact_endpoint_and_fixed_model(monkeypatch: pytest.MonkeyPa
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         return httpx.Response(
-            200, json={"choices": [{"message": {"content": "Ответ"}, "finish_reason": "stop"}]}
+            200, json=response_payload("Ответ")
         )
 
     options = install_transport(monkeypatch, handler)
@@ -170,7 +184,7 @@ def test_client_does_not_follow_redirect(monkeypatch: pytest.MonkeyPatch) -> Non
     install_transport(monkeypatch, handler)
     with pytest.raises(httpx.HTTPStatusError):
         ModelClient("http://internal-model/v1", "fixed").complete([])
-    assert requests == ["http://internal-model/v1/chat/completions"]
+    assert requests == ["http://internal-model/v1/chat/completions"] * 6
 
 
 @pytest.mark.parametrize(
@@ -198,7 +212,10 @@ def test_client_accepts_completion_without_optional_finish_reason(
 ) -> None:
     install_transport(
         monkeypatch,
-        lambda _: httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]}),
+        lambda _: httpx.Response(
+            200,
+            json=response_payload("ok", choices=[{"message": {"content": "ok"}}]),
+        ),
     )
     assert ModelClient("http://internal-model/v1", "fixed").complete([]) == "ok"
 
@@ -222,3 +239,165 @@ def test_client_rejects_oversized_response(monkeypatch: pytest.MonkeyPatch) -> N
 def test_client_rejects_ambiguous_endpoints(base_url: str) -> None:
     with pytest.raises(ValueError):
         ModelClient(base_url, "fixed")
+
+
+def test_client_retries_transport_then_malformed_completion_then_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise httpx.ReadTimeout("slow", request=request)
+        content = "" if attempts == 2 else "recovered"
+        return httpx.Response(200, json=response_payload(content))
+
+    install_transport(monkeypatch, handler)
+    client = ModelClient("http://internal-model/v1", "fixed")
+    assert client.complete([]) == "recovered"
+    assert attempts == 3
+    assert client.usage == {
+        "prompt_tokens": 20,
+        "completion_tokens": 10,
+        "total_tokens": 30,
+        "attempts": 3,
+        "unreported_attempts": 1,
+    }
+
+
+def test_client_has_exactly_five_retries_and_retains_unknown_usage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    sleeps: list[float] = []
+    monkeypatch.setattr(time, "sleep", sleeps.append)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        raise httpx.ReadTimeout("slow", request=request)
+
+    install_transport(monkeypatch, handler)
+    client = ModelClient("http://internal-model/v1", "fixed")
+    with pytest.raises(httpx.ReadTimeout):
+        client.complete([])
+    assert attempts == 6
+    assert sleeps == [30, 60, 120, 240, 300]
+    assert client.usage["attempts"] == client.usage["unreported_attempts"] == 6
+    assert client.elapsed_seconds >= 0
+
+
+@pytest.mark.parametrize("bound_method", [False, True])
+def test_judge_validation_shares_one_retry_budget_with_client(
+    monkeypatch: pytest.MonkeyPatch, metric: Metric, example: Example, bound_method: bool
+) -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls % 2:
+            return httpx.Response(503)
+        return httpx.Response(200, json=response_payload('{"score": 8, "reason": "bad"}'))
+
+    install_transport(monkeypatch, handler)
+    client = ModelClient("http://internal-model/v1", "fixed")
+    with pytest.raises(ValueError):
+        judge_answer(metric, example, "Ответ", client.complete if bound_method else client)
+    assert calls == 6
+    assert client.usage == {
+        "prompt_tokens": 30,
+        "completion_tokens": 15,
+        "total_tokens": 45,
+        "attempts": 6,
+        "unreported_attempts": 3,
+    }
+
+
+def test_judge_retries_invalid_vote_without_repeating_successful_votes(
+    monkeypatch: pytest.MonkeyPatch, metric: Metric, example: Example
+) -> None:
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        content = "invalid" if calls == 2 else '{"score": 4, "reason": "ok"}'
+        return httpx.Response(200, json=response_payload(content))
+
+    install_transport(monkeypatch, handler)
+    client = ModelClient("http://internal-model/v1", "fixed")
+    result = judge_answer(metric, example, "Ответ", client)
+    assert result["score"] == 4
+    assert calls == 7
+    assert client.usage["total_tokens"] == 105
+
+
+def test_injected_judge_callable_retries_vote_validation(metric: Metric, example: Example) -> None:
+    calls = 0
+
+    def complete(_: list[dict[str, str]]) -> str:
+        nonlocal calls
+        calls += 1
+        return "invalid" if calls == 1 else '{"score": 4, "reason": "ok"}'
+
+    assert judge_answer(metric, example, "Ответ", complete)["score"] == 4
+    assert calls == 7
+
+
+@pytest.mark.parametrize("usage", [None, {}, {"total_tokens": 5}])
+def test_client_requires_measured_token_usage(
+    monkeypatch: pytest.MonkeyPatch, usage: Any
+) -> None:
+    install_transport(
+        monkeypatch, lambda _: httpx.Response(200, json=response_payload("ok", usage=usage))
+    )
+    client = ModelClient("http://internal-model/v1", "fixed")
+    with pytest.raises(ValueError, match="usage"):
+        client.complete([])
+    assert client.usage["attempts"] == client.usage["unreported_attempts"] == 6
+
+
+def test_default_timeout_allows_slow_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    options = install_transport(
+        monkeypatch, lambda _: httpx.Response(200, json=response_payload("ok"))
+    )
+    client = ModelClient("http://internal-model/v1", "fixed")
+    client.complete([])
+    assert options[0]["timeout"] == 21600
+
+
+@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), True])
+def test_client_rejects_invalid_timeout(timeout: float) -> None:
+    with pytest.raises(ValueError):
+        ModelClient("http://internal-model/v1", "fixed", timeout=timeout)
+
+
+def test_http_failure_still_counts_reported_usage(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_transport(
+        monkeypatch, lambda _: httpx.Response(503, json=response_payload("unavailable"))
+    )
+    client = ModelClient("http://internal-model/v1", "fixed")
+    with pytest.raises(httpx.HTTPStatusError):
+        client.complete([])
+    assert client.usage["attempts"] == 6
+    assert client.usage["total_tokens"] == 90
+    assert client.usage["unreported_attempts"] == 0
+
+
+def test_custom_validator_is_retried_with_measured_usage(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_transport(monkeypatch, lambda _: httpx.Response(200, json=response_payload("ok")))
+    validations = 0
+
+    def validator(_: str) -> None:
+        nonlocal validations
+        validations += 1
+        if validations < 3:
+            raise ValueError("bad format")
+
+    client = ModelClient("http://internal-model/v1", "fixed")
+    assert client.complete([], validator=validator) == "ok"
+    assert client.usage["attempts"] == 3
+    assert client.usage["total_tokens"] == 45

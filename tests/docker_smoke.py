@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import subprocess
 import tempfile
 import time
@@ -11,10 +12,19 @@ from evaluator.runner import DockerRunner, RunnerError
 PREPARE = """import json
 import os
 import sys
+import uuid
 from pathlib import Path
 
 task = json.load(sys.stdin)
-assert task == {"input": "synthetic task", "assets_dir": "/assets"}
+run_id = task["model_base_url"].removeprefix("http://model-gateway:8081/runs/").removesuffix("/v1")
+assert str(uuid.UUID(run_id)) == run_id
+assert task == {
+    "input": "synthetic task",
+    "assets_dir": "/assets",
+    "model": "fake-model",
+    "model_base_url": f"http://model-gateway:8081/runs/{run_id}/v1",
+    "model_request_timeout": 72,
+}
 assert os.getuid() == 10001 and os.getgid() == 10001
 status = dict(line.split(":", 1) for line in Path("/proc/self/status").read_text().splitlines())
 assert int(status["CapEff"].strip(), 16) == 0
@@ -26,7 +36,7 @@ mounts = {
 for path in ("/", "/candidate", "/assets"):
     assert "ro" in mounts[path], path
 assert {"rw", "noexec", "nosuid", "nodev"} <= mounts["/tmp"]
-for path in ("/private", "/state", "/run/secrets", "/var/run/docker.sock"):
+for path in ("/private", "/state", "/usage", "/run/secrets", "/var/run/docker.sock"):
     assert not Path(path).exists(), path
 assert not any("TOKEN" in key or "API_KEY" in key for key in os.environ)
 for path in ("/candidate/write", "/assets/write", "/opt/runner/write"):
@@ -64,7 +74,10 @@ class Handler(BaseHTTPRequestHandler):
             and self.headers.get("Authorization") == "Bearer synthetic-key"
             and body == expected
         )
-        output = json.dumps({"choices": [{"message": {"content": "synthetic answer"}}]}).encode()
+        output = json.dumps({
+            "choices": [{"message": {"content": "synthetic answer"}}],
+            "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+        }).encode()
         self.send_response(200 if valid else 400)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(output)))
@@ -112,6 +125,8 @@ def main() -> None:
         assets = workspace / "assets"
         assets.mkdir()
         (assets / "context.txt").write_text("public context")
+        usage = workspace / "usage"
+        usage.mkdir(mode=0o700)
         key = workspace / "synthetic-key"
         key.write_text("synthetic-key")
         key.chmod(0o644)
@@ -145,6 +160,8 @@ def main() -> None:
                 network,
                 "--network-alias",
                 "model-gateway",
+                "--user",
+                f"{os.getuid()}:{os.getgid()}",
                 "--read-only",
                 "--cap-drop",
                 "ALL",
@@ -158,8 +175,16 @@ def main() -> None:
                 'MODEL_PARAMETERS_JSON={"temperature":0}',
                 "--env",
                 "MODEL_API_KEY_FILE=/run/secrets/model-key",
+                "--env",
+                "MODEL_TIMEOUT=2",
+                "--env",
+                "MODEL_RETRY_DELAY=0",
+                "--env",
+                "MODEL_USAGE_DIR=/usage",
                 "--mount",
                 f"type=bind,src={key},dst=/run/secrets/model-key,readonly",
+                "--mount",
+                f"type=bind,src={usage},dst=/usage",
                 args.gateway_image,
                 "python",
                 "-m",
@@ -186,15 +211,33 @@ def main() -> None:
                 model="fake-model",
                 assets_dir=assets,
                 timeout=15,
+                model_timeout=2,
+                retry_delay=0,
+                usage_dir=usage,
             )
-            assert runner(candidate, "synthetic task") == "synthetic answer"
+            solved = runner(candidate, "synthetic task")
+            assert solved.answer == "synthetic answer"
+            assert solved.usage == {
+                "prompt_tokens": 11,
+                "completion_tokens": 7,
+                "total_tokens": 18,
+                "attempts": 1,
+                "unreported_attempts": 0,
+            }
+            assert solved.wall_seconds > 0
             assert docker("logs", upstream) == "valid request"
+            (candidate / "prepare.py").write_text(
+                PREPARE.replace('"model": "fake-model"', '"model": "different-model"')
+            )
             wrong_model = DockerRunner(
                 image=image,
                 network=network,
                 model="different-model",
                 assets_dir=assets,
                 timeout=15,
+                model_timeout=2,
+                retry_delay=0,
+                usage_dir=usage,
             )
             try:
                 wrong_model(candidate, "synthetic task")
@@ -210,6 +253,9 @@ def main() -> None:
                 model="fake-model",
                 assets_dir=assets,
                 timeout=2,
+                model_timeout=2,
+                retry_delay=0,
+                usage_dir=usage,
             )
             try:
                 slow_runner(candidate, "synthetic task")
