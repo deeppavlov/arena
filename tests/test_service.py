@@ -4,6 +4,7 @@ import fcntl
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -15,6 +16,8 @@ import pytest
 from anyio.to_thread import current_default_thread_limiter
 from fastapi.testclient import TestClient
 
+from evaluator.candidates import materialize_candidate
+from evaluator.client import pack_candidate
 from evaluator.judge import ModelClient
 from evaluator.reliability import empty_usage
 from evaluator.runner import RunnerError, SolveResult
@@ -883,61 +886,47 @@ def test_public_renamed_content_reuses_answer_and_score(settings: Settings):
     assert len(judges) == 6
 
 
-def test_public_reordered_bundle_reuses_each_candidate(settings: Settings):
+def test_public_rejects_queued_candidate_batches(settings: Settings):
     calls = []
-
-    def solve(candidate, task):
-        calls.append(((candidate / "prompt.txt").read_text(), task))
-        return solved("answer")
-
+    api = client(replace(settings, split="public"), solve=lambda *args: calls.append(args))
     data = {"candidates": [
         {"id": name, "files": {"prompt.txt": base64.b64encode(name.encode()).decode()}}
-        for name in ("first", "second")
+        for name in ("first", "second", "third")
     ]}
-    api = client(replace(settings, split="public"), solve=solve)
-    first = api.post("/v1/evaluations", json=data).json()
-    data["candidates"].reverse()
-    second = api.post("/v1/evaluations", json=data).json()
-    for identifier in (first["evaluation_id"], second["evaluation_id"]):
-        result = api.get(f"/v1/evaluations/{identifier}").json()
-        assert result["status"] == "complete"
-        assert {row["candidate_id"] for row in result["scores"]} == {"first", "second"}
-    assert sorted(calls) == [
-        (name, task) for name in ("first", "second") for task in ("task-0", "task-1")
-    ]
+    response = api.post("/v1/evaluations", json=data)
+    assert response.status_code == 422
+    assert calls == []
+    assert not list(settings.state_dir.rglob("record.json"))
 
 
-def test_public_concurrent_overlapping_bundles_solve_shared_content_once(settings: Settings):
-    barrier = threading.Barrier(2)
+def test_public_concurrent_renamed_content_solves_once(settings: Settings):
+    started = threading.Event()
+    finish = threading.Event()
     calls = []
 
     def solve(candidate, task):
-        content = (candidate / "prompt.txt").read_text()
-        calls.append((content, task))
-        if content != "shared":
-            barrier.wait(timeout=5)
+        calls.append(task)
+        started.set()
+        assert finish.wait(5)
         return solved("answer")
 
-    def batch(name):
-        return {"candidates": [
-            {"id": identifier, "files": {
-                "prompt.txt": base64.b64encode(content.encode()).decode(),
-            }} for identifier, content in ((name, name), (f"{name}-shared", "shared"))
-        ]}
-
     api = client(replace(settings, split="public"), solve=solve)
+    original = submission()
+    renamed = json.loads(json.dumps(original))
+    renamed["candidates"][0]["id"] = "renamed"
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(api.post, "/v1/evaluations", json=batch("first"))
-        second = pool.submit(api.post, "/v1/evaluations", json=batch("second"))
+        first = pool.submit(api.post, "/v1/evaluations", json=original)
+        try:
+            assert started.wait(5)
+            second = pool.submit(api.post, "/v1/evaluations", json=renamed)
+        finally:
+            finish.set()
         responses = [first.result(), second.result()]
     assert all(response.status_code == 202 for response in responses)
     for response in responses:
         identifier = response.json()["evaluation_id"]
         assert api.get(f"/v1/evaluations/{identifier}").json()["status"] == "complete"
-    assert sorted(calls) == [
-        (name, task)
-        for name in ("first", "second", "shared") for task in ("task-0", "task-1")
-    ]
+    assert calls == ["task-0", "task-1"]
 
 
 def test_public_failed_content_cannot_repeat_a_successful_partial_answer(settings: Settings):
@@ -1096,3 +1085,151 @@ def test_public_background_work_does_not_starve_requests(settings: Settings, mon
                 limiter.total_tokens = previous_tokens
 
     asyncio.run(requests())
+
+
+@pytest.mark.parametrize("overrides", [
+    {"parameters": {"stream": False}},
+    {"parameters": {"messages": []}},
+    {"parameters": {"temperature": float("nan")}},
+    {"model_base_url": "ftp://internal/v1"},
+    {"model_base_url": "http://internal:not-a-port/v1"},
+    {"model_base_url": "http://internal:70000/v1"},
+    {"model_base_url": "http://user:secret@internal/v1"},
+])
+@pytest.mark.parametrize("injected", [False, True])
+def test_invalid_judge_configuration_fails_before_reserving_private(settings, overrides, injected):
+    configured = replace(settings, **overrides)
+    complete = (lambda _: '{"score":4,"reason":"hidden"}') if injected else None
+    with pytest.raises(ValueError):
+        create_app(configured, solve=lambda *args: solved(), complete=complete)
+    assert not list(settings.state_dir.rglob("record.json"))
+    api = client(settings)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    assert api.get("/v1/evaluations").json() == {"status": "complete"}
+
+
+def test_public_starts_without_waiting_for_shared_executor(settings):
+    started = threading.Event()
+    release = threading.Event()
+    executor_busy = threading.Event()
+    app = create_app(
+        replace(settings, split="public"),
+        solve=lambda *args: (started.set(), solved())[1],
+        complete=lambda _: '{"score":4,"reason":"hidden"}',
+    )
+
+    def occupy():
+        executor_busy.set()
+        assert release.wait(5)
+
+    async def requests():
+        loop = asyncio.get_running_loop()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            loop.set_default_executor(executor)
+            busy = loop.run_in_executor(None, occupy)
+            assert executor_busy.wait(2)
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://evaluator",
+                headers={"Authorization": "Bearer test-token"},
+            ) as api:
+                pending = asyncio.create_task(api.post("/v1/evaluations", json=submission()))
+                try:
+                    response = await asyncio.wait_for(asyncio.shield(pending), timeout=1)
+                    assert response.status_code == 202
+                    assert started.is_set()
+                finally:
+                    release.set()
+                    await busy
+                    await pending
+
+    asyncio.run(requests())
+
+
+@pytest.mark.parametrize("stage", ["command", "aggregation"])
+@pytest.mark.parametrize("split", ["private", "public"])
+def test_metric_diagnostics_are_saved_only_in_closed_logs(command_settings, stage, split):
+    configured = replace(command_settings, split=split)
+    executable = Path(sys.executable).resolve()
+    script = configured.metric_path.parent / "failing_metric.py"
+    script.write_text(
+        "import sys\n"
+        "print('CLOSED_STDOUT', flush=True)\n"
+        "raise RuntimeError('CLOSED_METRIC_DIAGNOSTIC')\n"
+    )
+    metric = json.loads(configured.metric_path.read_text())
+    metric[stage] = {
+        "argv": [str(executable), str(script)],
+        "source_sha256": {
+            str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in (executable, script)
+        },
+    }
+    configured.metric_path.write_text(json.dumps(metric))
+    api = client(configured, solve=lambda *args: solved("2"))
+    accepted = api.post("/v1/evaluations", json=submission())
+    identifier = accepted.json().get("evaluation_id")
+    endpoint = f"/v1/evaluations/{identifier}" if identifier else "/v1/evaluations"
+    response = api.get(endpoint)
+    assert response.json()["status"] == "failed"
+    assert "CLOSED_" not in accepted.text + response.text
+    record = operator_record(configured, identifier)
+    diagnostics = record["failure"]["diagnostics"]
+    assert diagnostics["returncode"] == 1
+    assert "CLOSED_METRIC_DIAGNOSTIC" in diagnostics["stderr"]
+    assert diagnostics["stdout"] == "CLOSED_STDOUT\n"
+    paths = list(configured.state_dir.rglob("details/candidate.json"))
+    assert len(paths) == 1
+    details = json.loads(paths[0].read_text())
+    failed = details["examples"][0] if stage == "command" else details["aggregation"]
+    assert failed["diagnostics"] == diagnostics
+    assert failed["resources"]["judge"]["wall_seconds"] > 0
+
+
+def test_private_materialization_preserves_executable_helper(settings):
+    def solve(candidate, task):
+        result = subprocess.run(
+            [str(candidate / "bin" / "helper.sh")], capture_output=True, check=True,
+        )
+        return solved(result.stdout.decode())
+
+    source = settings.state_dir.parent / "source"
+    (source / "bin").mkdir(parents=True)
+    helper = source / "bin" / "helper.sh"
+    helper.write_bytes(b"#!/bin/sh\nprintf answer\n")
+    helper.chmod(0o755)
+    candidate = pack_candidate("candidate", source)
+    restored = settings.state_dir.parent / "restored"
+    materialize_candidate(candidate, restored)
+    assert solve(restored, "train").answer == "answer"
+    assert pack_candidate("candidate", restored).digest() == candidate.digest()
+    api = client(settings, solve=solve)
+    data = {"candidates": [candidate.model_dump()]}
+    assert api.post("/v1/evaluations", json=data).status_code == 202
+    assert api.get("/v1/evaluations").json() == {"status": "complete"}
+    record = operator_record(settings)
+    assert record["scores"][0]["digest"] == candidate.digest()
+    assert pack_candidate("candidate", Path(record["candidates"][0]["path"])).digest() == (
+        candidate.digest()
+    )
+
+
+def test_worker_start_failure_releases_private_execution_lease(settings, monkeypatch):
+    original_start = threading.Thread.start
+
+    def fail_worker(thread):
+        if getattr(getattr(thread, "_target", None), "__name__", None) == "execute":
+            raise RuntimeError("cannot start worker")
+        return original_start(thread)
+
+    api = client(settings)
+    monkeypatch.setattr(threading.Thread, "start", fail_worker)
+    response = api.post("/v1/evaluations", json=submission())
+    assert response.status_code == 503
+    assert response.json() == {"detail": "evaluation unavailable"}
+    assert api.get("/v1/evaluations").json() == {"status": "failed"}
+    lock_path = next(settings.state_dir.glob("*/execution.lock"))
+    with lock_path.open("a+b") as lease:
+        fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    assert client(settings).post("/v1/evaluations", json=submission()).json() == {
+        "status": "failed",
+    }

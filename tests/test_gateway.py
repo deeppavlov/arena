@@ -417,7 +417,7 @@ def test_scoped_gateway_accounts_all_attempts_and_calls(tmp_path: Path) -> None:
     from evaluator.usage import create_usage, read_usage
 
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
     calls = 0
 
     def upstream(request: httpx.Request) -> httpx.Response:
@@ -437,7 +437,9 @@ def test_scoped_gateway_accounts_all_attempts_and_calls(tmp_path: Path) -> None:
     )
     with TestClient(app) as client:
         for _ in range(2):
-            response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+            response = client.post(
+                f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body()
+            )
             assert response.status_code == 200
             assert response.json() == valid_response()
     assert read_usage(tmp_path, run_id) == {
@@ -453,7 +455,7 @@ def test_scoped_gateway_rejects_missing_scope_and_does_not_create_ledgers(tmp_pa
     from evaluator.usage import create_usage, read_usage
 
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
 
     def upstream(request: httpx.Request) -> httpx.Response:
         pytest.fail("Missing scope must not reach model")
@@ -469,14 +471,15 @@ def test_scoped_gateway_rejects_missing_scope_and_does_not_create_ledgers(tmp_pa
         for invalid_id in (str(uuid4()), "invalid-id", "%2e%2e"):
             assert (
                 client.post(
-                    f"/runs/{invalid_id}/v1/chat/completions", json=request_body()
+                    f"/runs/{invalid_id}/{capability}/v1/chat/completions", json=request_body()
                 ).status_code
                 == 404
             )
         assert client.get(f"/runs/{run_id}/usage").status_code == 404
         assert (
             client.post(
-                f"/runs/{run_id}/v1/chat/completions", json={**request_body(), "model": "other"}
+                f"/runs/{run_id}/{capability}/v1/chat/completions",
+                json={**request_body(), "model": "other"},
             ).status_code
             == 400
         )
@@ -496,7 +499,7 @@ def test_scoped_gateway_counts_unreported_usage_as_unknown(tmp_path: Path, usage
     from evaluator.usage import create_usage, read_usage
 
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
     calls = 0
 
     def upstream(request: httpx.Request) -> httpx.Response:
@@ -513,7 +516,9 @@ def test_scoped_gateway_counts_unreported_usage_as_unknown(tmp_path: Path, usage
         transport=httpx.MockTransport(upstream),
     )
     with TestClient(app) as client:
-        response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body()
+        )
     assert response.status_code == 200
     assert read_usage(tmp_path, run_id) == {
         "prompt_tokens": 12,
@@ -528,7 +533,7 @@ def test_scoped_gateway_rejects_sealed_scope(tmp_path: Path) -> None:
     from evaluator.usage import create_usage, seal_usage
 
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
     seal_usage(tmp_path, run_id)
 
     def upstream(request: httpx.Request) -> httpx.Response:
@@ -541,7 +546,9 @@ def test_scoped_gateway_rejects_sealed_scope(tmp_path: Path) -> None:
         transport=httpx.MockTransport(upstream),
     )
     with TestClient(app) as client:
-        response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body()
+        )
     assert response.status_code == 404
 
 
@@ -552,7 +559,7 @@ def test_scoped_gateway_tracks_active_calls_until_all_attempts_end(
     from evaluator.usage import create_usage, seal_usage
 
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
     calls = 0
 
     def upstream(request: httpx.Request) -> httpx.Response:
@@ -569,7 +576,9 @@ def test_scoped_gateway_tracks_active_calls_until_all_attempts_end(
         transport=httpx.MockTransport(upstream),
     )
     with TestClient(app) as client:
-        response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body()
+        )
     assert response.status_code == status
     usage = seal_usage(tmp_path, run_id)
     assert usage["attempts"] == calls == 1
@@ -583,7 +592,7 @@ def test_scoped_gateway_stops_retrying_when_closed_during_backoff(
     from evaluator.usage import create_usage, seal_usage
 
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
     calls = 0
     waits: list[float] = []
 
@@ -605,7 +614,9 @@ def test_scoped_gateway_stops_retrying_when_closed_during_backoff(
         transport=httpx.MockTransport(upstream),
     )
     with TestClient(app) as client:
-        response = client.post(f"/runs/{run_id}/v1/chat/completions", json=request_body())
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body()
+        )
     assert response.status_code == 502
     assert response.json() == {"detail": "Model unavailable"}
     assert calls == 1
@@ -613,3 +624,65 @@ def test_scoped_gateway_stops_retrying_when_closed_during_backoff(
     usage = seal_usage(tmp_path, run_id)
     assert usage["attempts"] == 1
     assert usage["total_tokens"] == 15
+
+
+def test_scoped_gateway_rejects_peer_uuid_without_changing_accounting(tmp_path: Path) -> None:
+    from evaluator.usage import create_usage, read_usage, seal_usage
+
+    victim_id = str(uuid4())
+    peer_id = str(uuid4())
+    victim_token = create_usage(tmp_path, victim_id)
+    peer_token = create_usage(tmp_path, peer_id)
+    calls = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    victim_path = tmp_path / f"{victim_id}.json"
+    before = victim_path.read_bytes()
+    with TestClient(app) as client:
+        for endpoint in (
+            f"/runs/{victim_id}/v1/chat/completions",
+            f"/runs/{victim_id}/{peer_token}/v1/chat/completions",
+            f"/runs/{victim_id}/{'0' * 64}/v1/chat/completions",
+        ):
+            response = client.post(endpoint, json=request_body())
+            assert response.status_code == 404
+            assert victim_path.read_bytes() == before
+            assert calls == []
+        response = client.post(
+            f"/runs/{peer_id}/{peer_token}/v1/chat/completions", json=request_body()
+        )
+        assert response.status_code == 200
+        assert len(calls) == 1
+        assert read_usage(tmp_path, peer_id)["total_tokens"] == 15
+        assert read_usage(tmp_path, victim_id)["total_tokens"] == 0
+        assert seal_usage(tmp_path, victim_id)["attempts"] == 0
+        response = client.post(
+            f"/runs/{victim_id}/{victim_token}/v1/chat/completions", json=request_body()
+        )
+        assert response.status_code == 404
+        assert len(calls) == 1
+
+
+def test_gateway_entrypoint_does_not_log_capability_urls(monkeypatch: pytest.MonkeyPatch) -> None:
+    from evaluator import gateway
+
+    options = {}
+    monkeypatch.setattr(
+        gateway.GatewaySettings,
+        "from_env",
+        lambda: GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+    )
+    monkeypatch.setattr(gateway.uvicorn, "run", lambda app, **kwargs: options.update(kwargs))
+
+    gateway.main()
+
+    assert options["access_log"] is False

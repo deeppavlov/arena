@@ -157,32 +157,38 @@ class DockerRunner:
             "input": input_text,
             "prepare_timeout": self.prepare_timeout,
         }
-        if self.uses_model:
-            url = urlsplit(self.model_base_url)
-            scoped_url = urlunsplit(url._replace(path=f"/runs/{run_id}/v1"))
-            payload.update({
-                "model": self.model,
-                "model_base_url": scoped_url,
-                "model_request_timeout": request_timeout(
-                    self.model_timeout, retry_delay=self.retry_delay
-                ),
-            })
-        else:
-            payload["uses_model"] = False
         if parameters is not None:
             if not isinstance(parameters, dict):
                 raise RunnerError("invalid harness parameters")
             payload["parameters"] = parameters
         try:
-            task = json.dumps(payload, allow_nan=False).encode()
+            json.dumps(payload, allow_nan=False)
         except (TypeError, ValueError, RecursionError):
             raise RunnerError("invalid harness parameters") from None
+        if self.uses_model:
+            model_request_timeout = request_timeout(
+                self.model_timeout, retry_delay=self.retry_delay
+            )
+            assert self.usage_dir is not None
+            try:
+                capability = create_usage(self.usage_dir, run_id)
+            except (OSError, ValueError):
+                raise RunnerError("runner usage unavailable") from None
+            url = urlsplit(self.model_base_url)
+            scoped_url = urlunsplit(url._replace(path=f"/runs/{run_id}/{capability}/v1"))
+            payload.update({
+                "model": self.model,
+                "model_base_url": scoped_url,
+                "model_request_timeout": model_request_timeout,
+            })
+        else:
+            payload["uses_model"] = False
         try:
-            if self.uses_model:
-                assert self.usage_dir is not None
-                create_usage(self.usage_dir, run_id)
-        except (OSError, ValueError):
-            raise RunnerError("runner usage unavailable") from None
+            task = json.dumps(payload, allow_nan=False).encode()
+        except (TypeError, ValueError, RecursionError):
+            with suppress(OSError, ValueError):
+                self._seal(run_id)
+            raise RunnerError("invalid harness parameters") from None
         try:
             process = subprocess.Popen(
                 command,

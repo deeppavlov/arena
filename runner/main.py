@@ -19,7 +19,7 @@ def read_limited(path: Path) -> str:
 def run_program(path: Path, payload: dict, timeout: float | None = None) -> dict:
     with tempfile.TemporaryFile() as output:
         subprocess.run(
-            [sys.executable, "-I", str(path)],
+            [sys.executable, "-E", "-s", str(path)],
             input=json.dumps(payload).encode(),
             stdout=output,
             stderr=subprocess.DEVNULL,
@@ -90,11 +90,14 @@ def main() -> int:
         if not isinstance(task, dict) or type(task.get("uses_model", True)) is not bool:
             raise ValueError("invalid task")
         uses_model = task.get("uses_model", True)
-        fields = ("input", "model", "model_base_url") if uses_model else ("input",)
-        if any(
-            not isinstance(task.get(key), str) or (uses_model and not task[key].strip())
-            for key in fields
-        ) or not isinstance(task.get("parameters", {}), dict):
+        if not isinstance(task.get("input"), str) or not isinstance(
+            task.get("parameters", {}), dict
+        ):
+            raise ValueError("invalid task")
+        if uses_model and any(
+            not isinstance(task.get(key), str) or not task[key].strip()
+            for key in ("model", "model_base_url")
+        ):
             raise ValueError("invalid task")
         output = json.dumps({"answer": solve(task)})
         if len(output.encode()) + 1 > MAX_BYTES:

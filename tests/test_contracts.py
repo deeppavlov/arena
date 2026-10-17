@@ -1,4 +1,6 @@
 import base64
+import hashlib
+import json
 
 import pytest
 from pydantic import ValidationError
@@ -55,6 +57,39 @@ def test_candidate_digest_identifies_decoded_content_independent_of_order_and_na
     assert first.digest() == second.digest()
     changed = Candidate(id="first", files={"nested/данные.bin": "AAI=", "prompt": "YQ=="})
     assert first.digest() != changed.digest()
+
+
+def test_candidate_digest_preserves_legacy_nonexecutable_identity() -> None:
+    candidate = Candidate(id="plain", files={"helper.sh": "YQ=="})
+    hashes = {"helper.sh": hashlib.sha256(b"a").hexdigest()}
+    expected = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
+    assert candidate.digest() == expected
+
+
+def test_executable_files_affect_identity_and_canonicalize_order() -> None:
+    files = {"helper.sh": "YQ==", "nested/worker": "Yg=="}
+    plain = Candidate(id="plain", files=files)
+    executable = Candidate.model_validate({
+        "id": "executable", "files": files,
+        "executable_files": ["nested/worker", "helper.sh"],
+    })
+    reordered = Candidate.model_validate({
+        "id": "reordered", "files": files,
+        "executable_files": ["helper.sh", "nested/worker"],
+    })
+    assert executable.digest() != plain.digest()
+    assert Submission(candidates=[executable]).digest() != Submission(candidates=[plain]).digest()
+    assert reordered.digest() == executable.digest()
+    assert executable.model_dump()["executable_files"] == ["helper.sh", "nested/worker"]
+    assert len(Submission(candidates=[plain, executable]).candidates) == 2
+
+
+@pytest.mark.parametrize("paths", [["missing"], ["helper.sh", "helper.sh"], ["../helper.sh"]])
+def test_executable_files_must_be_unique_existing_candidate_files(paths: list[str]) -> None:
+    with pytest.raises(ValidationError, match="executable"):
+        Candidate.model_validate({
+            "id": "invalid", "files": {"helper.sh": "YQ=="}, "executable_files": paths,
+        })
 
 
 def test_submission_rejects_duplicate_candidate_ids() -> None:

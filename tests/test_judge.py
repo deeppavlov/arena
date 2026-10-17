@@ -234,6 +234,9 @@ def test_client_rejects_oversized_response(monkeypatch: pytest.MonkeyPatch) -> N
         "http://internal-model/v1?target=other",
         "http://internal-model/v1#part",
         "not-a-url",
+        "http://internal-model:not-a-port/v1",
+        "http://internal-model:70000/v1",
+        "http://internal-model:0/v1",
     ],
 )
 def test_client_rejects_ambiguous_endpoints(base_url: str) -> None:

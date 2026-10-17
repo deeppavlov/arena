@@ -24,6 +24,7 @@ class ClientError(Exception):
 
 def pack_candidate(identifier: str, directory: Path) -> Candidate:
     files: dict[str, str] = {}
+    executable_files: list[str] = []
     total = 0
     try:
         if directory.is_symlink():
@@ -43,16 +44,19 @@ def pack_candidate(identifier: str, directory: Path) -> Candidate:
                 continue
             descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
             with os.fdopen(descriptor, "rb") as stream:
-                if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                mode = os.fstat(stream.fileno()).st_mode
+                if not stat.S_ISREG(mode):
                     raise ClientError("candidate must contain only regular files")
                 data = stream.read(MAX_CANDIDATE_BYTES - total + 1)
             total += len(data)
             if total > MAX_CANDIDATE_BYTES:
                 raise ClientError("candidate exceeds 10 MiB")
             files[relative.as_posix()] = base64.b64encode(data).decode("ascii")
+            if mode & 0o111:
+                executable_files.append(relative.as_posix())
             if len(files) > 1000:
                 raise ClientError("candidate exceeds 1000 files")
-        return Candidate(id=identifier, files=files)
+        return Candidate(id=identifier, files=files, executable_files=executable_files)
     except OSError as error:
         raise ClientError("cannot read candidate files") from error
     except ValidationError as error:

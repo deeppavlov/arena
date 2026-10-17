@@ -63,9 +63,14 @@ def test_hardened_container_only_receives_task_and_public_mounts(tmp_path, monke
 
     result = json.loads(runner(candidate, "private task").answer)
     scoped_url = result.pop("model_base_url")
-    run_id = scoped_url.split("/runs/")[1].split("/")[0]
+    run_id, capability, version = scoped_url.split("/runs/")[1].split("/")
     assert str(UUID(run_id)) == run_id
-    assert scoped_url == f"http://model-gateway:8081/runs/{run_id}/v1"
+    assert version == "v1"
+    assert len(capability) == 64
+    assert all(character in "0123456789abcdef" for character in capability)
+    assert run_id.replace("-", "") not in capability
+    assert capability not in json.dumps(commands)
+    assert capability not in json.dumps(runner.configuration())
 
     assert result == {
         "input": "private task",
@@ -470,7 +475,8 @@ def test_pending_model_call_prevents_success(tmp_path, monkeypatch):
 
     def complete(self, process, task):
         run_id = json.loads(task)["model_base_url"].split("/runs/")[1].split("/")[0]
-        begin_request(self.usage_dir, run_id)
+        capability = json.loads(task)["model_base_url"].split("/runs/")[1].split("/")[1]
+        begin_request(self.usage_dir, run_id, capability)
         return exchange(self, process, task)
 
     monkeypatch.setattr(DockerRunner, "_exchange", complete)
@@ -485,6 +491,14 @@ def test_model_scope_is_closed_after_container_exit(tmp_path, monkeypatch, faile
     script = "import sys; sys.exit(1)" if failed else 'print(\'{"answer":"ok"}\')'
     commands, _ = fake_docker(monkeypatch, script)
     usage_dir = tmp_path / "usage"
+    credentials = []
+    exchange = DockerRunner._exchange
+
+    def capture(self, process, task):
+        credentials.append(json.loads(task)["model_base_url"].split("/runs/")[1].split("/")[1])
+        return exchange(self, process, task)
+
+    monkeypatch.setattr(DockerRunner, "_exchange", capture)
     runner = DockerRunner(IMAGE, usage_dir=usage_dir)
     if failed:
         with pytest.raises(RunnerError, match="^runner failed$"):
@@ -494,8 +508,8 @@ def test_model_scope_is_closed_after_container_exit(tmp_path, monkeypatch, faile
     name = commands[0][commands[0].index("--name") + 1]
     run_id = name.removeprefix("arena-runner-")
 
-    with pytest.raises(ValueError):
-        begin_request(usage_dir, run_id)
+    with pytest.raises(ValueError, match="closed"):
+        begin_request(usage_dir, run_id, credentials[0])
 
 
 def test_runner_error_exposes_optional_private_metrics():
@@ -664,3 +678,15 @@ def test_harness_provenance_freezes_configuration_and_order():
     assert first["digest"] != HarnessRunner(default, {
         "a": DockerRunner(IMAGE, timeout=101), "b": default,
     }).provenance()["digest"]
+
+
+def test_invalid_derived_request_timeout_does_not_leave_open_scope(tmp_path, monkeypatch):
+    commands, _ = fake_docker(monkeypatch, 'print(\'{"answer":"ok"}\')')
+    usage_dir = tmp_path / "usage"
+    runner = DockerRunner(IMAGE, model_timeout=1e308, usage_dir=usage_dir)
+
+    with pytest.raises(ValueError, match="request timeout"):
+        runner(tmp_path, "task")
+
+    assert commands == []
+    assert not usage_dir.exists()

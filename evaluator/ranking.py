@@ -1,6 +1,8 @@
 import math
 from typing import Any
 
+from evaluator.numeric import validate_score
+
 RANKING_POLICY = "score-direction-known-tokens-asc-seconds-asc-id-asc-v2"
 
 
@@ -30,6 +32,7 @@ def choose_winners(
         if identifier in identifiers:
             raise ValueError("candidate_id must be unique")
         identifiers.add(identifier)
+        validate_score(row["score"])
         for field in ("score", "solver_seconds"):
             value = row[field]
             if (

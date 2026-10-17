@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import fcntl
 import hashlib
 import json
@@ -9,6 +8,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import Future
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, BinaryIO, cast
@@ -18,9 +18,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from evaluator.candidates import materialize_candidate
 from evaluator.contracts import Example, Metric, Submission
 from evaluator.judge import ModelClient
-from evaluator.metrics import aggregate_results, command_provenance, evaluate_answer
+from evaluator.metrics import (
+    CommandMetricError,
+    aggregate_results,
+    command_provenance,
+    evaluate_answer,
+)
 from evaluator.ranking import RANKING_POLICY, choose_winners
 from evaluator.reliability import (
     MODEL_RETRIES,
@@ -258,8 +264,19 @@ def create_app(
     if metric.kind == "llm":
         if any(not item.reference or not item.reference.strip() for item in examples):
             raise ValueError("LLM evaluation requires nonempty references")
-        if complete is None and (not settings.model.strip() or not settings.model_base_url.strip()):
+        if not settings.model.strip() or not settings.model_base_url.strip():
             raise ValueError("LLM evaluation requires a model and endpoint")
+
+    def model_client() -> ModelClient:
+        return ModelClient(
+            settings.model_base_url, settings.model, settings.model_api_key, settings.parameters,
+            timeout=settings.model_timeout, retries=MODEL_RETRIES,
+            retry_delay=settings.retry_delay,
+        )
+
+    json.dumps(settings.parameters, allow_nan=False)
+    if metric.kind == "llm":
+        model_client()
     canonical_examples = sorted(
         ((example.input, example.reference) for example in examples),
         key=lambda item: (item[0], item[1] is not None, item[1] or ""),
@@ -299,11 +316,7 @@ def create_app(
         judge_usage = empty_usage()
         if metric.kind != "llm":
             return None, judge_usage
-        judge_complete = complete or ModelClient(
-            settings.model_base_url, settings.model, settings.model_api_key, settings.parameters,
-            timeout=settings.model_timeout, retries=MODEL_RETRIES,
-            retry_delay=settings.retry_delay,
-        )
+        judge_complete = complete or model_client()
         usage_owner = (
             judge_complete if isinstance(judge_complete, ModelClient)
             else getattr(judge_complete, "__self__", None)
@@ -478,6 +491,9 @@ def create_app(
                         metric, example, solved.answer, judge_complete,
                         retries=MODEL_RETRIES, retry_delay=settings.retry_delay,
                     )
+                except CommandMetricError as error:
+                    result["diagnostics"] = error.diagnostics
+                    raise
                 finally:
                     judge_seconds = validate_timing(
                         time.monotonic() - started, "judge wall time", allow_zero=True,
@@ -506,6 +522,9 @@ def create_app(
         try:
             candidate_score = aggregate_results(metric, details)
             aggregation.update({"status": "complete", "score": candidate_score})
+        except CommandMetricError as error:
+            aggregation["diagnostics"] = error.diagnostics
+            raise
         finally:
             aggregation_seconds = validate_timing(
                 time.monotonic() - aggregate_started, "aggregation time", allow_zero=True,
@@ -591,19 +610,32 @@ def create_app(
             record["status"] = "complete"
         except Exception as error:
             record["status"] = "failed"
-            record["failure"] = {
+            failure: dict[str, Any] = {
                 "type": type(error).__name__[:100], "message": str(error)[:2000],
             }
+            if isinstance(error, CommandMetricError):
+                failure["diagnostics"] = error.diagnostics
+            record["failure"] = failure
         finally:
             try:
                 _write_json(run_dir / "record.json", record)
             finally:
                 lease.close()
 
-    async def evaluate_background(
-        record: dict[str, Any], lease: BinaryIO, run_dir: Path,
+    def execute(
+        record: dict[str, Any], lease: BinaryIO, run_dir: Path, completion: Future[None],
+        started: threading.Event,
     ) -> None:
-        await asyncio.to_thread(evaluate, record, lease, run_dir)
+        started.set()
+        try:
+            evaluate(record, lease, run_dir)
+        except BaseException as error:
+            completion.set_exception(error)
+        else:
+            completion.set_result(None)
+
+    async def wait_for_evaluation(completion: Future[None]) -> None:
+        await asyncio.shield(asyncio.wrap_future(completion))
 
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(
@@ -641,7 +673,8 @@ def create_app(
 
     @app.post("/v1/evaluations")
     def submit(submission: Submission, background: BackgroundTasks) -> JSONResponse:
-        if settings.split == "private" and len(submission.candidates) != settings.finalists:
+        required_count = settings.finalists if settings.split == "private" else 1
+        if len(submission.candidates) != required_count:
             raise HTTPException(422, "invalid submission")
         digest = submission.digest()
         run_dir = directory / digest if settings.split == "public" else directory
@@ -661,17 +694,7 @@ def create_app(
                 batch_dir = Path(tempfile.mkdtemp(prefix=digest + "-", dir=dataset_candidates))
                 for candidate in submission.candidates:
                     candidate_dir = batch_dir / candidate.id
-                    candidate_dir.mkdir(mode=0o755)
-                    candidate_dir.chmod(0o755)
-                    for name, value in candidate.files.items():
-                        path = candidate_dir / name
-                        path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
-                        for parent in path.parents:
-                            if parent == candidate_dir:
-                                break
-                            parent.chmod(0o755)
-                        path.write_bytes(base64.b64decode(value, validate=True))
-                        path.chmod(0o644)
+                    materialize_candidate(candidate, candidate_dir)
                     candidates.append({
                         "id": candidate.id,
                         "digest": candidate.digest(),
@@ -685,7 +708,24 @@ def create_app(
             except Exception:
                 lease.close()
                 raise HTTPException(503, "evaluation unavailable") from None
-            background.add_task(evaluate_background, record, lease, run_dir)
-            return JSONResponse(_public(record, settings.split), status_code=202)
+            response = JSONResponse(_public(record, settings.split), status_code=202)
+            completion: Future[None] = Future()
+            started = threading.Event()
+            worker = threading.Thread(
+                target=execute, args=(record, lease, run_dir, completion, started), daemon=True,
+            )
+            try:
+                worker.start()
+                started.wait()
+            except Exception:
+                try:
+                    record["status"] = "failed"
+                    record["failure"] = "worker_start_failed"
+                    _write_json(run_dir / "record.json", record)
+                finally:
+                    lease.close()
+                raise HTTPException(503, "evaluation unavailable") from None
+            background.add_task(wait_for_evaluation, completion)
+            return response
 
     return app

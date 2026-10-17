@@ -13,14 +13,15 @@ from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from pydantic import ValidationError
 
-from evaluator.client import MAX_CANDIDATE_BYTES
+from evaluator.candidates import candidate_digest, materialize_files, validate_candidate_path
 from evaluator.contracts import Candidate
+from evaluator.numeric import parse_score, validate_score
 
 
 class SearchError(ValueError):
@@ -64,11 +65,13 @@ def _snapshot(directory: Path) -> bytes:
     if not directory.is_dir():
         raise SearchError("snapshot source must be a directory")
     output = io.BytesIO()
-    total_bytes = 0
-    file_count = 0
     with zipfile.ZipFile(output, "w") as archive:
         for path in sorted(directory.rglob("*")):
             relative = path.relative_to(directory)
+            try:
+                validate_candidate_path(relative.as_posix())
+            except ValueError as error:
+                raise SearchError("snapshot contains an unsafe path") from error
             if path.is_symlink():
                 raise SearchError("snapshot symlinks are forbidden")
             if any(
@@ -76,9 +79,6 @@ def _snapshot(directory: Path) -> bytes:
             ):
                 raise SearchError("snapshot contains a restricted path")
             if path.is_dir():
-                member = zipfile.ZipInfo(relative.as_posix() + "/")
-                member.external_attr = (stat.S_IFDIR | 0o755) << 16 | 0x10
-                archive.writestr(member, b"")
                 continue
             descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
             with os.fdopen(descriptor, "rb") as stream:
@@ -86,28 +86,22 @@ def _snapshot(directory: Path) -> bytes:
                 if not stat.S_ISREG(mode):
                     raise SearchError("snapshot must contain regular files and directories")
                 member = zipfile.ZipInfo(relative.as_posix())
-                member.external_attr = (stat.S_IFREG | stat.S_IMODE(mode)) << 16
-                data = stream.read(MAX_CANDIDATE_BYTES - total_bytes + 1)
-                total_bytes += len(data)
-                file_count += 1
-                if total_bytes > MAX_CANDIDATE_BYTES:
-                    raise SearchError("snapshot exceeds 10 MiB")
-                if file_count > 1000:
-                    raise SearchError("snapshot exceeds 1000 files")
-                archive.writestr(member, data)
+                member.external_attr = (stat.S_IFREG | (0o755 if mode & 0o111 else 0o644)) << 16
+                archive.writestr(member, stream.read())
     return output.getvalue()
 
 
-def _snapshot_candidate(candidate_id: str, snapshot: bytes) -> Candidate:
+def _snapshot_files(snapshot: bytes) -> tuple[dict[str, str], list[str]]:
     with zipfile.ZipFile(io.BytesIO(snapshot)) as archive:
         files = {
             member.filename: base64.b64encode(archive.read(member)).decode("ascii")
             for member in archive.infolist() if not member.is_dir()
         }
-    try:
-        return Candidate(id=candidate_id, files=files)
-    except ValidationError as error:
-        raise SearchError("snapshot must satisfy the candidate bundle contract") from error
+        executable_files = [
+            member.filename for member in archive.infolist()
+            if not member.is_dir() and (member.external_attr >> 16) & 0o111
+        ]
+    return files, executable_files
 
 
 def _comparison(split: str, dataset_id: str, subset_id: str, conditions_id: str) -> dict[str, str]:
@@ -192,8 +186,25 @@ class Journal:
             _text(value, field)
         if len(set(parents)) != len(parents):
             raise SearchError("parents must be unique")
-        snapshot = _snapshot(directory)
-        candidate = _snapshot_candidate(candidate_id, snapshot)
+        snapshot = b""
+        snapshot_error = None
+        bundle_error = None
+        digest = None
+        try:
+            snapshot = _snapshot(directory)
+        except SearchError as error:
+            snapshot_error = str(error)
+        except UnicodeError:
+            snapshot_error = "snapshot filenames must be UTF-8"
+        except OSError:
+            snapshot_error = "cannot read snapshot files"
+        if snapshot_error is None:
+            files, executable_files = _snapshot_files(snapshot)
+            digest = candidate_digest(files, executable_files)
+            try:
+                Candidate(id=candidate_id, files=files, executable_files=executable_files)
+            except ValidationError:
+                bundle_error = "snapshot does not satisfy the candidate bundle contract"
         with self._connection() as connection:
             campaign = self._open(connection)
             count = connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0]
@@ -216,8 +227,13 @@ class Journal:
                 "hypothesis": hypothesis,
                 "change": change,
                 "resources": asdict(resources),
-                "digest": candidate.digest(),
-                "snapshot_digest": hashlib.sha256(snapshot).hexdigest(),
+                "digest": digest,
+                "digest_version": 2,
+                "snapshot_digest": (
+                    hashlib.sha256(snapshot).hexdigest() if snapshot_error is None else None
+                ),
+                "snapshot_error": snapshot_error,
+                "bundle_error": bundle_error,
             }
             connection.execute(
                 "INSERT INTO candidates VALUES (?, ?, ?, ?)",
@@ -245,6 +261,9 @@ class Journal:
             ).fetchone()
             if candidate is None:
                 raise SearchError("candidate does not exist")
+            candidate_record = json.loads(candidate["record"])
+            if candidate_record.get("snapshot_error"):
+                raise SearchError("snapshot is unavailable")
             if connection.execute(
                 "SELECT 1 FROM measurements WHERE id = ?", (measurement_id,)
             ).fetchone():
@@ -258,7 +277,7 @@ class Journal:
             record = {
                 "measurement_id": measurement_id,
                 "candidate_id": candidate_id,
-                "digest": json.loads(candidate["record"])["digest"],
+                "digest": candidate_record["digest"],
                 "comparison": comparison,
                 "job": job,
                 "started_at": datetime.now(UTC).isoformat(),
@@ -280,8 +299,11 @@ class Journal:
         error: str | None = None,
         evidence: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        if score is not None and not _finite(score):
-            raise SearchError("score must be finite and numeric")
+        if score is not None:
+            try:
+                score = validate_score(score)
+            except ValueError as failure:
+                raise SearchError(str(failure)) from failure
         if (score is None) == (error is None):
             raise SearchError("provide either score or error")
         if error is not None:
@@ -379,27 +401,33 @@ class Journal:
                 raise SearchError("candidate does not exist")
             snapshot = row["snapshot"]
             record = json.loads(row["record"])
+            if record.get("snapshot_error"):
+                raise SearchError("snapshot is unavailable")
             if hashlib.sha256(snapshot).hexdigest() != record["snapshot_digest"]:
                 raise SearchError("snapshot digest mismatch")
-            candidate = _snapshot_candidate(candidate_id, snapshot)
-            if candidate.digest() != record["digest"]:
+            files, executable_files = _snapshot_files(snapshot)
+            legacy = record.get("digest_version", 1) < 2
+            if candidate_digest(
+                files, () if legacy else executable_files
+            ) != record["digest"]:
                 raise SearchError("snapshot digest mismatch")
         if directory.exists() or directory.is_symlink():
             raise SearchError("restore directory already exists")
-        directory.mkdir(parents=True, mode=0o700)
         with zipfile.ZipFile(io.BytesIO(snapshot)) as archive:
-            for member in archive.infolist():
-                relative = PurePosixPath(member.filename)
-                if relative.is_absolute() or ".." in relative.parts:
-                    raise SearchError("invalid snapshot path")
-                path = directory.joinpath(*relative.parts)
-                if member.is_dir():
-                    path.mkdir(parents=True, exist_ok=True)
-                else:
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    with path.open("xb") as stream:
-                        stream.write(archive.read(member))
-                    path.chmod((member.external_attr >> 16) & 0o777)
+            materialize_files(directory, (
+                (member.filename, archive.read(member), bool((member.external_attr >> 16) & 0o111))
+                for member in archive.infolist() if not member.is_dir()
+            ))
+            if legacy:
+                for member in archive.infolist():
+                    name = member.filename.removesuffix("/")
+                    validate_candidate_path(name)
+                    path = directory / name
+                    if member.is_dir():
+                        path.mkdir(parents=True, exist_ok=True, mode=0o755)
+                        path.chmod(0o755)
+                    else:
+                        path.chmod((member.external_attr >> 16) & 0o777)
 
     def curve(
         self,
@@ -415,8 +443,11 @@ class Journal:
         comparison = _comparison(split, dataset_id, subset_id, conditions_id)
         if direction not in {"maximize", "minimize"}:
             raise SearchError("direction must be maximize or minimize")
-        if baseline is not None and not _finite(baseline):
-            raise SearchError("baseline must be finite and numeric")
+        if baseline is not None:
+            try:
+                baseline = validate_score(baseline)
+            except ValueError as failure:
+                raise SearchError(str(failure)) from failure
         exported = self.export()
         actual_proposals = exported["campaign"]["proposed"]
         if horizon is None:
@@ -462,6 +493,8 @@ class Journal:
             area += (horizon - previous_x) * quality
             if previous_x < horizon:
                 points.append({"proposals": horizon, "quality": quality, "source": "horizon"})
+        if not math.isfinite(area):
+            raise SearchError("curve integral exceeds finite numeric range")
         covered = 0 if observed_from is None else horizon - observed_from
         full_auc = area if observed_from == 0 else None
         return {
@@ -473,6 +506,7 @@ class Journal:
             "actual_proposals": actual_proposals,
             "running": exported["campaign"]["running"],
             "points": points,
+            "final_quality": quality,
             "auc": full_auc,
             "mean_quality": None if full_auc is None or not horizon else full_auc / horizon,
             "observed_auc": None if quality is None else area,
@@ -536,7 +570,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     finishing = commands.add_parser("finish")
     finishing.add_argument("--id", required=True)
     outcome = finishing.add_mutually_exclusive_group(required=True)
-    outcome.add_argument("--score", type=float)
+    outcome.add_argument("--score", type=parse_score)
     outcome.add_argument("--error")
     finishing.add_argument("--evidence", type=Path)
     _resource_arguments(finishing, "solver-", required=False)
@@ -551,7 +585,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     plotting = commands.add_parser("curve")
     _comparison_arguments(plotting)
     plotting.add_argument("--direction", choices=["maximize", "minimize"], required=True)
-    plotting.add_argument("--baseline", type=float)
+    plotting.add_argument("--baseline", type=parse_score)
     plotting.add_argument("--horizon", type=int)
     arguments = parser.parse_args(argv)
     try:

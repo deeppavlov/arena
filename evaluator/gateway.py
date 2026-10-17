@@ -133,12 +133,14 @@ def create_gateway(
             raise HTTPException(status_code=403, detail="Model usage scope required")
         return await complete(request, None)
 
-    @app.post("/runs/{run_id}/v1/chat/completions")
-    async def scoped_completions(request: Request, run_id: str) -> dict[str, object]:
+    @app.post("/runs/{run_id}/{capability}/v1/chat/completions")
+    async def scoped_completions(
+        request: Request, run_id: str, capability: str
+    ) -> dict[str, object]:
         if settings.usage_dir is None:
             raise HTTPException(status_code=404, detail="Unknown model usage scope")
         try:
-            begin_request(settings.usage_dir, run_id)
+            begin_request(settings.usage_dir, run_id, capability)
         except (FileNotFoundError, ValueError):
             raise HTTPException(status_code=404, detail="Unknown model usage scope") from None
         except OSError:
@@ -230,7 +232,9 @@ def create_gateway(
 
 
 def main() -> None:
-    uvicorn.run(create_gateway(GatewaySettings.from_env()), host="0.0.0.0", port=8081)
+    uvicorn.run(
+        create_gateway(GatewaySettings.from_env()), host="0.0.0.0", port=8081, access_log=False
+    )
 
 
 if __name__ == "__main__":

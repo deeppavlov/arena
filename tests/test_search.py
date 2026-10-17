@@ -1,4 +1,5 @@
 import json
+import os
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -145,19 +146,40 @@ def test_snapshot_and_lineage_are_immutable(journal: Journal, source: Path, tmp_
 
 
 @pytest.mark.parametrize("path", [".env", ".git/config", "nested/.env.local"])
-def test_snapshot_rejects_secret_paths(journal: Journal, source: Path, path: str):
+def test_unsafe_snapshot_counts_and_preserves_failed_parent(
+    journal: Journal, source: Path, path: str, tmp_path: Path,
+):
     secret = source / path
     secret.parent.mkdir(parents=True, exist_ok=True)
     secret.write_text("secret", encoding="utf-8")
-    with pytest.raises(SearchError, match="restricted"):
-        propose(journal, source, "unsafe")
-    assert journal.status()["proposed"] == 0
+    record = journal.propose(
+        "unsafe", source, hypothesis="Prepared local input", change="An unsafe snapshot",
+        resources=Resources(total_tokens=19, seconds=2.5),
+    )
+    assert journal.status()["proposed"] == 1
+    assert "restricted" in record["snapshot_error"]
+    assert record["digest"] is None
+    assert record["snapshot_digest"] is None
+    assert record["resources"] == {"total_tokens": 19, "seconds": 2.5, "tokens_complete": True}
+    assert "secret" not in json.dumps(journal.export())
+    with pytest.raises(SearchError, match="snapshot is unavailable"):
+        journal.restore("unsafe", tmp_path / "restored")
+    with pytest.raises(SearchError, match="snapshot is unavailable"):
+        begin(journal, "unsafe-check", "unsafe")
+    secret.unlink()
+    if path.startswith(".git/"):
+        secret.parent.rmdir()
+    repaired = propose(journal, source, "repaired", ("unsafe",))
+    assert repaired["parents"] == ["unsafe"]
+    assert repaired["snapshot_error"] is None
+    assert journal.status()["proposed"] == 2
 
 
 def test_snapshot_rejects_symlinks(journal: Journal, source: Path):
     (source / "linked").symlink_to(source / "solve.py")
-    with pytest.raises(SearchError, match="symlink"):
-        propose(journal, source, "unsafe")
+    record = propose(journal, source, "unsafe")
+    assert "symlink" in record["snapshot_error"]
+    assert journal.status()["proposed"] == 1
 
 
 def test_records_resources_failures_and_train_evidence(journal: Journal, source: Path):
@@ -202,6 +224,34 @@ def test_nonfinite_or_non_numeric_scores_rejected(journal: Journal, source: Path
     assert journal.status()["running"] == ["check"]
 
 
+@pytest.mark.parametrize("score", [2**53, 2**53 + 1, -(2**53)])
+def test_scores_outside_exact_integer_contract_are_rejected(
+    journal: Journal, source: Path, score: int,
+):
+    propose(journal, source, "one")
+    begin(journal, "check", "one")
+    with pytest.raises(SearchError, match="exact binary64"):
+        finish(journal, "check", score)
+    with pytest.raises(SearchError, match="exact binary64"):
+        curve(journal, baseline=score)
+    assert journal.status()["running"] == ["check"]
+
+
+def test_cli_does_not_round_out_of_range_integer_scores(
+    journal: Journal, source: Path, capsys: pytest.CaptureFixture[str],
+):
+    propose(journal, source, "one")
+    begin(journal, "check", "one", split="public")
+    with pytest.raises(SystemExit) as error:
+        main([
+            "--journal", str(journal.path), "finish", "--id", "check",
+            "--score", "9007199254740993",
+        ])
+    assert error.value.code == 2
+    assert "--score" in capsys.readouterr().err
+    assert journal.status()["running"] == ["check"]
+
+
 def test_cannot_repeat_valid_same_conditions(journal: Journal, source: Path):
     propose(journal, source, "one")
     begin(journal, "check", "one")
@@ -235,6 +285,20 @@ def test_curve_uses_completion_frontier_and_step_auc(journal: Journal, source: P
         (0, 10), (2, 8), (3, 8), (4, 5), (5, 5)
     ]
     assert result["points"][3]["candidate_id"] == "slow"
+
+
+@pytest.mark.parametrize("scores", [(1, 2, 3), (0.1, 0.2, 0.3)])
+def test_batched_curve_keeps_final_quality_separate_from_auc(
+    journal: Journal, source: Path, scores: tuple[float, ...],
+):
+    for index in range(3):
+        propose(journal, source, f"solution-{index}")
+        begin(journal, f"check-{index}", f"solution-{index}")
+    for index, score in enumerate(scores):
+        finish(journal, f"check-{index}", score)
+    result = curve(journal, baseline=0, direction="maximize")
+    assert result["auc"] == 0
+    assert result["final_quality"] == max(scores)
 
 
 def test_curve_requires_comparable_evidence_and_explicit_initial_quality(
@@ -309,7 +373,7 @@ def test_archive_integrity_covers_executable_bits(journal: Journal, source: Path
     original = propose(journal, source, "one")
     (source / "solve.py").chmod(0o644)
     changed = propose(journal, source, "two")
-    assert original["digest"] == changed["digest"]
+    assert original["digest"] != changed["digest"]
     assert original["snapshot_digest"] != changed["snapshot_digest"]
     with sqlite3.connect(journal.path) as connection:
         snapshot = connection.execute(
@@ -327,12 +391,195 @@ def test_archive_integrity_covers_executable_bits(journal: Journal, source: Path
         journal.restore("one", tmp_path / "tampered")
 
 
-def test_oversized_snapshot_rejected_before_admission(journal: Journal, source: Path):
+def test_legacy_snapshot_remains_restorable(journal: Journal, source: Path, tmp_path: Path):
+    import sqlite3
+
+    from evaluator.contracts import Candidate
+
+    record = propose(journal, source, "legacy")
+    record.pop("digest_version", None)
+    record["digest"] = Candidate(id="legacy", files=pack_candidate("legacy", source).files).digest()
+    with sqlite3.connect(journal.path) as connection:
+        connection.execute(
+            "UPDATE candidates SET record = ? WHERE id = 'legacy'", (json.dumps(record),)
+        )
+    restored = tmp_path / "legacy"
+    journal.restore("legacy", restored)
+    assert (restored / "solve.py").read_text(encoding="utf-8") == "print(42)\n"
+    assert (restored / "solve.py").stat().st_mode & 0o777 == 0o755
+
+
+def test_legacy_restore_preserves_empty_directories_and_access_modes(
+    journal: Journal, source: Path, tmp_path: Path,
+):
+    import hashlib
+    import io
+    import sqlite3
+    import subprocess
+    import sys
+    import zipfile
+
+    from evaluator.contracts import Candidate
+
+    (source / "required").mkdir()
+    (source / "solve.py").write_text(
+        "from pathlib import Path\nprint(Path('required').is_dir())\n", encoding="utf-8",
+    )
+    (source / "solve.py").chmod(0o600)
+    (source / "helper.sh").write_text("#!/bin/sh\nprintf answer", encoding="utf-8")
+    (source / "helper.sh").chmod(0o700)
+    record = propose(journal, source, "legacy")
+    record.pop("digest_version")
+    record["digest"] = Candidate(id="legacy", files=pack_candidate("legacy", source).files).digest()
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        for path in sorted(source.rglob("*")):
+            archive.write(path, path.relative_to(source).as_posix())
+    snapshot = output.getvalue()
+    record["snapshot_digest"] = hashlib.sha256(snapshot).hexdigest()
+    with sqlite3.connect(journal.path) as connection:
+        connection.execute(
+            "UPDATE candidates SET record = ?, snapshot = ? WHERE id = 'legacy'",
+            (json.dumps(record), snapshot),
+        )
+    restored = tmp_path / "legacy"
+    journal.restore("legacy", restored)
+    result = subprocess.run(
+        [sys.executable, "solve.py"], cwd=restored, check=True, capture_output=True, text=True,
+    )
+    assert result.stdout == "True\n"
+    assert (restored / "required").stat().st_mode & 0o777 == 0o755
+    assert (restored / "solve.py").stat().st_mode & 0o777 == 0o600
+    assert (restored / "helper.sh").stat().st_mode & 0o777 == 0o700
+    assert restored.stat().st_mode & 0o777 == 0o755
+
+
+def test_oversized_snapshot_is_counted_and_restorable(
+    journal: Journal, source: Path, tmp_path: Path,
+):
     with (source / "large.bin").open("wb") as stream:
-        stream.truncate(10 * 1024 * 1024 + 1)
-    with pytest.raises(SearchError, match="10 MiB"):
-        propose(journal, source, "too-large")
-    assert journal.status()["proposed"] == 0
+        stream.truncate(11 * 1024 * 1024)
+    record = journal.propose(
+        "too-large", source, hypothesis="Prepared index accelerates lookup",
+        change="Precomputed index", resources=Resources(total_tokens=123, seconds=45),
+    )
+    assert journal.status()["proposed"] == 1
+    assert record["snapshot_error"] is None
+    assert record["bundle_error"]
+    assert record["resources"] == {"total_tokens": 123, "seconds": 45, "tokens_complete": True}
+    assert record["digest"]
+    (source / "large.bin").unlink()
+    restored = tmp_path / "restored-large"
+    journal.restore("too-large", restored)
+    assert (restored / "large.bin").stat().st_size == 11 * 1024 * 1024
+    begin(journal, "train-large", "too-large")
+    finish(journal, "train-large", 1)
+    child = propose(journal, source, "smaller", ("too-large",))
+    assert child["parents"] == ["too-large"]
+    assert child["proposal"] == 2
+    assert child["bundle_error"] is None
+
+
+def test_transport_file_count_does_not_cap_research_snapshot(
+    journal: Journal, source: Path, tmp_path: Path,
+):
+    for index in range(1000):
+        (source / f"input-{index}.txt").write_text(str(index), encoding="utf-8")
+    record = propose(journal, source, "many-files")
+    assert record["snapshot_error"] is None
+    assert record["bundle_error"]
+    assert journal.status()["proposed"] == 1
+    restored = tmp_path / "many-files"
+    journal.restore("many-files", restored)
+    assert len(list(restored.iterdir())) == 1001
+
+
+def test_missing_snapshot_counts_without_claiming_restorability(
+    journal: Journal, tmp_path: Path,
+):
+    record = propose(journal, tmp_path / "missing", "missing-source")
+    assert record["snapshot_error"]
+    assert record["snapshot_digest"] is None
+    assert record["digest"] is None
+    assert journal.status()["proposed"] == 1
+
+
+def test_unsafe_filename_counts_without_claiming_restorability(journal: Journal, source: Path):
+    (source / "bad\\path").write_text("payload", encoding="utf-8")
+    record = propose(journal, source, "unsafe-name")
+    assert record["snapshot_error"] == "snapshot contains an unsafe path"
+    assert record["snapshot_digest"] is None
+    assert journal.status()["proposed"] == 1
+
+
+def test_unencodable_filename_retains_resources_and_ancestry(
+    journal: Journal, source: Path, tmp_path: Path,
+):
+    propose(journal, source, "parent")
+    filename = os.fsencode(source) + b"/bad-\xff.py"
+    with open(filename, "wb") as stream:
+        stream.write(b"print(1)\n")
+    record = journal.propose(
+        "bad-filename", source, parents=("parent",), hypothesis="A revised program",
+        change="An unsupported filename", resources=Resources(total_tokens=41, seconds=3),
+    )
+    assert journal.status()["proposed"] == 2
+    assert record["snapshot_error"] == "snapshot filenames must be UTF-8"
+    assert record["resources"] == {"total_tokens": 41, "seconds": 3, "tokens_complete": True}
+    assert record["parents"] == ["parent"]
+    assert record["digest"] is None
+    assert record["snapshot_digest"] is None
+    with pytest.raises(SearchError, match="snapshot is unavailable"):
+        journal.restore("bad-filename", tmp_path / "restored")
+    os.unlink(filename)
+    repaired = propose(journal, source, "repaired", ("bad-filename",))
+    assert repaired["parents"] == ["bad-filename"]
+    assert repaired["snapshot_error"] is None
+    assert journal.status()["proposed"] == 3
+
+
+def test_restore_omits_empty_directories(journal: Journal, source: Path, tmp_path: Path):
+    (source / "empty").mkdir()
+    record = propose(journal, source, "empty-dir")
+    assert record["digest"] == pack_candidate("empty-dir", source).digest()
+    restored = tmp_path / "restored"
+    journal.restore("empty-dir", restored)
+    assert not (restored / "empty").exists()
+
+
+@pytest.mark.parametrize("baseline", [1e308, -1e308])
+def test_curve_reports_integral_overflow(journal: Journal, baseline: float):
+    with pytest.raises(SearchError, match="curve integral exceeds finite numeric range"):
+        curve(journal, baseline=baseline, horizon=2)
+
+
+def test_curve_cli_reports_integral_overflow(journal: Journal, capsys: pytest.CaptureFixture[str]):
+    assert main([
+        "--journal", str(journal.path), "curve", "--split", "train", "--dataset", "v1",
+        "--subset", "all", "--conditions", "metric-v1", "--direction", "maximize",
+        "--baseline", "1e308", "--horizon", "2",
+    ]) == 1
+    assert "curve integral exceeds finite numeric range" in capsys.readouterr().err
+
+
+def test_restore_can_be_read_and_executed_by_another_uid(
+    journal: Journal, source: Path, tmp_path: Path,
+):
+    (source / "nested").mkdir(mode=0o700)
+    (source / "nested" / "data.txt").write_text("payload", encoding="utf-8")
+    (source / "nested" / "data.txt").chmod(0o600)
+    (source / "solve.py").chmod(0o700)
+    propose(journal, source, "local-uid")
+    restored = tmp_path / "restored"
+    mask = os.umask(0o077)
+    try:
+        journal.restore("local-uid", restored)
+    finally:
+        os.umask(mask)
+    assert restored.stat().st_mode & 0o777 == 0o755
+    assert (restored / "nested").stat().st_mode & 0o777 == 0o755
+    assert (restored / "nested" / "data.txt").stat().st_mode & 0o777 == 0o644
+    assert (restored / "solve.py").stat().st_mode & 0o777 == 0o755
 
 
 def test_public_failure_does_not_accept_detailed_error(journal: Journal, source: Path):

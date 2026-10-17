@@ -147,3 +147,19 @@ def test_top_n_requires_an_exact_available_positive_count(count: Any) -> None:
 def test_invalid_direction_is_rejected() -> None:
     with pytest.raises(ValueError, match="direction"):
         choose_winners([candidate("only")], direction="sideways")
+
+
+@pytest.mark.parametrize("score", [2**53, 2**53 + 1, -(2**53), 10**1000])
+def test_unsupported_integer_scores_cannot_fall_through_to_resource_ties(score: int) -> None:
+    with pytest.raises(ValueError, match="binary64"):
+        choose_winner([
+            candidate("cheaper", score=2**53 - 1, tokens=0),
+            candidate("higher", score=score, tokens=100),
+        ])
+
+
+def test_exact_integer_score_boundary_does_not_alias_adjacent_scores() -> None:
+    assert choose_winner([
+        candidate("cheaper", score=2**53 - 2, tokens=0),
+        candidate("higher", score=2**53 - 1, tokens=100),
+    ]) == "higher"

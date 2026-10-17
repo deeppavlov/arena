@@ -7,13 +7,19 @@ import time
 import uuid
 from pathlib import Path
 
+from evaluator.candidates import materialize_candidate
+from evaluator.client import pack_candidate
+from evaluator.reliability import empty_usage
 from evaluator.runner import DockerRunner, HarnessRunner, RunnerError
+from evaluator.search import Journal, Resources
+from evaluator.usage import create_usage, seal_usage
 
 PROGRAM = """import json
 import os
 import sys
 import time
 from pathlib import Path
+from helpers import solve_numbers
 
 task = json.load(sys.stdin)
 assert set(task) == {"input", "assets_dir", "parameters"}
@@ -23,8 +29,7 @@ assert not any("MODEL" in key or "TOKEN" in key or "API_KEY" in key for key in o
 for path in ("/usage", "/private", "/state", "/run/secrets", "/var/run/docker.sock"):
     assert not Path(path).exists(), path
 parameters = task["parameters"]
-numbers = sorted(map(int, task["input"].split()), reverse=parameters["descending"])
-answer = parameters["separator"].join(map(str, numbers))
+answer = solve_numbers(task["input"], parameters)
 time.sleep(0.05)
 print(json.dumps({"answer": "" if parameters["blank"] else answer, "usage": {"total_tokens": 999}}))
 """
@@ -34,15 +39,21 @@ import os
 import sys
 import uuid
 from pathlib import Path
+from context_helpers import context
+from urllib.parse import urlsplit
 
 task = json.load(sys.stdin)
-run_id = task["model_base_url"].removeprefix("http://model-gateway:8081/runs/").removesuffix("/v1")
+url = urlsplit(task["model_base_url"])
+_, prefix, run_id, credential, version = url.path.split("/")
+assert url.netloc == "model-gateway:8081" and prefix == "runs" and version == "v1"
 assert str(uuid.UUID(run_id)) == run_id
+assert len(credential) >= 32
+assert task["input"] in {"synthetic task", "", " \\n\\t"}
 assert task == {
-    "input": "synthetic task",
+    "input": task["input"],
     "assets_dir": "/assets",
     "model": "fake-model",
-    "model_base_url": f"http://model-gateway:8081/runs/{run_id}/v1",
+    "model_base_url": f"http://model-gateway:8081/runs/{run_id}/{credential}/v1",
     "model_request_timeout": 72,
 }
 assert os.getuid() == 10001 and os.getgid() == 10001
@@ -68,7 +79,7 @@ for path in ("/candidate/write", "/assets/write", "/opt/runner/write"):
         raise AssertionError(path)
 Path("/tmp/write").write_text("allowed")
 assert Path("/assets/context.txt").read_text() == "public context"
-print(json.dumps({"context": "public context"}))
+print(json.dumps({"context": context()}))
 """
 
 UPSTREAM = """import json
@@ -86,12 +97,13 @@ class Handler(BaseHTTPRequestHandler):
             "messages": [
                 {"role": "system", "content": "synthetic prompt"},
                 {"role": "user", "content": "Task context:\\npublic context"},
-                {"role": "user", "content": "synthetic task"},
+                {"role": "user", "content": body["messages"][-1]["content"]},
             ],
         }
         valid = (
             self.path == "/v1/chat/completions"
             and self.headers.get("Authorization") == "Bearer synthetic-key"
+            and body["messages"][-1]["content"] in {"synthetic task", "", " \\n\\t"}
             and body == expected
         )
         output = json.dumps({
@@ -103,7 +115,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(output)))
         self.end_headers()
         self.wfile.write(output)
-        print("valid request" if valid else "invalid request", flush=True)
+        print(json.dumps({"valid": valid, "input": body["messages"][-1]["content"]}), flush=True)
 
 HTTPServer(("0.0.0.0", 8000), Handler).serve_forever()
 """
@@ -123,6 +135,18 @@ def check_program(image: str, workspace: Path) -> None:
     candidate = workspace / "program"
     candidate.mkdir()
     (candidate / "solve.py").write_text(PROGRAM)
+    (candidate / "helpers.py").write_text(
+        "from formatting.numbers import format_numbers\n"
+        "def solve_numbers(text, parameters):\n"
+        "    numbers = sorted(map(int, text.split()), reverse=parameters['descending'])\n"
+        "    return format_numbers(numbers, parameters['separator'])\n"
+    )
+    (candidate / "formatting").mkdir()
+    (candidate / "formatting" / "__init__.py").write_text("")
+    (candidate / "formatting" / "numbers.py").write_text(
+        "def format_numbers(numbers, separator):\n"
+        "    return separator.join(map(str, numbers))\n"
+    )
     runner = HarnessRunner(
         DockerRunner(image),
         {"plain": DockerRunner(image, uses_model=False, model_base_url="", timeout=15)},
@@ -147,6 +171,89 @@ def check_program(image: str, workspace: Path) -> None:
         assert not (workspace / "usage").exists()
 
 
+def check_restored_program(image: str, workspace: Path) -> None:
+    source = workspace / "executable-source"
+    source.mkdir()
+    (source / "solve.py").write_text(
+        "import json\nfrom helpers.execution import answer\n"
+        "print(json.dumps({'answer': answer()}))\n"
+    )
+    (source / "helpers").mkdir()
+    (source / "helpers" / "__init__.py").write_text("")
+    (source / "helpers" / "execution.py").write_text(
+        "import subprocess\nfrom pathlib import Path\n"
+        "def answer():\n"
+        "    helper = Path(__file__).parent / 'helper.sh'\n"
+        "    return subprocess.check_output([str(helper)], text=True).strip()\n"
+    )
+    (source / "helpers" / "execution.py").chmod(0o600)
+    (source / "empty").mkdir()
+    helper = source / "helpers" / "helper.sh"
+    helper.write_text("#!/bin/sh\nprintf 'executable helper\\n'\n")
+    helper.chmod(0o700)
+    journal = Journal.create(workspace / "search.sqlite", max_solutions=1)
+    proposed = journal.propose(
+        "executable", source, hypothesis="Executable files survive transport",
+        change="Use a program with an executable helper", resources=Resources(0, 0),
+    )
+    restored = workspace / "restored"
+    journal.restore("executable", restored)
+    packed = pack_candidate("executable", restored)
+    assert proposed["digest"] == packed.digest()
+    private = workspace / "materialized"
+    materialize_candidate(packed, private)
+    runner = DockerRunner(image, uses_model=False, model_base_url="", timeout=15)
+    for candidate in (restored, private):
+        assert pack_candidate("executable", candidate).digest() == packed.digest()
+        assert candidate.stat().st_mode & 0o777 == 0o755
+        assert not (candidate / "empty").exists()
+        assert runner(candidate, "").answer == "executable helper"
+
+
+def check_accounting_scope(image: str, network: str, usage: Path) -> None:
+    victim = str(uuid.uuid4())
+    attacker = str(uuid.uuid4())
+    create_usage(usage, victim)
+    credential = create_usage(usage, attacker)
+    code = """import json
+import socket
+import sys
+import urllib.error
+import urllib.request
+
+victim, credential = sys.argv[1:]
+payload = json.dumps({
+    "model": "fake-model", "messages": [{"role": "user", "content": "x"}],
+}).encode()
+opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+for scope in (victim, victim + "/wrong", victim + "/" + credential):
+    request = urllib.request.Request(
+        "http://model-gateway:8081/runs/" + scope + "/v1/chat/completions",
+        data=payload, headers={"Content-Type": "application/json"}, method="POST",
+    )
+    try:
+        opener.open(request, timeout=3)
+    except urllib.error.HTTPError as error:
+        assert error.code in {403, 404}, error.code
+    else:
+        raise AssertionError("another candidate's accounting scope was accepted")
+with socket.create_connection(("model-gateway", 8081), timeout=3) as connection:
+    headers = (
+        f"POST /runs/{victim}/{credential}/v1/chat/completions HTTP/1.1\\r\\n"
+        "Host: model-gateway\\r\\nContent-Type: application/json\\r\\n"
+        "Content-Length: 10000\\r\\n\\r\\n"
+    )
+    connection.sendall(headers.encode())
+    assert connection.recv(4096).split(b" ")[1] in {b"403", b"404"}
+"""
+    docker(
+        "run", "--rm", "--network", network, "--entrypoint", "python", image,
+        "-I", "-c", code, victim, credential,
+    )
+    assert seal_usage(usage, victim) == empty_usage()
+    assert seal_usage(usage, attacker) == empty_usage()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gateway-image", required=True)
@@ -167,10 +274,17 @@ def main() -> None:
         )
         image = image_file.read_text().strip()
         check_program(image, workspace)
+        check_restored_program(image, workspace)
         candidate = workspace / "candidate"
         candidate.mkdir()
         (candidate / "prompt.md").write_text("synthetic prompt")
         (candidate / "prepare.py").write_text(PREPARE)
+        (candidate / "context_helpers").mkdir()
+        (candidate / "context_helpers" / "__init__.py").write_text(
+            "from pathlib import Path\n"
+            "def context():\n"
+            "    return Path('/assets/context.txt').read_text()\n"
+        )
         assets = workspace / "assets"
         assets.mkdir()
         (assets / "context.txt").write_text("public context")
@@ -264,17 +378,23 @@ def main() -> None:
                 retry_delay=0,
                 usage_dir=usage,
             )
-            solved = runner(candidate, "synthetic task")
-            assert solved.answer == "synthetic answer"
-            assert solved.usage == {
-                "prompt_tokens": 11,
-                "completion_tokens": 7,
-                "total_tokens": 18,
-                "attempts": 1,
-                "unreported_attempts": 0,
-            }
-            assert solved.wall_seconds > 0
-            assert docker("logs", upstream) == "valid request"
+            check_accounting_scope(image, network, usage)
+            assert docker("logs", upstream) == ""
+            inputs = ("synthetic task", "", " \n\t")
+            for input_text in inputs:
+                solved = runner(candidate, input_text)
+                assert solved.answer == "synthetic answer"
+                assert solved.usage == {
+                    "prompt_tokens": 11,
+                    "completion_tokens": 7,
+                    "total_tokens": 18,
+                    "attempts": 1,
+                    "unreported_attempts": 0,
+                }
+                assert solved.wall_seconds > 0
+            expected_log = [{"valid": True, "input": input_text} for input_text in inputs]
+            actual_log = [json.loads(line) for line in docker("logs", upstream).splitlines()]
+            assert actual_log == expected_log
             (candidate / "prepare.py").write_text(
                 PREPARE.replace('"model": "fake-model"', '"model": "different-model"')
             )
@@ -294,7 +414,8 @@ def main() -> None:
                 assert str(error) == "runner failed"
             else:
                 raise AssertionError("gateway accepted a different model")
-            assert docker("logs", upstream) == "valid request"
+            actual_log = [json.loads(line) for line in docker("logs", upstream).splitlines()]
+            assert actual_log == expected_log
             (candidate / "prepare.py").write_text("import time\ntime.sleep(30)\n")
             slow_runner = DockerRunner(
                 image=image,
@@ -330,7 +451,9 @@ def main() -> None:
                     "status": "ok",
                     "runner_image": image,
                     "gateway_image": args.gateway_image,
-                    "model_free_solves": 2,
+                    "model_free_solves": 4,
+                    "model_solves": 3,
+                    "accounting_attacks_rejected": 4,
                 }
             )
         )

@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from evaluator.candidates import candidate_digest, validate_candidate_path
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -80,22 +82,15 @@ class Example(StrictModel):
 class Candidate(StrictModel):
     id: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     files: dict[str, str] = Field(min_length=1, max_length=1000)
+    executable_files: list[str] = Field(default_factory=list, max_length=1000)
 
     @field_validator("files")
     @classmethod
     def safe_files(cls, files: dict[str, str]) -> dict[str, str]:
         total = 0
         for name, value in files.items():
-            path = PurePosixPath(name)
-            if (
-                not name
-                or len(name) > 240
-                or path.is_absolute()
-                or any(part in {".", ".."} for part in name.split("/"))
-                or "\\" in name
-                or "\x00" in name
-                or str(path) != name
-            ):
+            validate_candidate_path(name)
+            if len(name) > 240:
                 raise ValueError("invalid candidate path")
             try:
                 data = base64.b64decode(value, validate=True)
@@ -109,12 +104,21 @@ class Candidate(StrictModel):
             raise ValueError("candidate file conflicts with directory")
         return files
 
+    @field_validator("executable_files")
+    @classmethod
+    def canonical_executable_files(cls, names: list[str]) -> list[str]:
+        if len(set(names)) != len(names):
+            raise ValueError("executable files must be unique")
+        return sorted(names)
+
+    @model_validator(mode="after")
+    def existing_executable_files(self) -> "Candidate":
+        if any(name not in self.files for name in self.executable_files):
+            raise ValueError("executable files must exist in candidate files")
+        return self
+
     def digest(self) -> str:
-        hashes = {
-            name: hashlib.sha256(base64.b64decode(data)).hexdigest()
-            for name, data in sorted(self.files.items())
-        }
-        return hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
+        return candidate_digest(self.files, self.executable_files)
 
 
 class Submission(StrictModel):

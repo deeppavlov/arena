@@ -36,6 +36,7 @@ class ModelClient:
         if (
             parsed.scheme not in {"http", "https"}
             or not parsed.hostname
+            or parsed.port == 0
             or parsed.username is not None
             or parsed.password is not None
             or parsed.query

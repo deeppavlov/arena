@@ -18,6 +18,20 @@ def test_pack_preserves_relative_paths_and_binary_content(tmp_path: Path) -> Non
     assert candidate.files == {"nested/data.bin": base64.b64encode(b"\x00\xff").decode()}
 
 
+@pytest.mark.parametrize("mode", [0o700, 0o010, 0o001, 0o6755])
+def test_pack_records_executable_semantics_and_distinguishes_identity(
+    tmp_path: Path, mode: int
+) -> None:
+    helper = tmp_path / "helper.sh"
+    helper.write_text("#!/bin/sh\nprintf 'answer'\n", encoding="utf-8")
+    helper.chmod(0o600)
+    plain = pack_candidate("plain", tmp_path)
+    helper.chmod(mode | 0o400)
+    executable = pack_candidate("executable", tmp_path)
+    assert executable.model_dump()["executable_files"] == ["helper.sh"]
+    assert plain.digest() != executable.digest()
+
+
 @pytest.mark.parametrize("name", [".git/config", ".env", ".env.local", "nested/.env"])
 def test_pack_rejects_secret_and_repository_paths(tmp_path: Path, name: str) -> None:
     path = tmp_path / name

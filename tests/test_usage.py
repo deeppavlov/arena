@@ -28,7 +28,10 @@ def counters() -> dict[str, int]:
 
 
 def state(**changes: object) -> dict[str, object]:
-    return {**counters(), "active_requests": 0, "closed": False, **changes}
+    return {
+        **counters(), "active_requests": 0, "closed": False,
+        "capability_digest": "0" * 64, **changes,
+    }
 
 
 def increment_many(arguments: tuple[Path, str]) -> None:
@@ -128,6 +131,8 @@ def test_read_and_add_never_create_records(tmp_path: Path, existing_directory: b
         state(active_requests=1.0),
         state(closed=0),
         state(closed="false"),
+        state(capability_digest=None),
+        state(capability_digest="not-a-digest"),
     ],
 )
 def test_read_and_add_reject_malformed_records(tmp_path: Path, record: object) -> None:
@@ -211,10 +216,10 @@ def test_concurrent_writers_do_not_lose_usage(
 
 def test_sealed_usage_rejects_new_requests(tmp_path: Path) -> None:
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
     assert seal_usage(tmp_path, run_id) == counters()
     with pytest.raises(ValueError, match="closed"):
-        begin_request(tmp_path, run_id)
+        begin_request(tmp_path, run_id, capability)
     assert seal_usage(tmp_path, run_id) == counters()
     assert read_usage(tmp_path, run_id) == counters()
 
@@ -230,13 +235,13 @@ def test_successfully_sealed_usage_cannot_be_modified(tmp_path: Path) -> None:
 
 def test_sealing_active_request_closes_run_before_raising(tmp_path: Path) -> None:
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
-    begin_request(tmp_path, run_id)
-    begin_request(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
+    begin_request(tmp_path, run_id, capability)
+    begin_request(tmp_path, run_id, capability)
     with pytest.raises(ValueError, match="active"):
         seal_usage(tmp_path, run_id)
     with pytest.raises(ValueError, match="closed"):
-        begin_request(tmp_path, run_id)
+        begin_request(tmp_path, run_id, capability)
 
     add_usage(tmp_path, run_id, {"prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5})
     end_request(tmp_path, run_id)
@@ -249,7 +254,7 @@ def test_sealing_active_request_closes_run_before_raising(tmp_path: Path) -> Non
     }
     assert seal_usage(tmp_path, run_id) == expected
     with pytest.raises(ValueError, match="closed"):
-        begin_request(tmp_path, run_id)
+        begin_request(tmp_path, run_id, capability)
 
 
 def test_end_request_cannot_make_active_count_negative(tmp_path: Path) -> None:
@@ -265,7 +270,10 @@ def test_lifecycle_never_creates_missing_run(tmp_path: Path, operation: object) 
     directory = tmp_path / "missing"
     assert callable(operation)
     with pytest.raises(FileNotFoundError):
-        operation(directory, str(uuid4()))
+        if operation is begin_request:
+            operation(directory, str(uuid4()), "0" * 64)
+        else:
+            operation(directory, str(uuid4()))
     assert not directory.exists()
 
 
@@ -283,9 +291,9 @@ def test_ensure_open_rejects_closed_run_with_or_without_active_requests(
     tmp_path: Path, active: bool
 ) -> None:
     run_id = str(uuid4())
-    create_usage(tmp_path, run_id)
+    capability = create_usage(tmp_path, run_id)
     if active:
-        begin_request(tmp_path, run_id)
+        begin_request(tmp_path, run_id, capability)
         with pytest.raises(ValueError, match="active"):
             seal_usage(tmp_path, run_id)
     else:
@@ -297,13 +305,13 @@ def test_ensure_open_rejects_closed_run_with_or_without_active_requests(
 def test_seal_racing_begin_is_atomic(tmp_path: Path) -> None:
     for _ in range(20):
         run_id = str(uuid4())
-        create_usage(tmp_path, run_id)
+        capability = create_usage(tmp_path, run_id)
         barrier = Barrier(2)
 
-        def begin(request_id: str, synchronization: Barrier) -> bool:
+        def begin(request_id: str, secret: str, synchronization: Barrier) -> bool:
             synchronization.wait()
             try:
-                begin_request(tmp_path, request_id)
+                begin_request(tmp_path, request_id, secret)
             except ValueError:
                 return False
             return True
@@ -317,12 +325,40 @@ def test_seal_racing_begin_is_atomic(tmp_path: Path) -> None:
             return True
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            beginning = executor.submit(begin, run_id, barrier)
+            beginning = executor.submit(begin, run_id, capability, barrier)
             sealing = executor.submit(seal, run_id, barrier)
             started, sealed = beginning.result(), sealing.result()
         assert started != sealed
         with pytest.raises(ValueError, match="closed"):
-            begin_request(tmp_path, run_id)
+            begin_request(tmp_path, run_id, capability)
         if started:
             end_request(tmp_path, run_id)
         assert seal_usage(tmp_path, run_id) == counters()
+
+
+def test_capabilities_are_random_private_and_scoped_before_begin(tmp_path: Path) -> None:
+    import hashlib
+
+    first_id, second_id = str(uuid4()), str(uuid4())
+    first = create_usage(tmp_path, first_id)
+    second = create_usage(tmp_path, second_id)
+    assert isinstance(first, str) and len(first) == 64
+    assert isinstance(second, str) and len(second) == 64
+    assert first != second
+    assert first_id.replace("-", "") not in first
+    assert second_id.replace("-", "") not in second
+    path = tmp_path / f"{first_id}.json"
+    before = path.read_bytes()
+    assert first.encode() not in before
+    assert hashlib.sha256(first.encode()).hexdigest().encode() in before
+    assert path.stat().st_mode & 0o777 == 0o600
+
+    for rejected in ("", second, "0" * 64, "ü" * 64, first + "0"):
+        with pytest.raises(ValueError, match="capability"):
+            begin_request(tmp_path, first_id, rejected)
+        assert path.read_bytes() == before
+    begin_request(tmp_path, first_id, first)
+    with pytest.raises(ValueError, match="active"):
+        seal_usage(tmp_path, first_id)
+    end_request(tmp_path, first_id)
+    assert seal_usage(tmp_path, first_id) == counters()

@@ -1,7 +1,7 @@
 import hashlib
 import json
-import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock
@@ -9,7 +9,12 @@ from unittest.mock import Mock
 import pytest
 
 from evaluator.contracts import Criterion, Example, Metric
-from evaluator.metrics import aggregate_results, command_provenance, evaluate_answer
+from evaluator.metrics import (
+    CommandMetricError,
+    aggregate_results,
+    command_provenance,
+    evaluate_answer,
+)
 
 
 def command_metric(tmp_path: Path, code: str) -> Metric:
@@ -73,17 +78,25 @@ def test_bad_command_output_is_an_error_not_zero(tmp_path: Path, output: str) ->
 
 def test_command_failure_does_not_convert_valid_stdout_to_score(tmp_path: Path) -> None:
     metric = command_metric(tmp_path, 'print(\'{"score": 0}\')\nraise SystemExit(1)\n')
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(CommandMetricError, match="status 1"):
         evaluate_answer(metric, Example(id="x", input="source"), "answer")
 
 
-def test_command_timeout_is_an_error_without_retry(tmp_path: Path, monkeypatch: Any) -> None:
-    metric = command_metric(tmp_path, 'print(\'{"score": 0}\')\n')
-    run = Mock(side_effect=subprocess.TimeoutExpired("scorer", 1))
-    monkeypatch.setattr("evaluator.metrics.subprocess.run", run)
-    with pytest.raises(subprocess.TimeoutExpired):
+def test_command_timeout_is_an_error_without_retry(tmp_path: Path) -> None:
+    attempts = tmp_path / "attempts"
+    metric = command_metric(tmp_path, f'''import pathlib
+import time
+with pathlib.Path({str(attempts)!r}).open("a") as output:
+    output.write("attempt\\n")
+time.sleep(10)
+''')
+    assert metric.command is not None
+    metric = metric.model_copy(update={"command": metric.command.model_copy(
+        update={"timeout_seconds": 0.25},
+    )})
+    with pytest.raises(CommandMetricError, match="timed out"):
         evaluate_answer(metric, Example(id="x", input="source"), "answer")
-    assert run.call_count == 1
+    assert attempts.read_text() == "attempt\n"
 
 
 def test_command_provenance_contains_configuration_and_sources(tmp_path: Path) -> None:
@@ -225,3 +238,114 @@ print(json.dumps({"score": int(record["answer"] == record["example"]["reference"
     assert evaluate_answer(metric, Example(id="empty", input="", reference=""), "") == {
         "score": 1.0, "criteria": {},
     }
+
+
+@pytest.mark.parametrize("termination", ["timeout", "failure", "success"])
+def test_metric_terminates_spawned_work_before_return(tmp_path: Path, termination: str) -> None:
+    marker = tmp_path / "still-running"
+    ready = tmp_path / "started"
+    child = (
+        "import os,pathlib,time; "
+        f"pathlib.Path({str(ready)!r}).write_text(str(os.getpid())); "
+        "time.sleep(0.5); "
+        f"pathlib.Path({str(marker)!r}).touch()"
+    )
+    ending = {
+        "timeout": "time.sleep(10)",
+        "failure": "raise SystemExit(2)",
+        "success": "print('{\"score\": 1}')",
+    }[termination]
+    metric = command_metric(tmp_path, f'''import pathlib
+import subprocess
+import sys
+import time
+subprocess.Popen([sys.executable, "-c", {child!r}])
+while not pathlib.Path({str(ready)!r}).exists():
+    time.sleep(0.001)
+{ending}
+''')
+    assert metric.command is not None
+    metric = metric.model_copy(update={"command": metric.command.model_copy(
+        update={"timeout_seconds": 0.25},
+    )})
+    if termination == "success":
+        assert evaluate_answer(metric, Example(id="x", input=""), "")["score"] == 1
+    else:
+        with pytest.raises(CommandMetricError):
+            evaluate_answer(metric, Example(id="x", input=""), "")
+    assert ready.exists()
+    status = Path("/proc") / ready.read_text() / "stat"
+    if status.exists():
+        assert status.read_bytes().rsplit(b")", 1)[1].split()[0] in {b"Z", b"X"}
+    time.sleep(0.55)
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize("termination", ["failure", "timeout", "invalid"])
+def test_command_failures_retain_bounded_diagnostics(tmp_path: Path, termination: str) -> None:
+    ending = {
+        "failure": "raise SystemExit(3)",
+        "timeout": "import time; time.sleep(10)",
+        "invalid": "print('not-json')",
+    }[termination]
+    metric = command_metric(tmp_path, f'''import sys
+sys.stderr.write("AUDIT_ONLY_DIAGNOSTIC" + "x" * 100000)
+sys.stderr.flush()
+print("stdout-before-failure", flush=True)
+{ending}
+''')
+    assert metric.command is not None
+    metric = metric.model_copy(update={"command": metric.command.model_copy(
+        update={"timeout_seconds": 0.25},
+    )})
+    with pytest.raises(CommandMetricError) as raised:
+        evaluate_answer(metric, Example(id="x", input=""), "")
+    diagnostics = raised.value.diagnostics
+    assert diagnostics["stdout"].startswith("stdout-before-failure")
+    assert diagnostics["stderr"].startswith("AUDIT_ONLY_DIAGNOSTIC")
+    assert len(diagnostics["stderr"].encode()) <= 65536
+    assert diagnostics["stderr_truncated"] is True
+    assert diagnostics["stdout_truncated"] is False
+    assert diagnostics["timed_out"] is (termination == "timeout")
+    assert diagnostics["returncode"] == {"failure": 3, "timeout": -9, "invalid": 0}[termination]
+
+
+@pytest.mark.parametrize("score", [2**53, 2**53 + 1, -(2**53), 10**1000])
+def test_integer_command_score_outside_exact_range_is_rejected(tmp_path: Path, score: int) -> None:
+    metric = command_metric(tmp_path, f'print(\'{json.dumps({"score": score})}\')')
+    with pytest.raises(ValueError, match="binary64"):
+        evaluate_answer(metric, Example(id="x", input=""), "")
+
+
+@pytest.mark.parametrize("score", [2**53, 2**53 + 1, -(2**53), 10**1000])
+def test_integer_aggregate_score_outside_exact_range_is_rejected(score: int) -> None:
+    with pytest.raises(ValueError, match="binary64"):
+        aggregate_results(llm_metric(), [{"score": score}])
+
+
+def test_command_diagnostic_invalid_utf8_does_not_hide_original_failure(tmp_path: Path) -> None:
+    metric = command_metric(tmp_path, '''import sys
+sys.stderr.buffer.write(b"failure: \\xff")
+raise SystemExit(7)
+''')
+    with pytest.raises(CommandMetricError, match="status 7") as raised:
+        evaluate_answer(metric, Example(id="x", input=""), "")
+    assert raised.value.diagnostics["stderr"] == "failure: \ufffd"
+    assert raised.value.diagnostics["stderr_truncated"] is False
+
+
+def test_oversized_command_output_is_rejected_with_bounded_diagnostics(tmp_path: Path) -> None:
+    metric = command_metric(tmp_path, '''import json
+print(json.dumps({"score": 1, "statistics": {"large": "x" * (2 * 1024 * 1024)}}))
+''')
+    with pytest.raises(CommandMetricError, match="exceeds 1 MiB") as raised:
+        evaluate_answer(metric, Example(id="x", input=""), "")
+    assert len(raised.value.diagnostics["stdout"]) == 65536
+    assert raised.value.diagnostics["stdout_truncated"] is True
+
+
+def test_integer_command_aggregator_score_outside_exact_range_is_rejected(tmp_path: Path) -> None:
+    scorer = command_metric(tmp_path, f'print(\'{json.dumps({"score": 2**53 + 1})}\')')
+    metric = llm_metric().model_copy(update={"aggregation": scorer.command})
+    with pytest.raises(CommandMetricError, match="binary64"):
+        aggregate_results(metric, [{"score": 1}])

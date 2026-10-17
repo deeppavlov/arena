@@ -29,13 +29,41 @@ def test_program_harness_runs_frozen_script_without_model(monkeypatch):
 
     assert result == "program output"
     command, kwargs = calls[0]
-    assert command == [sys.executable, "-I", "/candidate/solve.py"]
+    assert command == [sys.executable, "-E", "-s", "/candidate/solve.py"]
     assert json.loads(kwargs["input"]) == {
         "input": "task", "assets_dir": "/assets", "parameters": {"iterations": 3},
     }
     assert kwargs["cwd"] == "/tmp"
     assert kwargs["check"] is True
     assert kwargs["stderr"] == subprocess.DEVNULL
+
+
+@pytest.mark.parametrize("filename, field", [("solve.py", "answer"), ("prepare.py", "context")])
+def test_program_imports_siblings_and_packages_with_isolated_environment(
+    tmp_path, monkeypatch, filename, field,
+):
+    candidate = tmp_path / "candidate"
+    candidate.mkdir()
+    package = candidate / "package"
+    package.mkdir()
+    (package / "__init__.py").write_text("from helper import transform\n")
+    (candidate / "helper.py").write_text("def transform(value):\n    return value.upper()\n")
+    script = candidate / filename
+    script.write_text(
+        "import importlib.util\nimport json\nimport sys\nfrom package import transform\n"
+        "assert importlib.util.find_spec('outside_candidate') is None\n"
+        "task = json.load(sys.stdin)\n"
+        f"print(json.dumps({{{field!r}: transform(task['input'])}}))\n"
+    )
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "outside_candidate.py").write_text("raise RuntimeError('must not import')\n")
+    monkeypatch.setenv("PYTHONPATH", str(outside))
+    monkeypatch.setenv("PYTHONHOME", str(outside))
+
+    assert sample_runner.run_program(script, {"input": "sibling package"}, 10) == {
+        field: "SIBLING PACKAGE",
+    }
 
 
 @pytest.mark.parametrize("raw", [
@@ -82,6 +110,26 @@ def test_main_accepts_program_task_without_model(monkeypatch, capsys, input_text
     assert received == [input_text]
 
 
+@pytest.mark.parametrize("input_text", ["task", "", " \n\t"])
+def test_main_accepts_model_task_with_any_string_input(monkeypatch, capsys, input_text):
+    received = []
+
+    def solve(task):
+        received.append(task["input"])
+        return "model output"
+
+    monkeypatch.setattr(sample_runner.sys, "stdin", SimpleNamespace(buffer=io.BytesIO(
+        json.dumps({
+            "input": input_text, "model": "fixed", "model_base_url": "http://gateway/v1",
+        }).encode()
+    )))
+    monkeypatch.setattr(sample_runner, "solve", solve)
+
+    assert sample_runner.main() == 0
+    assert json.loads(capsys.readouterr().out) == {"answer": "model output"}
+    assert received == [input_text]
+
+
 @pytest.mark.parametrize("task", [
     {"input": "task"},
     {"input": "task", "uses_model": "false"},
@@ -90,7 +138,11 @@ def test_main_accepts_program_task_without_model(monkeypatch, capsys, input_text
     {"input": None, "uses_model": False},
     {"input": 0, "uses_model": False},
     {"uses_model": False},
-    {"input": "", "model": "fixed", "model_base_url": "http://gateway/v1"},
+    {"model": "fixed", "model_base_url": "http://gateway/v1"},
+    {"input": None, "model": "fixed", "model_base_url": "http://gateway/v1"},
+    {"input": 0, "model": "fixed", "model_base_url": "http://gateway/v1"},
+    {"input": "", "model": " ", "model_base_url": "http://gateway/v1"},
+    {"input": "", "model": "fixed", "model_base_url": " "},
 ])
 def test_main_rejects_incomplete_or_invalid_mode(monkeypatch, capsys, task):
     monkeypatch.setattr(sample_runner.sys, "stdin", SimpleNamespace(buffer=io.BytesIO(
