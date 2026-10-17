@@ -16,34 +16,47 @@ def read_limited(path: Path) -> str:
     return content.decode()
 
 
+def run_program(path: Path, payload: dict, timeout: float | None = None) -> dict:
+    with tempfile.TemporaryFile() as output:
+        subprocess.run(
+            [sys.executable, "-I", str(path)],
+            input=json.dumps(payload).encode(),
+            stdout=output,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            check=True,
+            cwd="/tmp",
+        )
+        output.seek(0)
+        raw = output.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES:
+        raise ValueError("program output too large")
+    result = json.loads(raw)
+    if not isinstance(result, dict):
+        raise ValueError("invalid program output")
+    return result
+
+
 def solve(task: dict) -> str:
+    payload = {"input": task["input"], "assets_dir": "/assets"}
+    if "parameters" in task:
+        payload["parameters"] = task["parameters"]
+    if not task.get("uses_model", True):
+        result = run_program(Path("/candidate/solve.py"), payload)
+        answer = result.get("answer")
+        if not isinstance(answer, str):
+            raise ValueError("invalid answer")
+        return answer
     prompt = read_limited(Path("/candidate/prompt.md"))
     context = ""
     preparation = Path("/candidate/prepare.py")
     if preparation.is_file():
-        with tempfile.TemporaryFile() as output:
-            subprocess.run(
-                [sys.executable, "-I", str(preparation)],
-                input=json.dumps(
-                    {
-                        "input": task["input"],
-                        "assets_dir": "/assets",
-                        "model": task["model"],
-                        "model_base_url": task["model_base_url"],
-                        "model_request_timeout": task["model_request_timeout"],
-                    }
-                ).encode(),
-                stdout=output,
-                stderr=subprocess.DEVNULL,
-                timeout=task["prepare_timeout"],
-                check=True,
-                cwd="/tmp",
-            )
-            output.seek(0)
-            raw = output.read(MAX_BYTES + 1)
-        if len(raw) > MAX_BYTES:
-            raise ValueError("context too large")
-        result = json.loads(raw)
+        payload.update({
+            "model": task["model"],
+            "model_base_url": task["model_base_url"],
+            "model_request_timeout": task["model_request_timeout"],
+        })
+        result = run_program(preparation, payload, task["prepare_timeout"])
         context = result["context"]
         if not isinstance(context, str):
             raise ValueError("invalid context")
@@ -74,10 +87,14 @@ def main() -> int:
         if len(raw) > MAX_BYTES:
             raise ValueError("task too large")
         task = json.loads(raw)
-        if not isinstance(task, dict) or any(
-            not isinstance(task.get(key), str) or not task[key].strip()
-            for key in ("input", "model", "model_base_url")
-        ):
+        if not isinstance(task, dict) or type(task.get("uses_model", True)) is not bool:
+            raise ValueError("invalid task")
+        uses_model = task.get("uses_model", True)
+        fields = ("input", "model", "model_base_url") if uses_model else ("input",)
+        if any(
+            not isinstance(task.get(key), str) or (uses_model and not task[key].strip())
+            for key in fields
+        ) or not isinstance(task.get("parameters", {}), dict):
             raise ValueError("invalid task")
         output = json.dumps({"answer": solve(task)})
         if len(output.encode()) + 1 > MAX_BYTES:

@@ -1,4 +1,6 @@
 {
+  "kind": "llm",
+  "direction": "maximize",
   "version": "synthetic-reference-per-criterion-v1-template",
   "instruction": "Замените этот текст описанием оцениваемой задачи до первого замера.",
   "criteria": [

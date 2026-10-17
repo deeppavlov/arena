@@ -90,6 +90,109 @@ def test_submit_uses_bearer_token_and_expected_body(
     assert json.loads(received[0].content) == payload
 
 
+@pytest.mark.parametrize("evaluation_id", [None, "abcdef0123456789" * 4])
+def test_status_looks_up_the_requested_evaluation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, evaluation_id: str | None
+) -> None:
+    token = tmp_path / "token"
+    token.write_text("test-token", encoding="utf-8")
+    received: list[httpx.Request] = []
+
+    def handle(outgoing: httpx.Request) -> httpx.Response:
+        received.append(outgoing)
+        return httpx.Response(200, json={"status": "running"})
+
+    original_client = httpx.Client
+    monkeypatch.setattr(
+        httpx,
+        "Client",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    assert request(
+        "GET", "https://evaluator/arena/", token, evaluation_id=evaluation_id
+    ) == {"status": "running"}
+    suffix = f"/{evaluation_id}" if evaluation_id is not None else ""
+    assert str(received[0].url) == f"https://evaluator/arena/v1/evaluations{suffix}"
+
+
+@pytest.mark.parametrize("evaluation_id", ["", "a" * 63, "a" * 65, "A" * 64, "g" * 64, "../x"])
+def test_status_rejects_invalid_evaluation_ids(tmp_path: Path, evaluation_id: str) -> None:
+    with pytest.raises(ClientError, match="^invalid evaluation ID$"):
+        request(
+            "GET", "http://evaluator", tmp_path / "missing-token", evaluation_id=evaluation_id
+        )
+
+
+def test_cli_status_accepts_evaluation_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    token = tmp_path / "token"
+    token.write_text("test-token", encoding="utf-8")
+    received: list[httpx.Request] = []
+
+    def handle(outgoing: httpx.Request) -> httpx.Response:
+        received.append(outgoing)
+        return httpx.Response(200, json={"status": "running"})
+
+    original_client = httpx.Client
+    monkeypatch.setattr(
+        httpx,
+        "Client",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    evaluation_id = "a" * 64
+    assert main([
+        "status", "--url", "http://evaluator", "--token-file", str(token),
+        "--evaluation-id", evaluation_id,
+    ]) == 0
+    assert str(received[0].url) == f"http://evaluator/v1/evaluations/{evaluation_id}"
+
+
+@pytest.mark.parametrize("source", ["environment", "argument"])
+@pytest.mark.parametrize("limit", ["1", "1000", "0", "-1", "private-secret"])
+def test_submit_bundle_byte_limit_is_configurable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    source: str,
+    limit: str,
+) -> None:
+    token = tmp_path / "token"
+    token.write_text("test-token", encoding="utf-8")
+    bundle = tmp_path / "bundle.json"
+    bundle.write_text(
+        json.dumps({"candidates": [{"id": "idea", "files": {"a": "eA=="}}]}),
+        encoding="utf-8",
+    )
+    received: list[httpx.Request] = []
+
+    def handle(outgoing: httpx.Request) -> httpx.Response:
+        received.append(outgoing)
+        return httpx.Response(202, json={"status": "running"})
+
+    original_client = httpx.Client
+    monkeypatch.setattr(
+        httpx,
+        "Client",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    monkeypatch.setenv("ARENA_MAX_BUNDLE_BYTES", limit if source == "environment" else "1")
+    arguments = [
+        "submit", "--url", "http://evaluator", "--token-file", str(token),
+        "--bundle", str(bundle),
+    ]
+    if source == "argument":
+        arguments.extend(["--max-bundle-bytes", limit])
+    assert main(arguments) == (0 if limit == "1000" else 1)
+    output = capsys.readouterr()
+    assert "private-secret" not in output.err
+    if limit == "1000":
+        assert len(received) == 1
+    else:
+        assert not received
+        assert ("invalid bundle" if limit == "1" else "positive integer") in output.err
+
+
 def test_status_does_not_follow_redirects(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

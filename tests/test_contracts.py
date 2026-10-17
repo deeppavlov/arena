@@ -96,3 +96,77 @@ def test_vote_requires_integer_score_in_range(score: object) -> None:
 @pytest.mark.parametrize("score", [1, 5])
 def test_vote_accepts_score_boundaries(score: int) -> None:
     assert Vote(score=score, reason="Observed evidence.").score == score
+
+
+def test_submission_accepts_more_than_five_candidates() -> None:
+    candidates = [
+        Candidate(id=f"candidate-{index}", files={
+            "code": base64.b64encode(str(index).encode()).decode(),
+        })
+        for index in range(12)
+    ]
+    assert len(Submission(candidates=candidates).candidates) == 12
+
+
+def test_command_metric_has_no_required_llm_criteria() -> None:
+    metric = Metric.model_validate({
+        "version": "distance-v1", "kind": "command", "direction": "minimize",
+        "command": {
+            "argv": ["/opt/scorer"],
+            "source_sha256": {"/opt/scorer": "a" * 64},
+        },
+    })
+    assert metric.kind == "command"
+    assert metric.direction == "minimize"
+    assert metric.criteria == []
+
+
+@pytest.mark.parametrize("data", [
+    {"version": "v1"},
+    {"version": "v1", "instruction": "Judge.", "criteria": []},
+    {"version": "v1", "kind": "command"},
+    {"version": "v1", "kind": "command", "direction": "unknown"},
+])
+def test_metric_rejects_missing_profile_or_invalid_direction(data: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        Metric.model_validate(data)
+
+
+def test_command_example_may_omit_reference() -> None:
+    from evaluator.contracts import Example
+
+    assert Example(id="example", input="input").reference is None
+
+
+@pytest.mark.parametrize("command", [
+    {"argv": [], "source_sha256": {"/opt/scorer": "a" * 64}},
+    {"argv": ["scorer"], "source_sha256": {"/opt/scorer": "a" * 64}},
+    {"argv": ["/opt/scorer"], "source_sha256": {}},
+    {"argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "bad"}},
+    {"argv": ["/opt/scorer"], "source_sha256": {"scorer": "a" * 64}},
+    {"argv": ["/opt/scorer"], "source_sha256": {"/opt/other": "a" * 64}},
+    {"argv": ["/opt/scorer\x00"], "source_sha256": {"/opt/scorer": "a" * 64}},
+    {"argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "a" * 64},
+     "timeout_seconds": float("inf")},
+])
+def test_command_requires_pinned_absolute_executable(command: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        Metric.model_validate({"version": "v1", "kind": "command", "command": command})
+
+
+
+def test_builtin_llm_quality_profile_cannot_minimize_without_custom_aggregation() -> None:
+    with pytest.raises(ValidationError, match="maximize"):
+        Metric(version="v1", direction="minimize", instruction="Judge.", criteria=[
+            Criterion(id="correct", question="Correct?", weight=1),
+        ])
+
+
+def test_generic_example_accepts_empty_input_and_reference() -> None:
+    from evaluator.contracts import Example
+
+    example = Example(id="empty", input="", reference="")
+    assert example.input == ""
+    assert example.reference == ""
+    with pytest.raises(ValidationError):
+        Example(id="", input="", reference="")

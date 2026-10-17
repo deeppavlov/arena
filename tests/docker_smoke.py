@@ -7,7 +7,27 @@ import time
 import uuid
 from pathlib import Path
 
-from evaluator.runner import DockerRunner, RunnerError
+from evaluator.runner import DockerRunner, HarnessRunner, RunnerError
+
+PROGRAM = """import json
+import os
+import sys
+import time
+from pathlib import Path
+
+task = json.load(sys.stdin)
+assert set(task) == {"input", "assets_dir", "parameters"}
+assert task["assets_dir"] == "/assets"
+assert set(os.listdir("/sys/class/net")) == {"lo"}
+assert not any("MODEL" in key or "TOKEN" in key or "API_KEY" in key for key in os.environ)
+for path in ("/usage", "/private", "/state", "/run/secrets", "/var/run/docker.sock"):
+    assert not Path(path).exists(), path
+parameters = task["parameters"]
+numbers = sorted(map(int, task["input"].split()), reverse=parameters["descending"])
+answer = parameters["separator"].join(map(str, numbers))
+time.sleep(0.05)
+print(json.dumps({"answer": "" if parameters["blank"] else answer, "usage": {"total_tokens": 999}}))
+"""
 
 PREPARE = """import json
 import os
@@ -99,6 +119,34 @@ def docker(*arguments: str, check: bool = True) -> str:
     ).stdout.strip()
 
 
+def check_program(image: str, workspace: Path) -> None:
+    candidate = workspace / "program"
+    candidate.mkdir()
+    (candidate / "solve.py").write_text(PROGRAM)
+    runner = HarnessRunner(
+        DockerRunner(image),
+        {"plain": DockerRunner(image, uses_model=False, model_base_url="", timeout=15)},
+    )
+    for blank, expected in ((False, "3|2|1"), (True, "")):
+        (candidate / "solution.json").write_text(json.dumps({
+            "harness": "plain",
+            "parameters": {"descending": True, "separator": "|", "blank": blank},
+        }))
+        started = time.monotonic()
+        solved = runner(candidate, "3 1 2")
+        elapsed = time.monotonic() - started
+        assert solved.answer == expected
+        assert solved.usage == {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "attempts": 0,
+            "unreported_attempts": 0,
+        }
+        assert 0.05 <= solved.wall_seconds <= elapsed
+        assert not (workspace / "usage").exists()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gateway-image", required=True)
@@ -118,6 +166,7 @@ def main() -> None:
             timeout=180,
         )
         image = image_file.read_text().strip()
+        check_program(image, workspace)
         candidate = workspace / "candidate"
         candidate.mkdir()
         (candidate / "prompt.md").write_text("synthetic prompt")
@@ -277,7 +326,12 @@ def main() -> None:
                 docker("network", "rm", network)
         print(
             json.dumps(
-                {"status": "ok", "runner_image": image, "gateway_image": args.gateway_image}
+                {
+                    "status": "ok",
+                    "runner_image": image,
+                    "gateway_image": args.gateway_image,
+                    "model_free_solves": 2,
+                }
             )
         )
 

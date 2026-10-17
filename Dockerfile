@@ -12,12 +12,12 @@ RUN uv sync --frozen --no-dev --no-install-project && useradd --uid 10001 --crea
 COPY evaluator ./evaluator
 USER 10001:10001
 
-FROM runtime AS public
+FROM runtime AS researcher
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY common ./common
 COPY prompts ./prompts
-COPY cases ./cases
+COPY cases/template ./cases/template
 COPY README.md AGENTS.md ./
 USER 10001:10001
 WORKDIR /workspace

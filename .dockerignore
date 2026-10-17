@@ -11,7 +11,8 @@
 !prompts/
 !prompts/**
 !cases/
-!cases/**
+!cases/template/
+!cases/template/**
 !runner/
 !runner/**
 **/__pycache__

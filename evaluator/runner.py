@@ -1,3 +1,4 @@
+import hashlib
 import json
 import math
 import os
@@ -7,8 +8,10 @@ import subprocess
 import time
 import uuid
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from types import MappingProxyType
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from evaluator.reliability import (
@@ -16,6 +19,7 @@ from evaluator.reliability import (
     PREPARE_TIMEOUT,
     RETRY_DELAY,
     RUNNER_TIMEOUT,
+    empty_usage,
     request_timeout,
 )
 from evaluator.usage import create_usage, read_usage, seal_usage
@@ -60,6 +64,7 @@ class DockerRunner:
     memory: str = "2g"
     cpus: str = "2"
     pids_limit: int = 128
+    uses_model: bool = True
 
     def __post_init__(self) -> None:
         if not re.fullmatch(
@@ -68,6 +73,10 @@ class DockerRunner:
             raise ValueError("runner image must be pinned by sha256")
         if self.network == "host" or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", self.network):
             raise ValueError("invalid runner network")
+        if type(self.uses_model) is not bool:
+            raise ValueError("invalid runner model mode")
+        if not self.uses_model and self.network != "none":
+            raise ValueError("model-free runner requires network none")
         if (
             any(
                 isinstance(value, bool) or not math.isfinite(value) or value <= 0
@@ -84,7 +93,7 @@ class DockerRunner:
         if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", self.cpus) or float(self.cpus) <= 0:
             raise ValueError("invalid runner cpu limit")
         url = urlsplit(self.model_base_url)
-        if (
+        if self.uses_model and (
             url.scheme not in ("http", "https")
             or not url.netloc
             or url.path.rstrip("/") != "/v1"
@@ -95,9 +104,17 @@ class DockerRunner:
         ):
             raise ValueError("invalid runner model gateway URL")
 
-    def __call__(self, candidate_dir: Path, input_text: str) -> SolveResult:
+    def configuration(self) -> dict[str, Any]:
+        return {
+            name: str(value.resolve()) if isinstance(value, Path) else value
+            for name, value in asdict(self).items()
+        }
+
+    def __call__(
+        self, candidate_dir: Path, input_text: str, *, parameters: dict[str, Any] | None = None,
+    ) -> SolveResult:
         started = time.monotonic()
-        if self.usage_dir is None:
+        if self.uses_model and self.usage_dir is None:
             raise RunnerError("runner usage directory is required")
         run_id = str(uuid.uuid4())
         name = f"arena-runner-{run_id}"
@@ -136,21 +153,34 @@ class DockerRunner:
         if self.assets_dir is not None:
             command.extend(["--mount", self._mount(self.assets_dir, "/assets")])
         command.append(self.image)
-        url = urlsplit(self.model_base_url)
-        scoped_url = urlunsplit(url._replace(path=f"/runs/{run_id}/v1"))
-        task = json.dumps(
-            {
-                "input": input_text,
+        payload: dict[str, Any] = {
+            "input": input_text,
+            "prepare_timeout": self.prepare_timeout,
+        }
+        if self.uses_model:
+            url = urlsplit(self.model_base_url)
+            scoped_url = urlunsplit(url._replace(path=f"/runs/{run_id}/v1"))
+            payload.update({
                 "model": self.model,
                 "model_base_url": scoped_url,
                 "model_request_timeout": request_timeout(
                     self.model_timeout, retry_delay=self.retry_delay
                 ),
-                "prepare_timeout": self.prepare_timeout,
-            }
-        ).encode()
+            })
+        else:
+            payload["uses_model"] = False
+        if parameters is not None:
+            if not isinstance(parameters, dict):
+                raise RunnerError("invalid harness parameters")
+            payload["parameters"] = parameters
         try:
-            create_usage(self.usage_dir, run_id)
+            task = json.dumps(payload, allow_nan=False).encode()
+        except (TypeError, ValueError, RecursionError):
+            raise RunnerError("invalid harness parameters") from None
+        try:
+            if self.uses_model:
+                assert self.usage_dir is not None
+                create_usage(self.usage_dir, run_id)
         except (OSError, ValueError):
             raise RunnerError("runner usage unavailable") from None
         try:
@@ -163,7 +193,7 @@ class DockerRunner:
             )
         except OSError:
             with suppress(OSError, ValueError):
-                seal_usage(self.usage_dir, run_id)
+                self._seal(run_id)
             raise self._failure(RunnerError("runner unavailable"), run_id, started) from None
         try:
             output = self._exchange(process, task)
@@ -176,12 +206,12 @@ class DockerRunner:
             answer = response.get("answer")
             if not isinstance(answer, str):
                 raise RunnerError("invalid runner response")
-            usage = seal_usage(self.usage_dir, run_id)
+            usage = self._seal(run_id)
             return SolveResult(answer, usage, time.monotonic() - started)
         except BaseException as error:
             self._stop(process, name)
             with suppress(OSError, ValueError):
-                seal_usage(self.usage_dir, run_id)
+                self._seal(run_id)
             if isinstance(error, RunnerError):
                 raise self._failure(error, run_id, started) from None
             if isinstance(error, Exception):
@@ -193,10 +223,18 @@ class DockerRunner:
             if process.stdout is not None:
                 process.stdout.close()
 
+    def _seal(self, run_id: str) -> dict[str, int]:
+        if not self.uses_model:
+            return empty_usage()
+        assert self.usage_dir is not None
+        return seal_usage(self.usage_dir, run_id)
+
     def _failure(self, error: RunnerError, run_id: str, started: float) -> RunnerError:
         error.run_id = run_id
         error.wall_seconds = time.monotonic() - started
-        if self.usage_dir is not None:
+        if not self.uses_model:
+            error.usage = empty_usage()
+        elif self.usage_dir is not None:
             with suppress(OSError, ValueError):
                 error.usage = read_usage(self.usage_dir, run_id)
         return error
@@ -274,3 +312,48 @@ class DockerRunner:
             )
         except (OSError, subprocess.TimeoutExpired):
             pass
+
+
+class HarnessRunner:
+    def __init__(self, default_runner: DockerRunner, registry: dict[str, DockerRunner]) -> None:
+        if any(
+            not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name)
+            or not isinstance(runner, DockerRunner)
+            for name, runner in registry.items()
+        ):
+            raise ValueError("invalid harness registry")
+        self.default_runner = default_runner
+        self.registry = MappingProxyType(dict(registry))
+
+    def provenance(self) -> dict[str, Any]:
+        configuration = {
+            "default": self.default_runner.configuration(),
+            "registry": {name: runner.configuration() for name, runner in self.registry.items()},
+        }
+        digest = hashlib.sha256(
+            json.dumps(configuration, sort_keys=True, allow_nan=False).encode()
+        ).hexdigest()
+        return {**configuration, "digest": digest}
+
+    def __call__(self, candidate_dir: Path, input_text: str) -> SolveResult:
+        manifest = candidate_dir / "solution.json"
+        if not manifest.exists():
+            return self.default_runner(candidate_dir, input_text)
+        try:
+            with manifest.open("rb") as source:
+                raw = source.read(MAX_OUTPUT_BYTES + 1)
+            if len(raw) > MAX_OUTPUT_BYTES:
+                raise ValueError
+            selection = json.loads(raw)
+            if not isinstance(selection, dict) or set(selection) - {"harness", "parameters"}:
+                raise ValueError
+            harness = selection.get("harness")
+            if not isinstance(harness, str) or harness not in self.registry:
+                raise ValueError
+            parameters = selection.get("parameters", {})
+            if not isinstance(parameters, dict):
+                raise ValueError
+            json.dumps(parameters, allow_nan=False)
+        except (OSError, TypeError, ValueError, RecursionError):
+            raise RunnerError("invalid harness selection") from None
+        return self.registry[harness](candidate_dir, input_text, parameters=parameters)

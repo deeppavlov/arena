@@ -14,19 +14,19 @@ x-runtime: &runtime
   restart: unless-stopped
 
 services:
-  public:
+  researcher:
     <<: *runtime
-    profiles: [public]
+    profiles: [train]
     build:
       context: .
-      target: public
-    image: arena-public:local
+      target: researcher
+    image: arena-researcher:local
     stdin_open: true
     tty: true
     restart: "no"
     environment:
       HOME: /tmp
-      MLFLOW_TRACKING_URI: ${ARENA_PUBLIC_MLFLOW_URL:-http://gpu6:5050}
+      MLFLOW_TRACKING_URI: ${ARENA_MLFLOW_URL:-http://gpu6:5050}
       ARENA_MODEL_TIMEOUT: ${ARENA_MODEL_TIMEOUT:-21600}
       ARENA_RUNNER_TIMEOUT: ${ARENA_RUNNER_TIMEOUT:-604800}
       ARENA_PREPARE_TIMEOUT: ${ARENA_PREPARE_TIMEOUT:-172800}
@@ -34,11 +34,11 @@ services:
       ARENA_EVALUATOR_TIMEOUT: ${ARENA_EVALUATOR_TIMEOUT:-3600}
     volumes:
       - type: bind
-        source: ${ARENA_PUBLIC_WORKSPACE:-/srv/arena/public}
+        source: ${ARENA_TRAIN_WORKSPACE:-/srv/arena/train}
         target: /workspace
         bind:
           create_host_path: false
-    networks: [public]
+    networks: [research]
 
   evaluator:
     <<: *runtime
@@ -68,6 +68,11 @@ services:
       ARENA_ASSETS_DIR: ${ARENA_ASSETS_DIR:-/srv/arena/assets}
       ARENA_RELEASE_ID: ${ARENA_RELEASE_ID:-unset}
       ARENA_FINALISTS: ${ARENA_FINALISTS:-5}
+      ARENA_OUTPUT_COUNT: ${ARENA_OUTPUT_COUNT:-1}
+      ARENA_SPLIT: ${ARENA_SPLIT:-private}
+      ARENA_USES_MODEL: ${ARENA_USES_MODEL:-true}
+      ARENA_HARNESSES: ${ARENA_HARNESSES:-{}}
+      ARENA_MAX_BODY_BYTES: ${ARENA_MAX_BODY_BYTES:-73400320}
       ARENA_PARAMETERS: ${ARENA_PARAMETERS:-{}}
       ARENA_MODEL_TIMEOUT: ${ARENA_MODEL_TIMEOUT:-21600}
       ARENA_RUNNER_TIMEOUT: ${ARENA_RUNNER_TIMEOUT:-604800}
@@ -164,7 +169,7 @@ services:
       retries: 3
 
 networks:
-  public: {}
+  research: {}
   backend: {}
   workers:
     name: ${ARENA_RUNNER_NETWORK:-arena-runners}

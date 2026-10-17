@@ -3,6 +3,7 @@ import base64
 import json
 import math
 import os
+import re
 import stat
 import sys
 from collections.abc import Mapping, Sequence
@@ -65,7 +66,10 @@ def request(
     payload: Mapping[str, object] | None = None,
     *,
     timeout: float | str | None = None,
+    evaluation_id: str | None = None,
 ) -> dict[str, object]:
+    if evaluation_id is not None and not re.fullmatch(r"[0-9a-f]{64}", evaluation_id):
+        raise ClientError("invalid evaluation ID")
     try:
         seconds = float(
             os.environ.get("ARENA_EVALUATOR_TIMEOUT", "3600") if timeout is None else timeout
@@ -94,7 +98,8 @@ def request(
         raise ClientError("cannot read evaluator token file") from error
     if not token or len(token) > 4096 or any(not 33 <= ord(char) <= 126 for char in token):
         raise ClientError("invalid evaluator token file")
-    endpoint = url.copy_with(path=url.path.rstrip("/") + "/v1/evaluations")
+    suffix = f"/{evaluation_id}" if evaluation_id is not None else ""
+    endpoint = url.copy_with(path=url.path.rstrip("/") + "/v1/evaluations" + suffix)
     try:
         with httpx.Client(follow_redirects=False, trust_env=False, timeout=seconds) as client:
             response = client.request(
@@ -114,14 +119,20 @@ def request(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Freeze candidates and use the private evaluator")
+    parser = argparse.ArgumentParser(description="Freeze candidates and use the evaluator")
     commands = parser.add_subparsers(dest="command", required=True)
     pack = commands.add_parser("pack", help="freeze explicitly selected candidate directories")
     pack.add_argument("--candidate", action="append", required=True, metavar="ID=DIRECTORY")
     pack.add_argument("--output", type=Path, required=True)
     submit = commands.add_parser("submit", help="submit one frozen finalist batch")
     submit.add_argument("--bundle", type=Path, required=True)
-    status = commands.add_parser("status", help="read the sealed batch status and final aggregates")
+    submit.add_argument(
+        "--max-bundle-bytes",
+        default=os.environ.get("ARENA_MAX_BUNDLE_BYTES", str(MAX_BUNDLE_BYTES)),
+        help="bundle size limit in bytes; overrides ARENA_MAX_BUNDLE_BYTES (default: 75497472)",
+    )
+    status = commands.add_parser("status", help="read evaluation status and permitted results")
+    status.add_argument("--evaluation-id", help="public evaluation ID returned by submit")
     for command in (submit, status):
         command.add_argument("--url", required=True)
         command.add_argument("--token-file", type=Path, required=True)
@@ -157,7 +168,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             }
         elif arguments.command == "submit":
             try:
-                if arguments.bundle.stat().st_size > MAX_BUNDLE_BYTES:
+                max_bundle_bytes = int(arguments.max_bundle_bytes)
+            except ValueError:
+                raise ClientError("bundle size limit must be a positive integer") from None
+            if max_bundle_bytes <= 0:
+                raise ClientError("bundle size limit must be a positive integer")
+            try:
+                if arguments.bundle.stat().st_size > max_bundle_bytes:
                     raise ClientError("invalid bundle")
                 submission = Submission.model_validate_json(arguments.bundle.read_bytes())
             except (OSError, ValidationError) as error:
@@ -170,7 +187,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 timeout=arguments.timeout,
             )
         else:
-            result = request("GET", arguments.url, arguments.token_file, timeout=arguments.timeout)
+            result = request(
+                "GET", arguments.url, arguments.token_file,
+                timeout=arguments.timeout, evaluation_id=arguments.evaluation_id,
+            )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except ClientError as error:

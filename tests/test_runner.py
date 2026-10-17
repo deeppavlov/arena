@@ -545,3 +545,122 @@ def test_failure_retains_charged_attempts_and_full_elapsed_time(tmp_path, monkey
         "unreported_attempts": 1,
     }
     assert read_usage(usage_dir, run_ids[0]) == error.usage
+
+
+def test_model_free_runner_needs_no_model_or_ledger(tmp_path, monkeypatch):
+    commands, _ = fake_docker(
+        monkeypatch,
+        "import json,sys,time; task=json.load(sys.stdin); time.sleep(.02); "
+        "print(json.dumps({'answer':json.dumps(task),'usage':{'total_tokens':999}}))",
+    )
+    result = DockerRunner(IMAGE, uses_model=False)(tmp_path, "task")
+
+    assert json.loads(result.answer) == {
+        "input": "task", "uses_model": False, "prepare_timeout": 172800,
+    }
+    assert result.usage == {
+        "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
+        "attempts": 0, "unreported_attempts": 0,
+    }
+    assert result.wall_seconds >= .02
+    assert commands[0][commands[0].index("--network") + 1] == "none"
+
+
+def test_model_free_runner_rejects_network_access():
+    with pytest.raises(ValueError, match="model-free.*network"):
+        DockerRunner(IMAGE, uses_model=False, network="workers")
+
+
+def test_model_free_failure_retains_zero_usage_and_time(tmp_path, monkeypatch):
+    fake_docker(monkeypatch, "import time,sys; time.sleep(.02); sys.exit(1)")
+
+    with pytest.raises(RunnerError) as failure:
+        DockerRunner(IMAGE, uses_model=False)(tmp_path, "task")
+
+    assert failure.value.usage is not None
+    assert failure.value.usage["total_tokens"] == 0
+    assert failure.value.usage["unreported_attempts"] == 0
+    assert failure.value.wall_seconds is not None and failure.value.wall_seconds >= .02
+
+
+def test_harness_selection_uses_registered_profile_and_nested_parameters(tmp_path, monkeypatch):
+    from evaluator.runner import HarnessRunner
+
+    second_image = "sha256:" + "b" * 64
+    manifest = {
+        "harness": "program",
+        "parameters": {"depth": 4, "model": "fake", "image": "untrusted"},
+    }
+    (tmp_path / "solution.json").write_text(json.dumps(manifest))
+    commands, _ = fake_docker(
+        monkeypatch,
+        "import json,sys; task=json.load(sys.stdin); "
+        "print(json.dumps({'answer':json.dumps(task)}))",
+    )
+    runner = HarnessRunner(
+        DockerRunner(IMAGE, usage_dir=tmp_path / "usage"),
+        {"program": DockerRunner(second_image, uses_model=False)},
+    )
+    result = json.loads(runner(tmp_path, "task").answer)
+
+    assert commands[0][-1] == second_image
+    assert result["parameters"] == manifest["parameters"]
+    assert "model" not in result
+    assert "image" not in result
+    assert "model_base_url" not in result
+
+
+@pytest.mark.parametrize("manifest", [
+    {"harness": "unknown"},
+    {"harness": "program", "image": IMAGE},
+    {"harness": "program", "network": "workers"},
+    {"harness": "program", "model_base_url": "http://host/v1"},
+    {"harness": "program", "parameters": []},
+    {"harness": "program", "parameters": {"depth": float("nan")}},
+    {"harness": "program", "parameters": {"depth": float("inf")}},
+    {"parameters": {}},
+    [],
+])
+def test_invalid_manifest_fails_before_starting(tmp_path, monkeypatch, manifest):
+    from evaluator.runner import HarnessRunner
+
+    (tmp_path / "solution.json").write_text(json.dumps(manifest))
+    commands, _ = fake_docker(monkeypatch, 'print(\'{"answer":"ok"}\')')
+    runner = HarnessRunner(
+        DockerRunner(IMAGE), {"program": DockerRunner(IMAGE, uses_model=False)}
+    )
+
+    with pytest.raises(RunnerError, match="harness"):
+        runner(tmp_path, "task")
+
+    assert commands == []
+
+
+def test_harness_registry_falls_back_to_default_without_manifest(tmp_path, monkeypatch):
+    from evaluator.runner import HarnessRunner
+
+    commands, _ = fake_docker(monkeypatch, 'print(\'{"answer":"ok"}\')')
+    runner = HarnessRunner(DockerRunner(IMAGE, uses_model=False), {})
+
+    assert runner(tmp_path, "task").answer == "ok"
+    assert commands[0][-1] == IMAGE
+
+
+def test_harness_provenance_freezes_configuration_and_order():
+    from evaluator.runner import HarnessRunner
+
+    default = DockerRunner(IMAGE, uses_model=False)
+    registry = {"b": default, "a": DockerRunner(IMAGE, timeout=100)}
+    runner = HarnessRunner(default, registry)
+    first = runner.provenance()
+    registry.clear()
+
+    assert runner.provenance() == first
+    assert first["default"]["uses_model"] is False
+    assert first["registry"]["a"]["timeout"] == 100
+    assert first["digest"] == HarnessRunner(default, {
+        "a": DockerRunner(IMAGE, timeout=100), "b": default,
+    }).provenance()["digest"]
+    assert first["digest"] != HarnessRunner(default, {
+        "a": DockerRunner(IMAGE, timeout=101), "b": default,
+    }).provenance()["digest"]

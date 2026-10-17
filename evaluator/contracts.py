@@ -3,6 +3,7 @@ import hashlib
 import json
 import math
 from pathlib import PurePosixPath
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -24,22 +25,56 @@ class Criterion(StrictModel):
         return value
 
 
-class Metric(StrictModel):
-    version: str = Field(min_length=1, max_length=100)
-    instruction: str = Field(min_length=1, max_length=20000)
-    criteria: list[Criterion] = Field(min_length=1, max_length=30)
+class CommandMetric(StrictModel):
+    argv: list[str] = Field(min_length=1)
+    source_sha256: dict[str, str] = Field(min_length=1)
+    timeout_seconds: float = Field(default=21600, gt=0, allow_inf_nan=False)
 
     @model_validator(mode="after")
-    def unique_criteria(self) -> "Metric":
+    def pinned_executable(self) -> "CommandMetric":
+        if any("\x00" in argument for argument in self.argv):
+            raise ValueError("command arguments must not contain null bytes")
+        if not PurePosixPath(self.argv[0]).is_absolute():
+            raise ValueError("command executable must be an absolute path")
+        for name, digest in self.source_sha256.items():
+            if not PurePosixPath(name).is_absolute() or "\x00" in name:
+                raise ValueError("command source paths must be absolute")
+            if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+                raise ValueError("command sources require lowercase SHA-256 hashes")
+        if self.argv[0] not in self.source_sha256:
+            raise ValueError("command executable must be pinned in source_sha256")
+        return self
+
+
+class Metric(StrictModel):
+    version: str = Field(min_length=1, max_length=100)
+    kind: Literal["llm", "command"] = "llm"
+    direction: Literal["maximize", "minimize"] = "maximize"
+    instruction: str = Field(default="", max_length=20000)
+    criteria: list[Criterion] = Field(default_factory=list, max_length=30)
+    command: CommandMetric | None = None
+    aggregation: CommandMetric | None = None
+
+    @model_validator(mode="after")
+    def valid_profile(self) -> "Metric":
         if len({item.id for item in self.criteria}) != len(self.criteria):
             raise ValueError("criterion IDs must be unique")
+        if self.kind == "llm":
+            if not self.instruction.strip() or not self.criteria:
+                raise ValueError("LLM metric requires instruction and criteria")
+            if self.direction != "maximize" and self.aggregation is None:
+                raise ValueError("built-in LLM quality scores must maximize")
+            if self.command is not None:
+                raise ValueError("LLM metric cannot configure a command")
+        elif self.command is None or self.criteria:
+            raise ValueError("command metric requires a command and no LLM criteria")
         return self
 
 
 class Example(StrictModel):
     id: str = Field(min_length=1, max_length=100)
-    input: str = Field(min_length=1, max_length=500000)
-    reference: str = Field(min_length=1, max_length=500000)
+    input: str = Field(max_length=500000)
+    reference: str | None = Field(default=None, max_length=500000)
 
 
 class Candidate(StrictModel):
@@ -83,7 +118,7 @@ class Candidate(StrictModel):
 
 
 class Submission(StrictModel):
-    candidates: list[Candidate] = Field(min_length=1, max_length=5)
+    candidates: list[Candidate] = Field(min_length=1)
 
     @model_validator(mode="after")
     def unique_candidates(self) -> "Submission":

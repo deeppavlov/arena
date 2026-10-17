@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from evaluator.ranking import RANKING_POLICY, choose_winner
+from evaluator.ranking import RANKING_POLICY, choose_winner, choose_winners
 
 
 def candidate(
@@ -70,7 +70,7 @@ def test_single_candidate_with_zero_measurements_is_valid() -> None:
 
 
 def test_ranking_policy_has_a_stable_version_for_provenance() -> None:
-    assert RANKING_POLICY == "score-desc-known-tokens-asc-seconds-asc-id-asc-v1"
+    assert RANKING_POLICY == "score-direction-known-tokens-asc-seconds-asc-id-asc-v2"
 
 
 @pytest.mark.parametrize("field", list(candidate("example")))
@@ -82,7 +82,7 @@ def test_every_measurement_is_required(field: str) -> None:
 
 
 @pytest.mark.parametrize("field", ["score", "solver_seconds"])
-@pytest.mark.parametrize("value", [-1, float("nan"), float("inf"), -float("inf"), True, "1"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), True, "1"])
 def test_invalid_scores_and_times_fail(field: str, value: Any) -> None:
     row = candidate("bad")
     row[field] = value
@@ -115,3 +115,35 @@ def test_duplicate_candidate_ids_fail() -> None:
 def test_empty_results_fail() -> None:
     with pytest.raises(ValueError, match="empty"):
         choose_winner([])
+
+
+
+def test_negative_scores_are_valid_but_negative_times_are_not() -> None:
+    assert choose_winner([candidate("low", score=-4), candidate("high", score=-1)]) == "high"
+    with pytest.raises(ValueError, match="solver_seconds"):
+        choose_winner([candidate("negative-time", seconds=-1)])
+
+
+def test_top_n_respects_minimization_and_resource_ties() -> None:
+    rows = [
+        candidate("best", score=-5, tokens=100),
+        candidate("same-cheap", score=-5, tokens=0, seconds=1000),
+        candidate("next", score=-3),
+        candidate("worst", score=1, tokens=0),
+    ]
+    assert choose_winners(rows, count=3, direction="minimize") == [
+        "same-cheap", "best", "next",
+    ]
+    assert choose_winner(rows, direction="minimize") == "same-cheap"
+    assert choose_winners(rows) == ["worst"]
+
+
+@pytest.mark.parametrize("count", [0, -1, 2, True, 1.0])
+def test_top_n_requires_an_exact_available_positive_count(count: Any) -> None:
+    with pytest.raises(ValueError, match="count"):
+        choose_winners([candidate("only")], count=count)
+
+
+def test_invalid_direction_is_rejected() -> None:
+    with pytest.raises(ValueError, match="direction"):
+        choose_winners([candidate("only")], direction="sideways")
