@@ -7,6 +7,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from evaluator.contracts import Example
 from evaluator.gateway import GatewaySettings, create_gateway
 
 
@@ -157,11 +158,14 @@ def test_gateway_limits_request_and_response_before_parsing() -> None:
 
     def upstream(request: httpx.Request) -> httpx.Response:
         calls.append(request)
-        return httpx.Response(200, content=b"x" * 257)
+        return httpx.Response(200, json=valid_response("x" * 256))
 
     app = create_gateway(
         GatewaySettings(
-            base_url="http://internal-model/v1", model="fixed-model", max_body_bytes=256
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            max_body_bytes=256,
+            max_response_bytes=256,
         ),
         transport=httpx.MockTransport(upstream),
     )
@@ -173,6 +177,104 @@ def test_gateway_limits_request_and_response_before_parsing() -> None:
     assert malformed.status_code == 400
     assert too_large_response.status_code == 502
     assert len(calls) == 6
+
+
+@pytest.mark.parametrize("character", ["\x00", "я", "😀"])
+def test_gateway_accepts_maximum_input_prompt_and_context(
+    tmp_path: Path, character: str
+) -> None:
+    from evaluator.usage import create_usage, read_usage
+
+    example = Example(id="maximum-input", input=character * 500000)
+    prompt = "\x00" * (1024 * 1024)
+    context = "\u0080" * ((1024 * 1024 - len('{"context":""}')) // 2)
+    payload = {
+        "model": "fixed-model",
+        "messages": [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": "Task context:\n" + context},
+            {"role": "user", "content": example.input},
+        ],
+    }
+    run_id = str(uuid4())
+    capability = create_usage(tmp_path, run_id)
+    calls = 0
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        assert json.loads(request.content) == payload
+        return httpx.Response(200, json=valid_response())
+
+    settings = GatewaySettings(
+        base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+    )
+    app = create_gateway(settings, transport=httpx.MockTransport(upstream))
+    with TestClient(app) as client:
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions",
+            content=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+    assert response.status_code == 200
+    assert response.json() == valid_response()
+    assert calls == 1
+    assert read_usage(tmp_path, run_id) == {
+        "prompt_tokens": 12,
+        "completion_tokens": 3,
+        "total_tokens": 15,
+        "attempts": 1,
+        "unreported_attempts": 0,
+    }
+    assert settings.max_body_bytes == 16 * 1024 * 1024
+    assert settings.max_response_bytes == 2 * 1024 * 1024
+
+
+def test_gateway_limits_request_and_response_independently() -> None:
+    body = json.dumps(request_body()).encode()
+    output = json.dumps(valid_response()).encode()
+    calls = 0
+    oversized_response = False
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content=output + (b" " if oversized_response else b""))
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            max_body_bytes=len(body),
+            max_response_bytes=len(output),
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", content=body)
+        assert response.status_code == 200
+        assert response.json() == valid_response()
+        assert calls == 1
+        assert client.post("/v1/chat/completions", content=body + b" ").status_code == 413
+        assert calls == 1
+        oversized_response = True
+        assert client.post("/v1/chat/completions", content=body).status_code == 502
+    assert calls == 7
+
+
+@pytest.mark.parametrize(
+    ("max_body_bytes", "max_response_bytes"), [(0, 1), (-1, 1), (1, 0), (1, -1)]
+)
+def test_gateway_rejects_invalid_size_limits(
+    max_body_bytes: int, max_response_bytes: int
+) -> None:
+    with pytest.raises(ValueError):
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            max_body_bytes=max_body_bytes,
+            max_response_bytes=max_response_bytes,
+        )
 
 
 def test_gateway_exposes_no_state_or_api_documentation() -> None:

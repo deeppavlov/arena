@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -48,7 +49,7 @@ _, prefix, run_id, credential, version = url.path.split("/")
 assert url.netloc == "model-gateway:8081" and prefix == "runs" and version == "v1"
 assert str(uuid.UUID(run_id)) == run_id
 assert len(credential) >= 32
-assert task["input"] in {"synthetic task", "", " \\n\\t"}
+assert task["input"] in {"synthetic task", "", " \\n\\t", "🙂" * 500000, "\\x00" * 500000}
 assert task == {
     "input": task["input"],
     "assets_dir": "/assets",
@@ -82,7 +83,8 @@ assert Path("/assets/context.txt").read_text() == "public context"
 print(json.dumps({"context": context()}))
 """
 
-UPSTREAM = """import json
+UPSTREAM = """import hashlib
+import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 class Handler(BaseHTTPRequestHandler):
@@ -103,7 +105,9 @@ class Handler(BaseHTTPRequestHandler):
         valid = (
             self.path == "/v1/chat/completions"
             and self.headers.get("Authorization") == "Bearer synthetic-key"
-            and body["messages"][-1]["content"] in {"synthetic task", "", " \\n\\t"}
+            and body["messages"][-1]["content"] in {
+                "synthetic task", "", " \\n\\t", "🙂" * 500000, "\\x00" * 500000,
+            }
             and body == expected
         )
         output = json.dumps({
@@ -115,7 +119,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(output)))
         self.end_headers()
         self.wfile.write(output)
-        print(json.dumps({"valid": valid, "input": body["messages"][-1]["content"]}), flush=True)
+        digest = hashlib.sha256(body["messages"][-1]["content"].encode()).hexdigest()
+        print(json.dumps({"valid": valid, "input_sha256": digest}), flush=True)
 
 HTTPServer(("0.0.0.0", 8000), Handler).serve_forever()
 """
@@ -210,6 +215,31 @@ def check_restored_program(image: str, workspace: Path) -> None:
         assert runner(candidate, "").answer == "executable helper"
 
 
+def check_large_inputs(image: str, workspace: Path) -> None:
+    candidate = workspace / "large-input"
+    candidate.mkdir()
+    (candidate / "solve.py").write_text(
+        "import hashlib\nimport json\nimport sys\n"
+        "task = json.load(sys.stdin)\n"
+        "assert task['parameters']['values'] == [1e15] * 174000\n"
+        "answer = hashlib.sha256(task['input'].encode()).hexdigest()\n"
+        "print(json.dumps({'answer': answer}))\n"
+    )
+    (candidate / "solution.json").write_text(
+        '{"harness":"plain","parameters":{"values":['
+        + ",".join(["1e15"] * 174000) + "]}}"
+    )
+    runner = HarnessRunner(
+        DockerRunner(image, uses_model=False),
+        {"plain": DockerRunner(image, uses_model=False, timeout=15)},
+    )
+    for character in ("🙂", "\x00"):
+        input_text = character * 500000
+        solved = runner(candidate, input_text)
+        assert solved.answer == hashlib.sha256(input_text.encode()).hexdigest()
+        assert solved.usage == empty_usage()
+
+
 def check_accounting_scope(image: str, network: str, usage: Path) -> None:
     victim = str(uuid.uuid4())
     attacker = str(uuid.uuid4())
@@ -275,6 +305,7 @@ def main() -> None:
         image = image_file.read_text().strip()
         check_program(image, workspace)
         check_restored_program(image, workspace)
+        check_large_inputs(image, workspace)
         candidate = workspace / "candidate"
         candidate.mkdir()
         (candidate / "prompt.md").write_text("synthetic prompt")
@@ -380,7 +411,7 @@ def main() -> None:
             )
             check_accounting_scope(image, network, usage)
             assert docker("logs", upstream) == ""
-            inputs = ("synthetic task", "", " \n\t")
+            inputs = ("synthetic task", "", " \n\t", "🙂" * 500000, "\x00" * 500000)
             for input_text in inputs:
                 solved = runner(candidate, input_text)
                 assert solved.answer == "synthetic answer"
@@ -392,7 +423,10 @@ def main() -> None:
                     "unreported_attempts": 0,
                 }
                 assert solved.wall_seconds > 0
-            expected_log = [{"valid": True, "input": input_text} for input_text in inputs]
+            expected_log = [
+                {"valid": True, "input_sha256": hashlib.sha256(input_text.encode()).hexdigest()}
+                for input_text in inputs
+            ]
             actual_log = [json.loads(line) for line in docker("logs", upstream).splitlines()]
             assert actual_log == expected_log
             (candidate / "prepare.py").write_text(
@@ -451,8 +485,8 @@ def main() -> None:
                     "status": "ok",
                     "runner_image": image,
                     "gateway_image": args.gateway_image,
-                    "model_free_solves": 4,
-                    "model_solves": 3,
+                    "model_free_solves": 6,
+                    "model_solves": 5,
                     "accounting_attacks_rejected": 4,
                 }
             )

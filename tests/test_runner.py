@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import subprocess
@@ -690,3 +691,87 @@ def test_invalid_derived_request_timeout_does_not_leave_open_scope(tmp_path, mon
 
     assert commands == []
     assert not usage_dir.exists()
+
+
+@pytest.mark.parametrize("uses_model", [False, True])
+@pytest.mark.parametrize("character", ["я", "😀", "\x00"])
+def test_maximum_example_and_manifest_reach_sample_runner(
+    tmp_path, monkeypatch, uses_model, character,
+):
+    from evaluator.contracts import Example
+    from evaluator.runner import HarnessRunner
+
+    example = Example(id="maximum", input=character * 500000)
+    prefix = '{"harness":"sample","parameters":{"values":['
+    suffix = ']}}'
+    count = (1024 * 1024 - len(prefix) - len(suffix) + 1) // 5
+    manifest = prefix + ",".join(["1e15"] * count) + suffix
+    assert 1024 * 1024 - 5 < len(manifest) <= 1024 * 1024
+    (tmp_path / "solution.json").write_text(manifest)
+    script = (
+        "import hashlib,json; from runner import main; "
+        "main.solve = lambda task: hashlib.sha256(json.dumps("
+        "[task['input'],task['parameters']],ensure_ascii=False).encode()).hexdigest(); "
+        "raise SystemExit(main.main())"
+    )
+    fake_docker(monkeypatch, script)
+    profile = DockerRunner(
+        IMAGE, uses_model=uses_model, model="internal", usage_dir=tmp_path / "usage",
+    )
+    runner = HarnessRunner(profile, {"sample": profile})
+
+    result = runner(tmp_path, example.input)
+
+    expected = hashlib.sha256(json.dumps(
+        [example.input, json.loads(manifest)["parameters"]], ensure_ascii=False,
+    ).encode()).hexdigest()
+    assert result.answer == expected
+
+
+@pytest.mark.parametrize("uses_model", [False, True])
+def test_oversized_task_fails_before_starting_container(tmp_path, monkeypatch, uses_model):
+    from evaluator.usage import ensure_open
+
+    commands, _ = fake_docker(monkeypatch, 'print(\'{"answer":"ok"}\')')
+    runner = DockerRunner(
+        IMAGE, uses_model=uses_model, model="internal", usage_dir=tmp_path / "usage",
+    )
+
+    with pytest.raises(RunnerError, match="task too large") as failure:
+        runner(tmp_path, "x" * (8 * 1024 * 1024))
+
+    assert commands == []
+    if uses_model:
+        assert failure.value.run_id is not None
+        with pytest.raises(ValueError, match="closed"):
+            ensure_open(tmp_path / "usage", failure.value.run_id)
+
+
+@pytest.mark.parametrize("uses_model", [False, True])
+def test_task_uses_utf8_and_preserves_surrogate_parameters(tmp_path, monkeypatch, uses_model):
+    from evaluator.runner import HarnessRunner
+
+    label = "я😀\ud800"
+    (tmp_path / "solution.json").write_text(json.dumps({
+        "harness": "sample", "parameters": {"label": label},
+    }))
+    fake_docker(monkeypatch, (
+        "from runner import main; main.solve = lambda task: task['parameters']['label']; "
+        "raise SystemExit(main.main())"
+    ))
+    exchange = DockerRunner._exchange
+    payloads = []
+
+    def capture(self, process, task):
+        payloads.append(task)
+        return exchange(self, process, task)
+
+    monkeypatch.setattr(DockerRunner, "_exchange", capture)
+    profile = DockerRunner(
+        IMAGE, uses_model=uses_model, model="internal", usage_dir=tmp_path / "usage",
+    )
+
+    result = HarnessRunner(profile, {"sample": profile})(tmp_path, "я😀")
+
+    assert result.answer == label
+    assert "я😀".encode() in payloads[0]

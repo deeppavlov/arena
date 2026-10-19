@@ -21,6 +21,7 @@ from pydantic import ValidationError
 
 from evaluator.candidates import candidate_digest, materialize_files, validate_candidate_path
 from evaluator.contracts import Candidate
+from evaluator.filesystem import candidate_paths
 from evaluator.numeric import parse_score, validate_score
 
 
@@ -66,7 +67,7 @@ def _snapshot(directory: Path) -> bytes:
         raise SearchError("snapshot source must be a directory")
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w") as archive:
-        for path in sorted(directory.rglob("*")):
+        for path in sorted(candidate_paths(directory)):
             relative = path.relative_to(directory)
             try:
                 validate_candidate_path(relative.as_posix())

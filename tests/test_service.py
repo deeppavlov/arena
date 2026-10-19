@@ -144,6 +144,23 @@ def test_validation_is_generic_and_finalist_count_is_fixed(settings: Settings):
     ).status_code == 422
 
 
+def test_oversized_unicode_filename_is_rejected_before_private_admission(settings: Settings):
+    calls = []
+    api = client(
+        settings, solve=lambda candidate, task: calls.append((candidate, task)) or solved(),
+    )
+    malformed = {"candidates": [{"id": "candidate", "files": {"я" * 128: "YQ=="}}]}
+    response = api.post("/v1/evaluations", json=malformed)
+    assert response.status_code == 422
+    assert response.json() == {"detail": "invalid submission"}
+    assert api.get("/v1/evaluations").status_code == 404
+    assert not list(settings.state_dir.rglob("record.json"))
+    assert not list(settings.state_dir.rglob("candidates"))
+    assert calls == []
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    assert api.get("/v1/evaluations").json() == {"status": "complete"}
+
+
 def test_blank_answer_scores_zero_without_judge(settings: Settings):
     def complete(messages):
         pytest.fail("blank answer must not reach judge")

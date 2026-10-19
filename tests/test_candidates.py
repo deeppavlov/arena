@@ -62,6 +62,14 @@ def test_materialize_files_rejects_unsafe_snapshot_paths(tmp_path: Path, name: s
     assert not (tmp_path / "escaped").exists()
 
 
+@pytest.mark.parametrize("name", ["я" * 127 + "a", "я" * 100 + "/" + "я" * 100])
+def test_materialize_candidate_preserves_valid_unicode_paths(tmp_path: Path, name: str) -> None:
+    candidate = Candidate(id="unicode", files={name: "YQ=="})
+    destination = tmp_path / "restored"
+    materialize_candidate(candidate, destination)
+    assert (destination / name).read_bytes() == b"a"
+
+
 def test_materialize_files_preserves_oversized_research_snapshot(tmp_path: Path) -> None:
     content = b"x" * (10 * 1024 * 1024 + 1)
     destination = tmp_path / "restored"

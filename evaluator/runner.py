@@ -25,6 +25,7 @@ from evaluator.reliability import (
 from evaluator.usage import create_usage, read_usage, seal_usage
 
 MAX_OUTPUT_BYTES = 1024 * 1024
+MAX_TASK_BYTES = 8 * 1024 * 1024
 
 
 class RunnerError(RuntimeError):
@@ -184,11 +185,17 @@ class DockerRunner:
         else:
             payload["uses_model"] = False
         try:
-            task = json.dumps(payload, allow_nan=False).encode()
+            task = json.dumps(
+                payload, allow_nan=False, ensure_ascii=False, separators=(",", ":"),
+            ).encode(errors="backslashreplace")
         except (TypeError, ValueError, RecursionError):
             with suppress(OSError, ValueError):
                 self._seal(run_id)
             raise RunnerError("invalid harness parameters") from None
+        if len(task) > MAX_TASK_BYTES:
+            with suppress(OSError, ValueError):
+                self._seal(run_id)
+            raise self._failure(RunnerError("runner task too large"), run_id, started)
         try:
             process = subprocess.Popen(
                 command,

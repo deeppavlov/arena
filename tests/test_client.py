@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 from pathlib import Path
 
 import httpx
@@ -57,6 +58,41 @@ def test_pack_rejects_symlinks(tmp_path: Path, kind: str) -> None:
         (root / "linked").symlink_to(outside / "secret")
     with pytest.raises(ClientError, match="symlinks"):
         pack_candidate("idea", root)
+
+
+@pytest.mark.parametrize("failure", [PermissionError, FileNotFoundError])
+def test_pack_rejects_unreadable_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: type[OSError],
+) -> None:
+    (tmp_path / "solve.py").write_text("print(42)", encoding="utf-8")
+    blocked = tmp_path / "config"
+    blocked.mkdir()
+    (blocked / "options.json").write_text("{}", encoding="utf-8")
+    original_scandir = os.scandir
+
+    def scandir(path):
+        if Path(path) == blocked:
+            raise failure("directory cannot be read")
+        return original_scandir(path)
+
+    monkeypatch.setattr(os, "scandir", scandir)
+    with pytest.raises(ClientError, match="cannot read candidate files"):
+        pack_candidate("idea", tmp_path)
+
+
+def test_pack_handles_deep_empty_directories(tmp_path: Path) -> None:
+    (tmp_path / "solve.py").write_text("print(42)", encoding="utf-8")
+    directories = []
+    directory = tmp_path
+    try:
+        for _ in range(1100):
+            directory /= "d"
+            directory.mkdir()
+            directories.append(directory)
+        assert set(pack_candidate("idea", tmp_path).files) == {"solve.py"}
+    finally:
+        for directory in reversed(directories):
+            directory.rmdir()
 
 
 def test_pack_rejects_oversized_content(tmp_path: Path) -> None:

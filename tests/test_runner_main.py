@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import subprocess
@@ -152,3 +153,59 @@ def test_main_rejects_incomplete_or_invalid_mode(monkeypatch, capsys, task):
 
     assert sample_runner.main() == 1
     assert capsys.readouterr().err == "runner failed\n"
+
+
+@pytest.mark.parametrize("extra", [0, 1])
+def test_main_task_input_limit_is_separate_from_output_limit(monkeypatch, capsys, extra):
+    raw = json.dumps({"input": "task", "uses_model": False}).encode()
+    raw += b" " * (8 * 1024 * 1024 - len(raw) + extra)
+    received = []
+
+    def solve(task):
+        received.append(task)
+        return "ok"
+
+    monkeypatch.setattr(sample_runner.sys, "stdin", SimpleNamespace(buffer=io.BytesIO(raw)))
+    monkeypatch.setattr(sample_runner, "solve", solve)
+
+    assert sample_runner.main() == extra
+    output = capsys.readouterr()
+    if extra:
+        assert received == []
+        assert output.out == ""
+        assert output.err == "runner failed\n"
+    else:
+        assert received == [{"input": "task", "uses_model": False}]
+        assert json.loads(output.out) == {"answer": "ok"}
+
+
+def test_main_keeps_one_mebibyte_output_limit(monkeypatch, capsys):
+    task = {"input": "task", "uses_model": False}
+    monkeypatch.setattr(sample_runner.sys, "stdin", SimpleNamespace(buffer=io.BytesIO(
+        json.dumps(task).encode()
+    )))
+    monkeypatch.setattr(sample_runner, "solve", lambda task: "x" * (1024 * 1024))
+
+    assert sample_runner.main() == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == "runner failed\n"
+
+
+@pytest.mark.parametrize("filename, field", [("solve.py", "answer"), ("prepare.py", "context")])
+def test_program_receives_large_unicode_input_and_surrogate_parameters(tmp_path, filename, field):
+    payload = {"input": "😀" * 500000, "parameters": {"label": "я😀\ud800"}}
+    script = tmp_path / filename
+    script.write_text(
+        "import hashlib,json,sys\n"
+        "raw = sys.stdin.buffer.read()\n"
+        "payload = json.loads(raw)\n"
+        "digest = hashlib.sha256(json.dumps(payload,sort_keys=True).encode()).hexdigest()\n"
+        f"print(json.dumps({{{field!r}: digest, 'bytes': len(raw)}}))\n"
+    )
+
+    result = sample_runner.run_program(script, payload, 10)
+
+    expected = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    assert result[field] == expected
+    assert result["bytes"] < 2100000

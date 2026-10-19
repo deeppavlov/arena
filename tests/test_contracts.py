@@ -21,6 +21,17 @@ def test_candidate_rejects_unsafe_or_noncanonical_paths(path: str) -> None:
         Candidate(id="candidate", files={path: "YQ=="})
 
 
+@pytest.mark.parametrize("path", ["я" * 128, "nested/" + "😀" * 64, "я" * 128 + "/file"])
+def test_candidate_rejects_components_exceeding_utf8_byte_limit(path: str) -> None:
+    with pytest.raises(ValidationError, match="invalid candidate path"):
+        Candidate(id="candidate", files={path: "YQ=="})
+
+
+@pytest.mark.parametrize("path", ["я" * 127 + "a", "я" * 100 + "/" + "я" * 100])
+def test_candidate_accepts_unicode_paths_with_valid_component_sizes(path: str) -> None:
+    assert Candidate(id="candidate", files={path: "YQ=="}).files == {path: "YQ=="}
+
+
 @pytest.mark.parametrize(
     "files",
     [

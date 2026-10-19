@@ -182,6 +182,38 @@ def test_snapshot_rejects_symlinks(journal: Journal, source: Path):
     assert journal.status()["proposed"] == 1
 
 
+@pytest.mark.parametrize("failure", [PermissionError, FileNotFoundError])
+def test_unreadable_directory_counts_without_claiming_restorability(
+    journal: Journal, source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    failure: type[OSError],
+):
+    blocked = source / "config"
+    blocked.mkdir()
+    (blocked / "options.json").write_text("{}", encoding="utf-8")
+    original_scandir = os.scandir
+
+    def scandir(path):
+        if Path(path) == blocked:
+            raise failure("directory cannot be read")
+        return original_scandir(path)
+
+    monkeypatch.setattr(os, "scandir", scandir)
+    record = propose(journal, source, "unreadable")
+    assert journal.status()["proposed"] == 1
+    assert record["snapshot_error"] == "cannot read snapshot files"
+    assert record["snapshot_digest"] is None
+    assert record["digest"] is None
+    with pytest.raises(SearchError, match="snapshot is unavailable"):
+        journal.restore("unreadable", tmp_path / "restored")
+    with pytest.raises(SearchError, match="snapshot is unavailable"):
+        begin(journal, "unreadable-check", "unreadable")
+    monkeypatch.setattr(os, "scandir", original_scandir)
+    repaired = propose(journal, source, "repaired", ("unreadable",))
+    assert repaired["parents"] == ["unreadable"]
+    assert repaired["snapshot_error"] is None
+    assert journal.status()["proposed"] == 2
+
+
 def test_records_resources_failures_and_train_evidence(journal: Journal, source: Path):
     propose(journal, source, "one")
     begin(journal, "check", "one")

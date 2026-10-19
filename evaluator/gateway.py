@@ -28,10 +28,11 @@ class GatewaySettings:
     model: str
     api_key: str | None = field(default=None, repr=False)
     parameters: dict[str, object] = field(default_factory=dict)
-    max_body_bytes: int = 2 * 1024 * 1024
+    max_body_bytes: int = 16 * 1024 * 1024
     timeout_seconds: float = MODEL_TIMEOUT
     retry_delay: float = RETRY_DELAY
     usage_dir: Path | None = None
+    max_response_bytes: int = 2 * 1024 * 1024
 
     def __post_init__(self) -> None:
         url = urlsplit(self.base_url)
@@ -46,7 +47,7 @@ class GatewaySettings:
         ):
             raise ValueError("MODEL_BASE_URL must be an internal HTTP(S) /v1 endpoint")
         object.__setattr__(self, "base_url", self.base_url.rstrip("/"))
-        if not self.model.strip() or self.max_body_bytes < 1:
+        if not self.model.strip() or min(self.max_body_bytes, self.max_response_bytes) < 1:
             raise ValueError("Invalid model gateway configuration")
         object.__setattr__(
             self, "timeout_seconds", validate_timing(self.timeout_seconds, "timeout")
@@ -200,7 +201,7 @@ def create_gateway(
                         ) as response:
                             output = bytearray()
                             async for chunk in response.aiter_bytes():
-                                if len(output) + len(chunk) > settings.max_body_bytes:
+                                if len(output) + len(chunk) > settings.max_response_bytes:
                                     raise ValueError("Upstream response too large")
                                 output.extend(chunk)
                 decoded = json.loads(output)

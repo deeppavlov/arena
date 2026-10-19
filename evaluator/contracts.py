@@ -90,7 +90,9 @@ class Candidate(StrictModel):
         total = 0
         for name, value in files.items():
             validate_candidate_path(name)
-            if len(name) > 240:
+            if len(name) > 240 or any(
+                len(part.encode("utf-8")) > 255 for part in PurePosixPath(name).parts
+            ):
                 raise ValueError("invalid candidate path")
             try:
                 data = base64.b64decode(value, validate=True)

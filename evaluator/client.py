@@ -13,6 +13,7 @@ import httpx
 from pydantic import ValidationError
 
 from evaluator.contracts import Candidate, Submission
+from evaluator.filesystem import candidate_paths
 
 MAX_CANDIDATE_BYTES = 10 * 1024 * 1024
 MAX_BUNDLE_BYTES = 72 * 1024 * 1024
@@ -31,7 +32,7 @@ def pack_candidate(identifier: str, directory: Path) -> Candidate:
             raise ClientError("candidate symlinks are forbidden")
         if not directory.is_dir():
             raise ClientError("candidate must be a directory")
-        for path in sorted(directory.rglob("*")):
+        for path in sorted(candidate_paths(directory)):
             relative = path.relative_to(directory)
             if path.is_symlink():
                 raise ClientError("candidate symlinks are forbidden")

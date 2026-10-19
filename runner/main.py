@@ -6,6 +6,7 @@ import urllib.request
 from pathlib import Path
 
 MAX_BYTES = 1024 * 1024
+MAX_TASK_BYTES = 8 * 1024 * 1024
 
 
 def read_limited(path: Path) -> str:
@@ -20,7 +21,9 @@ def run_program(path: Path, payload: dict, timeout: float | None = None) -> dict
     with tempfile.TemporaryFile() as output:
         subprocess.run(
             [sys.executable, "-E", "-s", str(path)],
-            input=json.dumps(payload).encode(),
+            input=json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode(
+                errors="backslashreplace",
+            ),
             stdout=output,
             stderr=subprocess.DEVNULL,
             timeout=timeout,
@@ -66,7 +69,10 @@ def solve(task: dict) -> str:
     messages.append({"role": "user", "content": task["input"]})
     request = urllib.request.Request(
         task["model_base_url"].rstrip("/") + "/chat/completions",
-        data=json.dumps({"model": task["model"], "messages": messages}).encode(),
+        data=json.dumps(
+            {"model": task["model"], "messages": messages},
+            ensure_ascii=False, separators=(",", ":"),
+        ).encode(errors="backslashreplace"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
@@ -83,8 +89,8 @@ def solve(task: dict) -> str:
 
 def main() -> int:
     try:
-        raw = sys.stdin.buffer.read(MAX_BYTES + 1)
-        if len(raw) > MAX_BYTES:
+        raw = sys.stdin.buffer.read(MAX_TASK_BYTES + 1)
+        if len(raw) > MAX_TASK_BYTES:
             raise ValueError("task too large")
         task = json.loads(raw)
         if not isinstance(task, dict) or type(task.get("uses_model", True)) is not bool:
