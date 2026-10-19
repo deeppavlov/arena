@@ -1,0 +1,10 @@
+{
+  "kind": "command",
+  "direction": "maximize",
+  "version": "custom-model-example-v1",
+  "command": {
+    "argv": ["python", "judge.py"],
+    "uses_model": true,
+    "timeout_seconds": 604800
+  }
+}

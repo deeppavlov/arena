@@ -172,7 +172,7 @@ def judge_answer(
     for criterion in metric.criteria:
         scores: list[int] = []
         reasons: list[str] = []
-        for _ in range(3):
+        for _ in range(metric.votes):
             messages = [
                 {"role": "system", "content": system},
                 {

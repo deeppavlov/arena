@@ -1250,3 +1250,217 @@ def test_worker_start_failure_releases_private_execution_lease(settings, monkeyp
     assert client(settings).post("/v1/evaluations", json=submission()).json() == {
         "status": "failed",
     }
+
+
+@pytest.mark.parametrize("stage", ["command", "aggregation"])
+@pytest.mark.parametrize("overrides", [
+    {"model": ""},
+    {"model_base_url": ""},
+    {"runner_model_base_url": ""},
+    {"runner_model_base_url": "ftp://gateway/v1"},
+    {"parameters": {"model": "other-model"}},
+])
+def test_model_metric_configuration_fails_before_private_admission(
+    command_settings, stage, overrides,
+):
+    metric = json.loads(command_settings.metric_path.read_text())
+    metric[stage] = {**metric["command"], "uses_model": True}
+    command_settings.metric_path.write_text(json.dumps(metric))
+    configured = replace(
+        command_settings, model="internal-model", model_base_url="http://internal/v1",
+    )
+    with pytest.raises(ValueError):
+        create_app(replace(configured, **overrides), solve=lambda *args: solved("2"))
+    assert not list(configured.state_dir.rglob("record.json"))
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_custom_metric_and_aggregation_share_measured_judge_usage(
+    command_settings, monkeypatch, fails,
+):
+    import evaluator.service as service
+    from evaluator.metrics import CommandMetricError
+    from evaluator.reliability import add_usage
+
+    metric = json.loads(command_settings.metric_path.read_text())
+    metric["command"]["uses_model"] = True
+    metric["aggregation"] = dict(metric["command"])
+    command_settings.metric_path.write_text(json.dumps(metric))
+    command_settings.dataset_path.write_text(
+        '{"id":"one","input":"first"}\n'
+        '{"id":"two","input":"second"}\n'
+    )
+    configured = replace(
+        command_settings, model="internal-model", model_base_url="http://internal/v1",
+        runner_model_base_url="http://gateway/v1", usage_dir=command_settings.state_dir / "usage",
+    )
+    accumulators = []
+
+    def evaluate(metric, example, answer, complete, *, model_access, usage, **kwargs):
+        assert complete is None
+        assert model_access.model == configured.model
+        assert model_access.base_url == configured.runner_model_base_url
+        assert model_access.usage_dir == configured.usage_dir
+        accumulators.append(usage)
+        add_usage(usage, {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7})
+        return {"statistics": {"answer": answer}}
+
+    def aggregate(metric, results, *, model_access, usage):
+        assert len(results) == 2
+        assert all("score" not in item for item in results)
+        assert all(item is usage for item in accumulators)
+        assert model_access.model == configured.model
+        add_usage(usage, {"prompt_tokens": 8, "completion_tokens": 3, "total_tokens": 11})
+        if fails:
+            raise CommandMetricError("closed aggregation failure", {"model_usage_complete": True})
+        return 42.0
+
+    monkeypatch.setattr(service, "evaluate_answer", evaluate)
+    monkeypatch.setattr(service, "aggregate_results", aggregate)
+    api = client(configured, solve=lambda *args: solved("2"))
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    record = operator_record(configured)
+    assert record["status"] == ("failed" if fails else "complete")
+    details = json.loads(next(configured.state_dir.glob("*/details/candidate.json")).read_text())
+    assert [item["resources"]["judge"]["usage"]["total_tokens"]
+            for item in details["examples"]] == [7, 7]
+    assert details["aggregation"]["resources"]["judge"]["usage"]["total_tokens"] == 11
+    if not fails:
+        assert record["scores"][0]["judge_tokens"] == 25
+        assert record["scores"][0]["solver_tokens"] == 6
+        assert record["scores"][0]["score"] == 42
+
+
+@pytest.mark.parametrize("stage", ["command", "aggregation"])
+def test_incomplete_model_metric_usage_remains_explicit(command_settings, monkeypatch, stage):
+    import evaluator.service as service
+    from evaluator.metrics import CommandMetricError
+    from evaluator.reliability import add_usage
+
+    run_id = "11111111-1111-4111-8111-111111111111"
+
+    def fail(*args, usage, **kwargs):
+        add_usage(usage, {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7})
+        raise CommandMetricError("model accounting incomplete", {
+            "model_run_id": run_id, "model_usage_complete": False,
+        })
+
+    target = "evaluate_answer" if stage == "command" else "aggregate_results"
+    monkeypatch.setattr(service, target, fail)
+    api = client(command_settings, solve=lambda *args: solved("2"))
+    api.post("/v1/evaluations", json=submission())
+    record = operator_record(command_settings)
+    assert record["status"] == "failed"
+    assert record["failure"]["resources_complete"] is False
+    details_path = next(command_settings.state_dir.glob("*/details/candidate.json"))
+    details = json.loads(details_path.read_text())
+    failed = details["examples"][0] if stage == "command" else details["aggregation"]
+    assert failed["resources_complete"] is False
+    assert failed["resources"]["judge"]["usage_complete"] is False
+    assert failed["resources"]["judge"]["run_id"] == run_id
+    assert failed["resources"]["judge"]["usage"]["total_tokens"] == 7
+
+
+@pytest.mark.parametrize("split", ["private", "public"])
+@pytest.mark.parametrize("field", ["votes", "uses_model"])
+def test_legacy_default_metric_provenance_survives_restart(command_settings, split, field):
+    if field == "votes":
+        command_settings.metric_path.write_text(json.dumps({
+            "version": "preset", "instruction": "Judge quality",
+            "criteria": [{"id": "quality", "question": "Quality?", "weight": 1}],
+        }))
+        command_settings.dataset_path.write_text(
+            '{"id":"input","input":"task","reference":"reference"}\n',
+        )
+    configured = replace(
+        command_settings, split=split, model="internal-model", model_base_url="http://internal/v1",
+    )
+    api = client(configured, solve=lambda *args: solved("2"))
+    accepted = api.post("/v1/evaluations", json=submission())
+    identifier = accepted.json().get("evaluation_id")
+    for path in configured.state_dir.rglob("*.json"):
+        if path.name not in {"record.json", "config.json"}:
+            continue
+        document = json.loads(path.read_text())
+        provenance = document["provenance"] if path.name == "record.json" else document
+        provenance["metric"].pop("votes", None)
+        for section in (provenance["metric"], provenance["metric_command"] or {}):
+            if section.get("command"):
+                section["command"].pop("uses_model", None)
+        path.write_text(json.dumps(document))
+    restarted = client(configured, solve=lambda *args: solved("2"))
+    endpoint = f"/v1/evaluations/{identifier}" if identifier else "/v1/evaluations"
+    assert restarted.get(endpoint).json()["status"] == "complete"
+    metric = json.loads(configured.metric_path.read_text())
+    if field == "votes":
+        metric["votes"] = 1
+    else:
+        metric["command"]["uses_model"] = True
+    configured.metric_path.write_text(json.dumps(metric))
+    with pytest.raises(ValueError, match="frozen"):
+        client(configured)
+
+
+def test_changed_command_rejected_before_private_admission(command_settings):
+    calls = []
+    api = client(command_settings, solve=lambda *args: (calls.append(args), solved("2"))[1])
+    metric = json.loads(command_settings.metric_path.read_text())
+    script = Path(metric["command"]["argv"][1])
+    original = script.read_bytes()
+    script.write_bytes(original + b"\nprint('changed')\n")
+    assert api.post("/v1/evaluations", json=submission()).status_code == 503
+    assert not calls
+    assert not list(command_settings.state_dir.rglob("record.json"))
+    script.write_bytes(original)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    assert api.get("/v1/evaluations").json() == {"status": "complete"}
+
+
+@pytest.mark.parametrize("kind", ["llm", "command"])
+@pytest.mark.parametrize("change", ["content", "inventory", "refreeze"])
+def test_metric_package_verified_before_private_admission(settings, tmp_path, kind, change):
+    from evaluator.metric_package import freeze_metric, metric_package_provenance
+
+    draft = tmp_path / "draft"
+    draft.mkdir()
+    if kind == "llm":
+        config = json.loads(settings.metric_path.read_text())
+    else:
+        (draft / "score.py").write_text("print('{\"score\":2}')\n")
+        config = {
+            "version": "prepared", "kind": "command", "command": {"argv": ["python", "score.py"]},
+        }
+    (draft / "metric.json").write_text(json.dumps(config))
+    package = tmp_path / "frozen"
+    freeze_metric(draft, package)
+    configured = replace(settings, metric_path=package)
+    calls = []
+    api = client(configured, solve=lambda *args: (calls.append(args), solved())[1])
+    original = (package / "metric.json").read_bytes()
+    if change == "content":
+        (package / "metric.json").write_bytes(original + b"\n")
+    elif change == "inventory":
+        (package / "added.txt").write_text("extra")
+    else:
+        changed = tmp_path / "changed"
+        (draft / "description.md").write_text("changed package")
+        freeze_metric(draft, changed)
+        package.rename(tmp_path / "original")
+        changed.rename(package)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 503
+    assert not calls
+    assert not list(configured.state_dir.rglob("record.json"))
+    if change == "content":
+        (package / "metric.json").write_bytes(original)
+    elif change == "inventory":
+        (package / "added.txt").unlink()
+    else:
+        package.rename(tmp_path / "changed")
+        (tmp_path / "original").rename(package)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    assert api.get("/v1/evaluations").json() == {"status": "complete"}
+    assert operator_record(configured)["provenance"]["metric_package"] == (
+        metric_package_provenance(package)
+    )
+    (package / "added.txt").write_text("later mutation")
+    assert api.post("/v1/evaluations", json=submission()).json() == {"status": "complete"}

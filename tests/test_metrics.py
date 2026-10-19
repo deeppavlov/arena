@@ -349,3 +349,120 @@ def test_integer_command_aggregator_score_outside_exact_range_is_rejected(tmp_pa
     metric = llm_metric().model_copy(update={"aggregation": scorer.command})
     with pytest.raises(CommandMetricError, match="binary64"):
         aggregate_results(metric, [{"score": 1}])
+
+
+def test_dataset_metric_accepts_statistics_without_an_example_score(tmp_path: Path) -> None:
+    scorer = command_metric(tmp_path / "scorer", '''import json
+print(json.dumps({"statistics": {"correct": 1, "total": 2}}))
+''')
+    aggregator = command_metric(tmp_path / "aggregate", '''import json
+import sys
+items = json.load(sys.stdin)["results"]
+assert all("score" not in item for item in items)
+print(json.dumps({"score": sum(item["statistics"]["correct"] for item in items)
+    / sum(item["statistics"]["total"] for item in items)}))
+''')
+    metric = scorer.model_copy(update={"aggregation": aggregator.command})
+    result = evaluate_answer(metric, Example(id="x", input="source"), "answer")
+    assert result == {"statistics": {"correct": 1, "total": 2}, "criteria": {}}
+    assert aggregate_results(metric, [result, result]) == 0.5
+
+
+def test_statistics_without_aggregation_cannot_invent_an_example_score(tmp_path: Path) -> None:
+    metric = command_metric(tmp_path, 'print(\'{"statistics": {"correct": 1}}\')')
+    with pytest.raises(CommandMetricError):
+        evaluate_answer(metric, Example(id="x", input=""), "")
+
+
+@pytest.mark.parametrize("output", ["{}", '{"score": null}', '{"statistics": {"x": NaN}}'])
+def test_dataset_command_still_requires_valid_score_or_statistics(
+    tmp_path: Path, output: str,
+) -> None:
+    metric = command_metric(tmp_path, f"print({output!r})")
+    metric = metric.model_copy(update={"aggregation": metric.command})
+    with pytest.raises(CommandMetricError):
+        evaluate_answer(metric, Example(id="x", input=""), "")
+
+
+def test_dataset_aggregation_requires_its_own_final_score(tmp_path: Path) -> None:
+    metric = command_metric(tmp_path, 'print(\'{"statistics": {"correct": 1}}\')')
+    metric = metric.model_copy(update={"aggregation": metric.command})
+    with pytest.raises(CommandMetricError):
+        aggregate_results(metric, [{"statistics": {"correct": 1}}])
+
+
+def test_deeply_nested_invalid_json_retains_command_diagnostics(tmp_path: Path) -> None:
+    metric = command_metric(tmp_path, "print('[' * 2000 + '0' + ']' * 2000)")
+    with pytest.raises(CommandMetricError) as raised:
+        evaluate_answer(metric, Example(id="x", input=""), "")
+    assert raised.value.diagnostics["returncode"] == 0
+    assert raised.value.diagnostics["stdout"].startswith("[[[")
+
+
+@pytest.mark.parametrize("change", ["added_file", "executable_mode"])
+@pytest.mark.parametrize("operation", ["evaluate", "aggregate", "provenance"])
+def test_loaded_metric_rechecks_complete_package_before_each_command(
+    tmp_path: Path, change: str, operation: str,
+) -> None:
+    from evaluator.metric_package import freeze_metric, load_metric
+
+    source = tmp_path / "source"
+    source.mkdir()
+    marker = tmp_path / "executed"
+    (source / "score.py").write_text(
+        f"import pathlib\npathlib.Path({str(marker)!r}).touch()\nprint('{{\"score\": 1}}')\n",
+    )
+    command = {"argv": ["python", "score.py"]}
+    (source / "metric.json").write_text(json.dumps({
+        "version": "package-v1", "kind": "command", "command": command, "aggregation": command,
+    }))
+    frozen = tmp_path / "frozen"
+    freeze_metric(source, frozen)
+    metric = load_metric(frozen)
+    if change == "added_file":
+        (frozen / "unexpected.py").write_text("VALUE = 1\n")
+    else:
+        (frozen / "score.py").chmod(0o755)
+    with pytest.raises(ValueError, match="lock"):
+        if operation == "evaluate":
+            evaluate_answer(metric, Example(id="x", input=""), "")
+        elif operation == "aggregate":
+            aggregate_results(metric, [{"score": 1}])
+        else:
+            command_provenance(metric)
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize("replacement", ["lock", "root"])
+def test_loaded_metric_rejects_replaced_package_symlink_before_execution(
+    tmp_path: Path, replacement: str,
+) -> None:
+    from evaluator.metric_package import freeze_metric, load_metric
+
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "score.py").write_text(
+        "import json\nfrom pathlib import Path\n"
+        "print(json.dumps({'score': int(Path(__file__).with_name('added').exists())}))\n",
+    )
+    (source / "metric.json").write_text(json.dumps({
+        "version": "package-v1", "kind": "command",
+        "command": {"argv": ["python", "score.py"]},
+    }))
+    frozen = tmp_path / "frozen"
+    freeze_metric(source, frozen)
+    metric = load_metric(frozen)
+    assert evaluate_answer(metric, Example(id="x", input=""), "")["score"] == 0
+    if replacement == "lock":
+        lock = frozen / "metric.lock.json"
+        copy = tmp_path / "lock-copy.json"
+        copy.write_bytes(lock.read_bytes())
+        lock.unlink()
+        lock.symlink_to(copy)
+        (frozen / "added").touch()
+    else:
+        relocated = tmp_path / "relocated"
+        frozen.rename(relocated)
+        frozen.symlink_to(relocated, target_is_directory=True)
+    with pytest.raises(ValueError, match="symlink"):
+        evaluate_answer(metric, Example(id="x", input=""), "")

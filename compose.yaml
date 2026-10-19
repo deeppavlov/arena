@@ -55,7 +55,7 @@ services:
         condition: service_healthy
     environment:
       ARENA_DATASET_PATH: /private/dataset.jsonl
-      ARENA_METRIC_PATH: /private/metric.json
+      ARENA_METRIC_PATH: /private/metric
       ARENA_STATE_DIR: ${ARENA_STATE_DIR:-/srv/arena/state}
       ARENA_USAGE_DIR: ${ARENA_USAGE_DIR:-/srv/arena/usage}
       ARENA_TOKEN_FILE: /run/secrets/submit-token
@@ -86,8 +86,8 @@ services:
         bind:
           create_host_path: false
       - type: bind
-        source: ${ARENA_METRIC_PATH:-/srv/arena/private/metric.json}
-        target: /private/metric.json
+        source: ${ARENA_METRIC_PATH:-/srv/arena/metric}
+        target: /private/metric
         read_only: true
         bind:
           create_host_path: false

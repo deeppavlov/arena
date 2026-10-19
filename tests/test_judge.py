@@ -81,6 +81,31 @@ def test_three_independent_votes_per_criterion(metric: Metric, example: Example)
         assert "Проверенное обоснование" not in json.dumps(messages, ensure_ascii=False)
 
 
+@pytest.mark.parametrize("votes", [1, 7])
+def test_configured_independent_votes_per_criterion(
+    metric: Metric, example: Example, votes: int
+) -> None:
+    configured = Metric.model_validate({**metric.model_dump(), "votes": votes})
+    requests: list[list[dict[str, str]]] = []
+    scores = iter([1] * votes + [5] * votes)
+
+    def complete(messages: list[dict[str, str]]) -> str:
+        requests.append(messages)
+        return json.dumps({"score": next(scores), "reason": "Observed evidence."})
+
+    result = judge_answer(configured, example, "Answer", complete)
+
+    assert result["score"] == 2
+    assert result["criteria"] == {
+        "correct": {"scores": [1] * votes, "reasons": ["Observed evidence."] * votes},
+        "complete": {"scores": [5] * votes, "reasons": ["Observed evidence."] * votes},
+    }
+    assert len(requests) == len({id(messages) for messages in requests}) == 2 * votes
+    assert all(request == requests[0] for request in requests[:votes])
+    assert all(request == requests[votes] for request in requests[votes:])
+    assert requests[0] != requests[votes]
+
+
 @pytest.mark.parametrize(
     "vote",
     [
@@ -319,9 +344,11 @@ def test_judge_validation_shares_one_retry_budget_with_client(
     }
 
 
+@pytest.mark.parametrize("votes", [1, 3, 7])
 def test_judge_retries_invalid_vote_without_repeating_successful_votes(
-    monkeypatch: pytest.MonkeyPatch, metric: Metric, example: Example
+    monkeypatch: pytest.MonkeyPatch, metric: Metric, example: Example, votes: int
 ) -> None:
+    configured = Metric.model_validate({**metric.model_dump(), "votes": votes})
     calls = 0
 
     def handler(_: httpx.Request) -> httpx.Response:
@@ -332,10 +359,10 @@ def test_judge_retries_invalid_vote_without_repeating_successful_votes(
 
     install_transport(monkeypatch, handler)
     client = ModelClient("http://internal-model/v1", "fixed")
-    result = judge_answer(metric, example, "Ответ", client)
+    result = judge_answer(configured, example, "Ответ", client)
     assert result["score"] == 4
-    assert calls == 7
-    assert client.usage["total_tokens"] == 105
+    assert calls == 2 * votes + 1
+    assert client.usage["total_tokens"] == 15 * (2 * votes + 1)
 
 
 def test_injected_judge_callable_retries_vote_validation(metric: Metric, example: Example) -> None:

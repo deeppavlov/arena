@@ -31,6 +31,7 @@ class CommandMetric(StrictModel):
     argv: list[str] = Field(min_length=1)
     source_sha256: dict[str, str] = Field(min_length=1)
     timeout_seconds: float = Field(default=21600, gt=0, allow_inf_nan=False)
+    uses_model: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")
     def pinned_executable(self) -> "CommandMetric":
@@ -54,6 +55,7 @@ class Metric(StrictModel):
     direction: Literal["maximize", "minimize"] = "maximize"
     instruction: str = Field(default="", max_length=20000)
     criteria: list[Criterion] = Field(default_factory=list, max_length=30)
+    votes: int = Field(default=3, gt=0, strict=True)
     command: CommandMetric | None = None
     aggregation: CommandMetric | None = None
 
@@ -70,6 +72,8 @@ class Metric(StrictModel):
                 raise ValueError("LLM metric cannot configure a command")
         elif self.command is None or self.criteria:
             raise ValueError("command metric requires a command and no LLM criteria")
+        elif self.votes != 3:
+            raise ValueError("votes can only configure the built-in LLM metric")
         return self
 
 

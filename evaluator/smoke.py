@@ -1,8 +1,6 @@
 import base64
-import hashlib
 import json
 import math
-import sys
 from collections import Counter
 from dataclasses import replace
 from pathlib import Path
@@ -11,6 +9,9 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+from evaluator.contracts import Example
+from evaluator.metric_package import freeze_metric, load_metric, metric_package_provenance
+from evaluator.metrics import aggregate_results, evaluate_answer
 from evaluator.reliability import empty_usage
 from evaluator.runner import SolveResult
 from evaluator.service import Settings, create_app
@@ -30,6 +31,7 @@ def operator_record(settings: Settings) -> dict[str, Any]:
 
 def check_model_judge(root: Path) -> None:
     canary = "fictional-private-smoke-canary"
+    votes = 2
     solve_calls: list[tuple[str, str]] = []
     judge_calls: list[tuple[str, str]] = []
 
@@ -61,6 +63,7 @@ def check_model_judge(root: Path) -> None:
     metric = root / "model-metric.json"
     metric.write_text(json.dumps({
         "version": "smoke-v1", "instruction": "Evaluate fictional answers.",
+        "votes": votes,
         "criteria": [
             {"id": "correct", "question": "Is it correct?", "weight": 3},
             {"id": "complete", "question": "Is it complete?", "weight": 1},
@@ -97,7 +100,7 @@ def check_model_judge(root: Path) -> None:
             (name, task) for name in ("alpha", "beta") for task in tasks
         ), solve_calls
         assert len(Counter(judge_calls)) == 8, judge_calls
-        assert set(Counter(judge_calls).values()) == {3}, judge_calls
+        assert set(Counter(judge_calls).values()) == {votes}, judge_calls
         repeated = client.post("/v1/evaluations", json=submission)
         assert repeated.status_code == 200, repeated.text
         assert repeated.json() == final.json(), repeated.text
@@ -107,7 +110,7 @@ def check_model_judge(root: Path) -> None:
         for response in (accepted, final, repeated, rejected):
             assert canary not in response.text, response.text
         assert len(solve_calls) == 4, solve_calls
-        assert len(judge_calls) == 24, judge_calls
+        assert len(judge_calls) == 8 * votes, judge_calls
 
 
 def check_command_metric(root: Path) -> None:
@@ -123,7 +126,9 @@ def check_command_metric(root: Path) -> None:
     def unexpected_model(messages: list[dict[str, str]]) -> str:
         raise AssertionError("command metrics must not call a model")
 
-    script = root / "metric.py"
+    draft = root / "command-metric-draft"
+    draft.mkdir()
+    script = draft / "metric.py"
     script.write_text(
         "import json\n"
         "import sys\n"
@@ -131,17 +136,23 @@ def check_command_metric(root: Path) -> None:
         "offset = json.loads(payload['example']['input'])['offset']\n"
         "print(json.dumps({'score': float(payload['answer']) - offset}))\n"
     )
-    metric = root / "command-metric.json"
-    sources = [Path(sys.executable), script]
-    metric.write_text(json.dumps({
+    (draft / "metric.json").write_text(json.dumps({
         "version": "command-smoke-v1", "kind": "command", "direction": "minimize",
-        "command": {
-            "argv": [str(path) for path in sources],
-            "source_sha256": {
-                str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources
-            },
-        },
+        "command": {"argv": ["python", "metric.py"]},
     }))
+    metric = root / "command-metric-frozen"
+    package = freeze_metric(draft, metric)
+    assert metric_package_provenance(metric) == package
+    assert package["sha256"]
+    prepared_metric = load_metric(metric)
+    train_results = [
+        evaluate_answer(
+            prepared_metric, Example(id=f"train-{i}", input=json.dumps({"offset": i})),
+            str(i - 3),
+        )
+        for i in range(2)
+    ]
+    assert aggregate_results(prepared_metric, train_results) == -3.0, train_results
     dataset = root / "command-dataset.jsonl"
     tasks = [json.dumps({"offset": i, "hidden": canary}) for i in range(2)]
     dataset.write_text("\n".join(
@@ -167,6 +178,7 @@ def check_command_metric(root: Path) -> None:
         assert final.status_code == 200, final.text
         assert final.json() == {"status": "complete"}, final.text
         result = operator_record(settings)
+        assert result["provenance"]["metric_package"] == package, result
         assert result["winners"] == [f"way-{i}" for i in range(6)], result
         assert {item["candidate_id"]: item["score"] for item in result["scores"]} == {
             f"way-{i}": i - 3 for i in range(7)
@@ -211,6 +223,9 @@ def check_command_metric(root: Path) -> None:
             assert repeated.status_code == 200, repeated.text
             assert repeated.json() == final.json(), repeated.text
             assert canary not in final.text, final.text
+            records = list(public_settings.state_dir.glob(f"*/public/{evaluation_id}/record.json"))
+            assert len(records) == 1, records
+            assert json.loads(records[0].read_text())["provenance"]["metric_package"] == package
         first = client.get(f"/v1/evaluations/{evaluations[0]}")
         assert first.json()["scores"] == [{"candidate_id": "search", "score": -2.0}]
         assert Counter(calls) == Counter(
@@ -224,8 +239,8 @@ def main() -> None:
         check_model_judge(root)
         check_command_metric(root)
     print(
-        "smoke passed: single answers, three criterion votes, sealed private, "
-        "multiple outputs, score-only public, minimizing command metric, model-free usage"
+        "smoke passed: single answers, configurable criterion votes, sealed private, "
+        "multiple outputs, score-only public, prepared metric across splits, model-free usage"
     )
 
 

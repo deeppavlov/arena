@@ -9,6 +9,7 @@ import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import Future
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, BinaryIO, cast
@@ -19,10 +20,12 @@ from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from evaluator.candidates import materialize_candidate
-from evaluator.contracts import Example, Metric, Submission
+from evaluator.contracts import Example, Submission
 from evaluator.judge import ModelClient
+from evaluator.metric_package import load_metric, metric_package_provenance
 from evaluator.metrics import (
     CommandMetricError,
+    MetricModelAccess,
     aggregate_results,
     command_provenance,
     evaluate_answer,
@@ -247,6 +250,29 @@ def _usage(value: dict[str, int]) -> dict[str, int]:
     return parsed
 
 
+def _normalized_provenance(value: dict[str, Any]) -> dict[str, Any]:
+    value = deepcopy(value)
+    metric = value.get("metric", {})
+    if metric.get("votes") == 3:
+        metric.pop("votes")
+    for section in (metric, value.get("metric_command") or {}):
+        for key in ("command", "aggregation"):
+            command = section.get(key)
+            if command is not None and command.get("uses_model") is False:
+                command.pop("uses_model")
+    return value
+
+
+def _judge_resources(
+    usage: dict[str, int], seconds: float, diagnostics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    resources: dict[str, Any] = {"usage": usage, "wall_seconds": seconds}
+    if diagnostics and "model_usage_complete" in diagnostics:
+        resources["usage_complete"] = diagnostics["model_usage_complete"]
+        resources["run_id"] = diagnostics.get("model_run_id")
+    return resources
+
+
 def create_app(
     settings: Settings,
     solve: Callable[[Path, str], SolveResult] | None = None,
@@ -258,7 +284,12 @@ def create_app(
     ]
     if not examples or len({example.id for example in examples}) != len(examples):
         raise ValueError("evaluation dataset must be nonempty with unique example IDs")
-    metric = Metric.model_validate_json(settings.metric_path.read_bytes())
+    metric = load_metric(settings.metric_path)
+    metric_package = metric_package_provenance(settings.metric_path)
+    command_uses_model = any(
+        command is not None and command.uses_model
+        for command in (metric.command, metric.aggregation)
+    )
     if any(not item.id.strip() for item in examples):
         raise ValueError("evaluation examples must not contain blank IDs")
     if metric.kind == "llm":
@@ -275,7 +306,7 @@ def create_app(
         )
 
     json.dumps(settings.parameters, allow_nan=False)
-    if metric.kind == "llm":
+    if metric.kind == "llm" or command_uses_model:
         model_client()
     canonical_examples = sorted(
         ((example.input, example.reference) for example in examples),
@@ -310,6 +341,12 @@ def create_app(
         for path in config["source_sha256"]
     ):
         raise ValueError("metric implementation must be outside candidate directories")
+    model_access = None
+    if command_uses_model:
+        model_access = MetricModelAccess(
+            model=settings.model, base_url=settings.runner_model_base_url, usage_dir=usage_dir,
+            model_timeout=settings.model_timeout, retry_delay=settings.retry_delay,
+        )
     judge_lock = threading.Lock()
 
     def make_judge():
@@ -387,6 +424,10 @@ def create_app(
         "output_count": settings.output_count,
     }
 
+    if metric_package is not None:
+        provenance["metric_package"] = metric_package
+    normalized_provenance = _normalized_provenance(provenance)
+
     def read_record(path: Path) -> dict[str, Any] | None:
         record_path = path / "record.json"
         return json.loads(record_path.read_text()) if record_path.exists() else None
@@ -403,7 +444,7 @@ def create_app(
     def recover(path: Path) -> None:
         existing = read_record(path)
         if existing:
-            if existing["provenance"] != provenance:
+            if _normalized_provenance(existing["provenance"]) != normalized_provenance:
                 raise ValueError("evaluation dataset configuration is frozen")
             if existing["status"] == "running":
                 try:
@@ -425,7 +466,9 @@ def create_app(
         fcntl.flock(lock, fcntl.LOCK_EX)
         if settings.split == "public":
             config_path = directory / "config.json"
-            if config_path.exists() and json.loads(config_path.read_text()) != provenance:
+            if config_path.exists() and (
+                _normalized_provenance(json.loads(config_path.read_text())) != normalized_provenance
+            ):
                 raise ValueError("evaluation dataset configuration is frozen")
             if not config_path.exists():
                 _write_json(config_path, provenance)
@@ -490,9 +533,12 @@ def create_app(
                     result = evaluate_answer(
                         metric, example, solved.answer, judge_complete,
                         retries=MODEL_RETRIES, retry_delay=settings.retry_delay,
+                        model_access=model_access, usage=judge_usage,
                     )
                 except CommandMetricError as error:
                     result["diagnostics"] = error.diagnostics
+                    if error.diagnostics.get("model_usage_complete") is False:
+                        result["resources_complete"] = False
                     raise
                 finally:
                     judge_seconds = validate_timing(
@@ -508,35 +554,48 @@ def create_app(
                             "solver": {
                                 "usage": solver_usage, "wall_seconds": solver_seconds,
                             },
-                            "judge": {
-                                "usage": example_judge_usage, "wall_seconds": judge_seconds,
-                            },
+                            "judge": _judge_resources(
+                                example_judge_usage, judge_seconds, result.get("diagnostics"),
+                            ),
                         },
                     })
                     _write_json(
                         details_path,
                         {"candidate_id": candidate["id"], "examples": details},
                     )
-        aggregate_started = time.monotonic()
-        aggregation: dict[str, Any] = {"status": "failed"}
-        try:
-            candidate_score = aggregate_results(metric, details)
-            aggregation.update({"status": "complete", "score": candidate_score})
-        except CommandMetricError as error:
-            aggregation["diagnostics"] = error.diagnostics
-            raise
-        finally:
-            aggregation_seconds = validate_timing(
-                time.monotonic() - aggregate_started, "aggregation time", allow_zero=True,
-            )
-            aggregation["resources"] = {
-                "judge": {"usage": empty_usage(), "wall_seconds": aggregation_seconds},
-            }
-            _write_json(
-                details_path,
-                {"candidate_id": candidate["id"], "examples": details,
-                 "aggregation": aggregation},
-            )
+        with judge_lock:
+            before_aggregation = _usage(judge_usage)
+            aggregate_started = time.monotonic()
+            aggregation: dict[str, Any] = {"status": "failed"}
+            try:
+                candidate_score = aggregate_results(
+                    metric, details, model_access=model_access, usage=judge_usage,
+                )
+                aggregation.update({"status": "complete", "score": candidate_score})
+            except CommandMetricError as error:
+                aggregation["diagnostics"] = error.diagnostics
+                if error.diagnostics.get("model_usage_complete") is False:
+                    aggregation["resources_complete"] = False
+                raise
+            finally:
+                aggregation_seconds = validate_timing(
+                    time.monotonic() - aggregate_started, "aggregation time", allow_zero=True,
+                )
+                after_aggregation = _usage(judge_usage)
+                aggregation_usage = _usage({
+                    key: after_aggregation[key] - before_aggregation[key]
+                    for key in before_aggregation
+                })
+                aggregation["resources"] = {
+                    "judge": _judge_resources(
+                        aggregation_usage, aggregation_seconds, aggregation.get("diagnostics"),
+                    ),
+                }
+                _write_json(
+                    details_path,
+                    {"candidate_id": candidate["id"], "examples": details,
+                     "aggregation": aggregation},
+                )
         return {
             "candidate_id": candidate["id"],
             "digest": candidate["digest"],
@@ -544,7 +603,7 @@ def create_app(
             **{
                 f"{role}_{name}": sum(
                     item["resources"][role]["usage"][key] for item in details
-                )
+                ) + (aggregation_usage[key] if role == "judge" else 0)
                 for role in ("solver", "judge")
                 for name, key in (
                     ("tokens", "total_tokens"),
@@ -615,6 +674,8 @@ def create_app(
             }
             if isinstance(error, CommandMetricError):
                 failure["diagnostics"] = error.diagnostics
+                if error.diagnostics.get("model_usage_complete") is False:
+                    failure["resources_complete"] = False
             record["failure"] = failure
         finally:
             try:
@@ -685,6 +746,12 @@ def create_app(
                 if existing["batch_digest"] != digest:
                     raise HTTPException(409, "private evaluation is sealed")
                 return JSONResponse(_public(existing, settings.split))
+            try:
+                if metric_package_provenance(settings.metric_path) != metric_package:
+                    raise ValueError("metric package differs from frozen configuration")
+                command_provenance(metric)
+            except Exception:
+                raise HTTPException(503, "evaluation unavailable") from None
             run_dir.mkdir(mode=0o700, exist_ok=True)
             lease = execution_lease(run_dir)
             try:

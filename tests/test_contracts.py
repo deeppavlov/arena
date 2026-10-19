@@ -5,7 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from evaluator.contracts import Candidate, Criterion, Metric, Submission, Vote
+from evaluator.contracts import Candidate, CommandMetric, Criterion, Metric, Submission, Vote
 
 
 @pytest.mark.parametrize(
@@ -133,6 +133,32 @@ def test_metric_rejects_duplicate_criteria() -> None:
         ])
 
 
+def test_builtin_metric_defaults_to_three_votes() -> None:
+    metric = Metric(version="v1", instruction="Judge.", criteria=[
+        Criterion(id="correct", question="Correct?", weight=1),
+    ])
+    assert metric.votes == 3
+
+
+@pytest.mark.parametrize("votes", [1, 7, 1000])
+def test_builtin_metric_accepts_positive_vote_counts(votes: int) -> None:
+    metric = Metric.model_validate({
+        "version": "v1", "instruction": "Judge.", "votes": votes,
+        "criteria": [{"id": "correct", "question": "Correct?", "weight": 1}],
+    })
+    assert metric.votes == votes
+    assert metric.model_dump()["votes"] == votes
+
+
+@pytest.mark.parametrize("votes", [0, -1, True, False, 1.5, 3.0, "3", None])
+def test_builtin_metric_rejects_nonpositive_or_noninteger_vote_counts(votes: object) -> None:
+    with pytest.raises(ValidationError):
+        Metric.model_validate({
+            "version": "v1", "instruction": "Judge.", "votes": votes,
+            "criteria": [{"id": "correct", "question": "Correct?", "weight": 1}],
+        })
+
+
 @pytest.mark.parametrize("score", [True, False, "3", 3.0, 0, 6, float("nan")])
 def test_vote_requires_integer_score_in_range(score: object) -> None:
     with pytest.raises(ValidationError):
@@ -165,6 +191,44 @@ def test_command_metric_has_no_required_llm_criteria() -> None:
     assert metric.kind == "command"
     assert metric.direction == "minimize"
     assert metric.criteria == []
+
+
+def test_command_metric_defaults_to_no_model_access() -> None:
+    command = CommandMetric(argv=["/opt/scorer"], source_sha256={"/opt/scorer": "a" * 64})
+    assert command.uses_model is False
+
+
+@pytest.mark.parametrize("field", ["command", "aggregation"])
+@pytest.mark.parametrize("uses_model", [False, True])
+def test_command_model_access_can_be_configured(field: str, uses_model: bool) -> None:
+    command = {"argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "a" * 64}}
+    metric = Metric.model_validate({
+        "version": "v1", "kind": "command", "command": command,
+        field: {**command, "uses_model": uses_model},
+    })
+    configured = metric.command if field == "command" else metric.aggregation
+    assert configured is not None
+    assert configured.uses_model is uses_model
+    assert metric.model_dump()[field]["uses_model"] is uses_model
+
+
+@pytest.mark.parametrize("uses_model", [0, 1, "true", "false", None])
+def test_command_model_access_requires_boolean(uses_model: object) -> None:
+    with pytest.raises(ValidationError):
+        CommandMetric.model_validate({
+            "argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "a" * 64},
+            "uses_model": uses_model,
+        })
+
+
+def test_command_metric_rejects_builtin_vote_configuration() -> None:
+    with pytest.raises(ValidationError, match="votes"):
+        Metric.model_validate({
+            "version": "v1", "kind": "command", "votes": 7,
+            "command": {
+                "argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "a" * 64},
+            },
+        })
 
 
 @pytest.mark.parametrize("data", [
