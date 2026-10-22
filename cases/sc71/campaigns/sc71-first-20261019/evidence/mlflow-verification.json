@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-19",
+  "mlflow_version": "3.16.0",
+  "mlflow_image": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+  "shared_port": "127.0.0.1:5052",
+  "operator_port": "127.0.0.1:5050",
+  "shared_synthetic_run_id": "fac1a3bc324d4dea8b8d6f0140184297",
+  "shared_synthetic_trace_id": "tr-1d2a8f91993c48382c02f0e334abbc76",
+  "operator_synthetic_run_id": "bd8aa0b3e31d43929b03bb74b439aaa9",
+  "operator_synthetic_trace_id": "tr-eef0b682bae07f8df9e3c34729aca215",
+  "synthetic_spans_per_trace": 5,
+  "model_calls": 0,
+  "historical_experiments_read": false,
+  "researcher_access": {
+    "shared_172.31.71.20_5000": "allowed",
+    "operator_172.31.75.2_5000": "blocked",
+    "operator_proxy_172.31.75.3_5000": "blocked",
+    "historical_172.28.0.2_5000": "blocked",
+    "host_172.31.71.1_5050": "blocked",
+    "host_172.31.71.1_22": "blocked"
+  },
+  "visibility_probe": {
+    "shared_public_run_id": "891bc289752d4c138d93d70dcc88b2ac",
+    "operator_public_run_id": "dcc9f6455b56449e9f050596149d6e4a",
+    "operator_private_run_id": "e791cb9261bc4e4e99f0cea5e8fe7937",
+    "shared_public_contains_only_score_and_metadata": true,
+    "private_shared_export_rejected": true,
+    "sdk_destination_restored_between_exports": true
+  }
+}

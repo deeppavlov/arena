@@ -126,6 +126,7 @@ print('{"score": 1}')
         metric, Example(id="x", input=""), "", model_access=access, usage=usage,
     )["score"] == 1
     assert calls == []
+    assert access.run_ids == []
     assert usage == empty_usage()
     assert not access.usage_dir.exists()
 
@@ -147,6 +148,7 @@ print(json.dumps({{"score": 1, "statistics": {{"total_tokens": 999999,
     assert len(calls) == 1
     assert calls[0]["body"]["model"] == "internal"
     run_id = calls[0]["run_id"]
+    assert access.run_ids == [run_id]
     assert str(UUID(run_id)) == run_id
     assert usage == read_usage(access.usage_dir, run_id) == {
         "prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10,
@@ -181,6 +183,7 @@ print(record["model_base_url"], file=sys.stderr, flush=True)
     assert usage["attempts"] == 2
     assert len(calls) == 1
     assert raised.value.diagnostics["model_run_id"] == calls[0]["run_id"]
+    assert access.run_ids == [calls[0]["run_id"]]
     assert raised.value.diagnostics["model_usage_complete"] is True
     assert calls[0]["capability"] not in json.dumps(raised.value.diagnostics) + str(raised.value)
     with pytest.raises(ValueError, match="closed"):
@@ -206,6 +209,7 @@ print('{"score": 0.75}')
     assert usage["attempts"] == 4
     assert len({call["run_id"] for call in calls}) == 2
     assert len({call["capability"] for call in calls}) == 2
+    assert access.run_ids == [call["run_id"] for call in calls]
 
 
 def test_inflight_model_usage_fails_explicitly_and_retains_reconciliation_id(
@@ -255,6 +259,7 @@ def test_failed_command_start_still_closes_model_scope(
     assert calls == []
     assert usage == empty_usage()
     assert raised.value.diagnostics["model_usage_complete"] is True
+    assert access.run_ids == [raised.value.diagnostics["model_run_id"]]
     with pytest.raises(ValueError, match="closed"):
         ensure_open(access.usage_dir, raised.value.diagnostics["model_run_id"])
 

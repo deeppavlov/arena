@@ -1,0 +1,16 @@
+{
+  "runner": {
+    "image": "sha256:REPLACE_WITH_OPERATOR_PINNED_HERMES_IMAGE",
+    "network": "sc71-workers",
+    "model_base_url": "http://172.31.72.10:8081/v1",
+    "memory": "32g",
+    "cpus": "8",
+    "pids_limit": 2048,
+    "tmpfs_size": "16g",
+    "tmpfs_exec": true
+  },
+  "usage_dir": "/operator/usage",
+  "trace_dir": "/operator/traces",
+  "judge_gateway_url": "http://172.31.72.10:8081/v1",
+  "metric_package": "/arena/cases/sc71/campaigns/sc71-first-20261019/metric"
+}

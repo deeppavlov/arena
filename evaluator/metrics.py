@@ -8,7 +8,7 @@ import sys
 import tempfile
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -39,6 +39,7 @@ class MetricModelAccess:
     usage_dir: Path
     model_timeout: float = MODEL_TIMEOUT
     retry_delay: float = RETRY_DELAY
+    run_ids: list[str] = field(default_factory=list, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         url = urlsplit(self.base_url)
@@ -228,6 +229,7 @@ def _run_command(
         raise ValueError("metric command requires scoped model access")
     timeout = request_timeout(model_access.model_timeout, retry_delay=model_access.retry_delay)
     run_id = str(uuid4())
+    model_access.run_ids.append(run_id)
     try:
         capability = create_usage(model_access.usage_dir, run_id)
     except (OSError, ValueError):

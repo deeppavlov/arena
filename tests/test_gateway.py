@@ -1,6 +1,7 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import httpx
@@ -43,7 +44,7 @@ def test_gateway_forwards_fixed_configuration_and_sanitizes_response() -> None:
             json={
                 "id": "private-id",
                 "choices": [
-                    {"message": {"content": "Answer", "reasoning_content": "private reasoning"}}
+                    {"message": {"content": "Answer", "reasoning_content": "model reasoning"}}
                 ],
                 "usage": {"prompt_tokens": 12, "completion_tokens": 3, "total_tokens": 15},
                 "debug": "private upstream state",
@@ -64,7 +65,7 @@ def test_gateway_forwards_fixed_configuration_and_sanitizes_response() -> None:
 
     assert result.status_code == 200
     assert result.json() == {
-        "choices": [{"message": {"content": "Answer"}}],
+        "choices": [{"message": {"content": "Answer", "reasoning_content": "model reasoning"}}],
         "usage": {"prompt_tokens": 12, "completion_tokens": 3, "total_tokens": 15},
     }
     assert len(requests) == 1
@@ -180,9 +181,7 @@ def test_gateway_limits_request_and_response_before_parsing() -> None:
 
 
 @pytest.mark.parametrize("character", ["\x00", "я", "😀"])
-def test_gateway_accepts_maximum_input_prompt_and_context(
-    tmp_path: Path, character: str
-) -> None:
+def test_gateway_accepts_maximum_input_prompt_and_context(tmp_path: Path, character: str) -> None:
     from evaluator.usage import create_usage, read_usage
 
     example = Example(id="maximum-input", input=character * 500000)
@@ -265,9 +264,7 @@ def test_gateway_limits_request_and_response_independently() -> None:
 @pytest.mark.parametrize(
     ("max_body_bytes", "max_response_bytes"), [(0, 1), (-1, 1), (1, 0), (1, -1)]
 )
-def test_gateway_rejects_invalid_size_limits(
-    max_body_bytes: int, max_response_bytes: int
-) -> None:
+def test_gateway_rejects_invalid_size_limits(max_body_bytes: int, max_response_bytes: int) -> None:
     with pytest.raises(ValueError):
         GatewaySettings(
             base_url="http://internal-model/v1",
@@ -373,7 +370,9 @@ def test_gateway_rejects_incomplete_responses(finish_reason: str | None) -> None
                 200,
                 json={
                     **valid_response(),
-                    "choices": [{"message": {"content": "partial"}, "finish_reason": finish_reason}]
+                    "choices": [
+                        {"message": {"content": "partial"}, "finish_reason": finish_reason}
+                    ],
                 },
             )
         ),
@@ -501,10 +500,12 @@ def test_gateway_reads_long_timeout_and_retry_delay_from_env(
     monkeypatch.setenv("MODEL_TIMEOUT", "43200")
     monkeypatch.setenv("MODEL_RETRY_DELAY", "60")
     monkeypatch.setenv("MODEL_USAGE_DIR", str(tmp_path))
+    monkeypatch.setenv("MODEL_TRACE_DIR", str(tmp_path / "traces"))
     settings = GatewaySettings.from_env()
     assert settings.timeout_seconds == 43200
     assert settings.retry_delay == 60
     assert settings.usage_dir == tmp_path
+    assert settings.trace_dir == tmp_path / "traces"
 
 
 @pytest.mark.parametrize("value", [0, -1, float("inf"), float("nan")])
@@ -788,3 +789,792 @@ def test_gateway_entrypoint_does_not_log_capability_urls(monkeypatch: pytest.Mon
     gateway.main()
 
     assert options["access_log"] is False
+
+
+def tool_call() -> dict[str, object]:
+    return {
+        "id": "call-search",
+        "type": "function",
+        "function": {"name": "search", "arguments": '{"query":"example"}'},
+    }
+
+
+def tool_request() -> dict[str, object]:
+    return {
+        **request_body(),
+        "stream": False,
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search",
+                    "description": "Search the permitted documents",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"query": {"type": "string"}},
+                        "required": ["query"],
+                        "additionalProperties": False,
+                    },
+                    "strict": True,
+                },
+            }
+        ],
+        "tool_choice": "required",
+    }
+
+
+def tool_response() -> dict[str, Any]:
+    return {
+        **valid_response(),
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "reasoning_content": "I need to search",
+                    "tool_calls": [tool_call()],
+                },
+                "finish_reason": "tool_calls",
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize("content", [None, "", "Searching"])
+def test_gateway_accepts_complete_tool_response_without_repeating(content: str | None) -> None:
+    calls = []
+    output = tool_response()
+    output["choices"][0]["message"]["content"] = content
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json={**output, "debug": "private upstream state"})
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json=tool_request())
+    assert response.status_code == 200
+    assert response.json() == output
+    assert len(calls) == 1
+    assert json.loads(calls[0].content) == tool_request()
+
+
+def test_gateway_preserves_tool_history_and_reasoning_for_followup() -> None:
+    payload = {
+        **tool_request(),
+        "messages": [
+            {"role": "system", "content": "Use the search tool"},
+            {"role": "user", "content": "Find the example"},
+            {
+                "role": "assistant",
+                "content": None,
+                "reasoning_content": "I need to search",
+                "tool_calls": [tool_call()],
+            },
+            {"role": "tool", "tool_call_id": "call-search", "content": "Found the example"},
+        ],
+        "tool_choice": {"type": "function", "function": {"name": "search"}},
+    }
+    calls = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json=payload)
+    assert response.status_code == 200
+    assert json.loads(calls[0].content) == payload
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"messages": [{"role": "assistant", "content": None}]},
+        {"messages": [{"role": "assistant", "content": "", "tool_calls": []}]},
+        {"messages": [{"role": "tool", "tool_call_id": "", "content": "result"}]},
+        {"messages": [{"role": "tool", "tool_call_id": "call-search", "content": None}]},
+        {"messages": [{"role": "user", "content": "input", "tool_calls": [tool_call()]}]},
+        {"messages": [{"role": "user", "content": "input", "reasoning_content": "reasoning"}]},
+        {"messages": [{"role": "assistant", "content": "input", "tool_call_id": "call-search"}]},
+        {"tools": [{"type": "web_search"}]},
+        {"tools": [{"type": "function", "function": {"name": "", "parameters": {}}}]},
+        {"tools": [{"type": "function", "function": {"name": "search", "parameters": []}}]},
+        {"tool_choice": {"type": "function", "function": {"name": ""}}},
+        {"tool_choice": "other"},
+        {"stream": 0},
+        {"parallel_tool_calls": True},
+    ],
+)
+def test_gateway_rejects_malformed_tool_requests(changes: dict[str, object]) -> None:
+    def upstream(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Invalid tool requests must not reach the model")
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json={**tool_request(), **changes})
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        {"content": None, "tool_calls": []},
+        {"content": None, "tool_calls": [{"id": "x", "type": "function"}]},
+        {"content": None, "tool_calls": [{**tool_call(), "id": ""}]},
+        {
+            "content": None,
+            "tool_calls": [{**tool_call(), "function": {"name": "search", "arguments": {}}}],
+        },
+        {"content": None, "reasoning_content": "only thinking"},
+    ],
+)
+def test_gateway_retries_malformed_tool_responses(message: dict[str, object]) -> None:
+    calls = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(
+            200,
+            json={
+                **valid_response(),
+                "choices": [{"message": message, "finish_reason": "tool_calls"}],
+            },
+        )
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json=tool_request())
+    assert response.status_code == 502
+    assert len(calls) == 6
+    assert all(request.content == calls[0].content for request in calls)
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [{"response_schema": {}}, {"trace_metadata": {}}],
+)
+def test_gateway_reserves_internal_request_fields(parameters: dict[str, object]) -> None:
+    with pytest.raises(ValueError):
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", parameters=parameters
+        )
+
+
+def test_gateway_accepts_only_exact_echoes_of_fixed_parameters() -> None:
+    fixed = {"reasoning_effort": "max", "temperature": 0.2, "extra": {"enabled": True}}
+    calls = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model", parameters=fixed),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json={**tool_request(), **fixed})
+        assert response.status_code == 200
+        for changes in (
+            {"reasoning_effort": "high"},
+            {"temperature": 1},
+            {"extra": {"enabled": 1}},
+            {"unknown": "max"},
+        ):
+            response = client.post(
+                "/v1/chat/completions", json={**tool_request(), **fixed, **changes}
+            )
+            assert response.status_code == 400
+    assert len(calls) == 1
+    assert json.loads(calls[0].content) == {**tool_request(), **fixed}
+
+
+def test_scoped_gateway_accounts_tool_cycles_and_retries(tmp_path: Path) -> None:
+    from evaluator.usage import create_usage, read_usage
+
+    run_id = str(uuid4())
+    capability = create_usage(tmp_path, run_id)
+    calls = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(200, json={**valid_response(), "choices": []})
+        return httpx.Response(200, json=tool_response() if len(calls) == 2 else valid_response())
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        for _ in range(2):
+            response = client.post(
+                f"/runs/{run_id}/{capability}/v1/chat/completions", json=tool_request()
+            )
+            assert response.status_code == 200
+    assert read_usage(tmp_path, run_id) == {
+        "prompt_tokens": 36,
+        "completion_tokens": 9,
+        "total_tokens": 45,
+        "attempts": 3,
+        "unreported_attempts": 0,
+    }
+
+
+def test_gateway_strips_nested_upstream_tool_metadata_without_retrying() -> None:
+    output = tool_response()
+    call = output["choices"][0]["message"]["tool_calls"][0]
+    call["provider_specific_fields"] = {"private": "upstream metadata"}
+    call["function"]["debug"] = "upstream metadata"
+    requests = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=output)
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", json=tool_request())
+    assert response.status_code == 200
+    assert response.json() == tool_response()
+    assert len(requests) == 1
+
+
+def test_gateway_requires_usage_scope_for_tracing(tmp_path: Path) -> None:
+    with pytest.raises(ValueError):
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", trace_dir=tmp_path
+        )
+
+
+def test_scoped_gateway_records_redacted_tool_attempts(tmp_path: Path) -> None:
+    from evaluator.trace_store import read_calls
+    from evaluator.usage import create_usage
+
+    usage_dir = tmp_path / "usage"
+    trace_dir = tmp_path / "traces"
+    run_id = str(uuid4())
+    capability = create_usage(usage_dir, run_id)
+    calls = 0
+    payload = tool_request()
+    payload["messages"] = [
+        {
+            "role": "user",
+            "content": f"http://gateway/runs/{run_id}/{capability}/v1 {capability} api-key-private",
+        }
+    ]
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise httpx.ConnectError("private endpoint api-key-private")
+        return httpx.Response(200, json=tool_response())
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            api_key="api-key-private",
+            usage_dir=usage_dir,
+            trace_dir=trace_dir,
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(f"/runs/{run_id}/{capability}/v1/chat/completions", json=payload)
+    assert response.status_code == 200
+    saved = read_calls(trace_dir, run_id)
+    assert len(saved) == 2
+    assert [call["status"] for call in saved] == ["ERROR", "OK"]
+    assert [call["attributes"]["attempt"] for call in saved] == [1, 2]
+    assert all(call["end_time_ns"] >= call["start_time_ns"] > 0 for call in saved)
+    assert saved[1]["outputs"] == tool_response()
+    encoded = json.dumps(saved)
+    assert capability not in encoded
+    assert "api-key-private" not in encoded
+    assert "private endpoint" not in encoded
+    assert "internal-model" not in encoded
+
+
+def test_scoped_gateway_fails_when_trace_cannot_be_saved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from evaluator.usage import create_usage, read_usage
+
+    usage_dir = tmp_path / "usage"
+    run_id = str(uuid4())
+    capability = create_usage(usage_dir, run_id)
+
+    def fail_trace(*args: object, **kwargs: object) -> None:
+        raise OSError("private trace path")
+
+    monkeypatch.setattr("evaluator.gateway.append_call", fail_trace)
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            usage_dir=usage_dir,
+            trace_dir=tmp_path / "traces",
+        ),
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=valid_response())),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body()
+        )
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Model tracing unavailable"}
+    assert read_usage(usage_dir, run_id)["total_tokens"] == 15
+
+
+def vote_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "score": {"type": "integer", "minimum": 1, "maximum": 5},
+            "reason": {"type": "string", "minLength": 1, "pattern": r"\S"},
+        },
+        "required": ["score", "reason"],
+        "additionalProperties": False,
+    }
+
+
+def test_gateway_retries_invalid_structured_outputs_with_one_retry_budget(tmp_path: Path) -> None:
+    from evaluator.trace_store import read_calls
+    from evaluator.usage import create_usage, read_usage
+
+    usage_dir = tmp_path / "usage"
+    trace_dir = tmp_path / "traces"
+    run_id = str(uuid4())
+    capability = create_usage(usage_dir, run_id)
+    answers = [
+        "not json",
+        '{"score":true,"reason":"Reason"}',
+        '{"score":1.0,"reason":"Reason"}',
+        '{"score":6,"reason":"Reason"}',
+        '{"score":5,"reason":"   "}',
+        '{"score":5,"reason":"Reason"}',
+    ]
+    requests = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=valid_response(answers[len(requests) - 1]))
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            usage_dir=usage_dir,
+            trace_dir=trace_dir,
+            response_schemas=[vote_schema()],
+            strict_schema_integers=True,
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions",
+            json={**request_body(), "response_schema": vote_schema()},
+        )
+    assert response.status_code == 200
+    assert response.json() == valid_response(answers[-1])
+    assert len(requests) == 6
+    assert all(request.content == requests[0].content for request in requests)
+    assert json.loads(requests[0].content) == request_body()
+    assert read_usage(usage_dir, run_id) == {
+        "prompt_tokens": 72,
+        "completion_tokens": 18,
+        "total_tokens": 90,
+        "attempts": 6,
+        "unreported_attempts": 0,
+    }
+    traces = read_calls(trace_dir, run_id)
+    assert [call["status"] for call in traces] == ["ERROR"] * 5 + ["OK"]
+    assert traces[0]["outputs"] == valid_response(answers[0])
+
+
+@pytest.mark.parametrize(
+    "schema",
+    [
+        {"$ref": "https://external.example/schema"},
+        {"type": "integer", "mininum": 1},
+        {"type": "invalid"},
+        {"type": "string", "pattern": ".*"},
+        [],
+        True,
+    ],
+)
+def test_gateway_rejects_invalid_output_schemas_before_model_call(schema: object) -> None:
+    def upstream(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Invalid response schema must not reach model")
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            response_schemas=[vote_schema()],
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions", json={**request_body(), "response_schema": schema}
+        )
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid model request"}
+
+
+def test_gateway_structured_output_exhaustion_stays_six_attempts() -> None:
+    requests = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=valid_response('{"score":0,"reason":"Reason"}'))
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            response_schemas=[vote_schema()],
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions", json={**request_body(), "response_schema": vote_schema()}
+        )
+    assert response.status_code == 502
+    assert len(requests) == 6
+
+
+def test_gateway_validates_schema_only_for_final_tool_cycle_answer() -> None:
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            response_schemas=[vote_schema()],
+        ),
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=tool_response())),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions", json={**tool_request(), "response_schema": vote_schema()}
+        )
+    assert response.status_code == 200
+    assert response.json() == tool_response()
+
+
+def test_gateway_retries_unsolicited_tool_calls() -> None:
+    requests = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=tool_response())
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            response_schemas=[vote_schema()],
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions", json={**request_body(), "response_schema": vote_schema()}
+        )
+    assert response.status_code == 502
+    assert len(requests) == 6
+
+
+def test_gateway_returns_valid_low_score_without_repeating() -> None:
+    requests = []
+    output = valid_response('{"score":1,"reason":"Low quality"}')
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=output)
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            response_schemas=[vote_schema()],
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions", json={**request_body(), "response_schema": vote_schema()}
+        )
+    assert response.status_code == 200
+    assert response.json() == output
+    assert len(requests) == 1
+
+
+def test_gateway_rejects_excessively_nested_request_json() -> None:
+    def upstream(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Excessive request nesting must not reach model")
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            response_schemas=[vote_schema()],
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post("/v1/chat/completions", content="[" * 10000 + "0" + "]" * 10000)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid model request"}
+
+
+def test_gateway_rejects_unapproved_output_schema_without_model_call() -> None:
+    def upstream(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Unapproved response schema must not reach model")
+
+    for approved in ([], [vote_schema()]):
+        app = create_gateway(
+            GatewaySettings(
+                base_url="http://internal-model/v1", model="fixed-model", response_schemas=approved
+            ),
+            transport=httpx.MockTransport(upstream),
+        )
+        schema = vote_schema()
+        if approved:
+            schema = {
+                **schema,
+                "properties": {
+                    "score": {"type": "integer", "const": 5},
+                    "reason": {"type": "string"},
+                },
+            }
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions", json={**request_body(), "response_schema": schema}
+            )
+        assert response.status_code == 400
+
+
+@pytest.mark.parametrize("schemas", [{}, [True], [{"$ref": "https://external.example/schema"}]])
+def test_gateway_rejects_invalid_approved_schemas(schemas: Any) -> None:
+    with pytest.raises(ValueError):
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", response_schemas=schemas
+        )
+
+
+def test_gateway_loads_approved_schemas_from_operator_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MODEL_BASE_URL", "http://internal-model/v1")
+    monkeypatch.setenv("MODEL_NAME", "fixed-model")
+    monkeypatch.setenv("MODEL_RESPONSE_SCHEMAS_JSON", json.dumps([vote_schema()]))
+    assert GatewaySettings.from_env().response_schemas == [vote_schema()]
+
+
+def test_gateway_trace_metadata_is_caller_context_and_not_an_upstream_parameter(
+    tmp_path: Path,
+) -> None:
+    from evaluator.trace_store import read_calls
+    from evaluator.usage import create_usage
+
+    usage_dir = tmp_path / "usage"
+    trace_dir = tmp_path / "traces"
+    run_id = str(uuid4())
+    capability = create_usage(usage_dir, run_id)
+    metadata = {"role": "judge", "criterion": "precision", "vote": 1}
+    requests = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            usage_dir=usage_dir,
+            trace_dir=trace_dir,
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions",
+            json={**request_body(), "trace_metadata": metadata},
+        )
+    assert response.status_code == 200
+    assert json.loads(requests[0].content) == request_body()
+    assert read_calls(trace_dir, run_id)[0]["attributes"]["caller_metadata"] == metadata
+
+
+def test_gateway_rejects_nonfinite_trace_metadata() -> None:
+    def upstream(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Nonfinite trace metadata must not reach model")
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions",
+            content=json.dumps({**request_body(), "trace_metadata": {"invalid": float("nan")}}),
+        )
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize("echo", [False, True])
+def test_gateway_preserves_operator_fixed_tools(echo: bool) -> None:
+    fixed = {key: value for key, value in tool_request().items() if key in {"tools", "tool_choice"}}
+    requests = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=tool_response())
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model", parameters=fixed),
+        transport=httpx.MockTransport(upstream),
+    )
+    body = {**request_body(), **(fixed if echo else {})}
+    with TestClient(app) as client:
+        assert client.post("/v1/chat/completions", json=body).status_code == 200
+        for changed in (
+            {"tools": None}, {"tools": []}, {"tool_choice": None}, {"tool_choice": "auto"}
+        ):
+            assert client.post("/v1/chat/completions", json={**body, **changed}).status_code == 400
+    assert len(requests) == 1
+    assert json.loads(requests[0].content) == {**request_body(), **fixed}
+    assert fixed == {key: tool_request()[key] for key in ("tools", "tool_choice")}
+
+
+@pytest.mark.parametrize("fixed_field", ["tools", "tool_choice"])
+def test_gateway_combines_operator_fixed_and_caller_tool_fields(fixed_field: str) -> None:
+    body = tool_request()
+    fixed = {fixed_field: body.pop(fixed_field)}
+    requests = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=tool_response())
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model", parameters=fixed),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        assert client.post("/v1/chat/completions", json=body).status_code == 200
+        invalid = (
+            {"tool_choice": {"type": "function", "function": {"name": "other"}}}
+            if fixed_field == "tools" else {"tools": None}
+        )
+        assert client.post("/v1/chat/completions", json={**body, **invalid}).status_code == 400
+    assert len(requests) == 1
+    assert json.loads(requests[0].content) == tool_request()
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [{"tools": []}, {"tools": [{"type": "web_search"}]}, {"tool_choice": "invalid"}],
+)
+def test_gateway_rejects_invalid_operator_tool_fields(parameters: dict[str, object]) -> None:
+    with pytest.raises(ValueError):
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", parameters=parameters
+        )
+
+
+def test_gateway_accepts_standard_integer_response_without_retry() -> None:
+    requests = []
+    output = valid_response('{"score":1.0,"reason":"Reason"}')
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=output)
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1",
+            model="fixed-model",
+            response_schemas=[vote_schema()],
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions", json={**request_body(), "response_schema": vote_schema()}
+        )
+    assert response.status_code == 200
+    assert response.json() == output
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize("value, expected", [("true", True), ("false", False)])
+def test_gateway_loads_integer_policy_from_operator_environment(
+    monkeypatch: pytest.MonkeyPatch, value: str, expected: bool
+) -> None:
+    monkeypatch.setenv("MODEL_BASE_URL", "http://internal-model/v1")
+    monkeypatch.setenv("MODEL_NAME", "fixed-model")
+    monkeypatch.setenv("MODEL_STRICT_SCHEMA_INTEGERS", value)
+    assert GatewaySettings.from_env().strict_schema_integers is expected
+
+
+@pytest.mark.parametrize("value", ["1", "null", '"true"', "TRUE"])
+def test_gateway_rejects_invalid_integer_policy_environment(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("MODEL_BASE_URL", "http://internal-model/v1")
+    monkeypatch.setenv("MODEL_NAME", "fixed-model")
+    monkeypatch.setenv("MODEL_STRICT_SCHEMA_INTEGERS", value)
+    with pytest.raises(ValueError):
+        GatewaySettings.from_env()
+
+
+@pytest.mark.parametrize("choice", ["none", {"type": "function", "function": {"name": "search"}}])
+def test_gateway_retries_with_effective_fixed_tool_configuration(choice: object) -> None:
+    requests = []
+    fixed = {"tool_choice": choice}
+    body = request_body()
+    if choice != "none":
+        body["tools"] = tool_request()["tools"]
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) == 1:
+            return httpx.Response(503)
+        return httpx.Response(200, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model", parameters=fixed),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        assert client.post("/v1/chat/completions", json=body).status_code == 200
+    assert len(requests) == 2
+    assert requests[0].content == requests[1].content
+    assert json.loads(requests[0].content) == {**body, **fixed}

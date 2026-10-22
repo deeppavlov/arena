@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "candidate": "structure_bm25",
+  "lexical": {
+    "method": "bm25_sections",
+    "chunk_chars": 1800,
+    "overlap_lines": 2,
+    "top_k": 8,
+    "pool_k": 48,
+    "max_per_document": 3,
+    "context_chars": 16000,
+    "bm25_k1": 1.2,
+    "bm25_b": 0.75,
+    "rrf_k": 60,
+    "embedding_backend": "http",
+    "embedding_model": "BAAI/bge-m3",
+    "embedding_batch": 16,
+    "embedding_max_chars": 2400,
+    "dense_min_cosine": 0.0,
+    "rerank": false,
+    "reranker_model": "BAAI/bge-reranker-v2-m3",
+    "graph_depth": 1,
+    "graph_documents": 6,
+    "timeout_seconds": 60
+  },
+  "runtime": {
+    "model_timeout_seconds": 600,
+    "answer_max_tokens": 8192
+  },
+  "structure": {
+    "parent_chars": 3600,
+    "neighbor_clauses": 1,
+    "heading_weight": 0.15
+  }
+}

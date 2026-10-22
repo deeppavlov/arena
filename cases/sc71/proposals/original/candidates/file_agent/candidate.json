@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "name": "file_agent",
+  "build_argv": [
+    "python3",
+    "-B",
+    "/candidate/build.py",
+    "--kb-dir",
+    "/kb/norm",
+    "--build-dir",
+    "/build"
+  ],
+  "run_argv": [
+    "python3",
+    "-B",
+    "/candidate/run.py",
+    "--build-dir",
+    "/build"
+  ],
+  "interface": "local standalone build/run; current Arena adapter not implemented"
+}

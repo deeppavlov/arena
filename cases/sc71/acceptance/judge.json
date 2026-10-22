@@ -1,0 +1,25 @@
+{
+  "example": {
+    "id": "sc71-synthetic-judge",
+    "input": "Кому и в какой срок передают заявление согласно вымышленному регламенту синтетического архива?",
+    "reference": {
+      "format": "sc71-reference-v1",
+      "topic": "T1",
+      "reference_markdown": "Заявление передают секретарю в течение пяти рабочих дней. Основание: пункт 2 вымышленного регламента синтетического архива.",
+      "gold": {
+        "topic": "T1",
+        "answerable": true,
+        "citations": [{
+          "origin_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "equivalent_origin_ids": [],
+          "role": "primary",
+          "quote": "Заявление передают секретарю в течение пяти рабочих дней.",
+          "locator": "п. 2"
+        }],
+        "must_include": ["секретарю", "пяти рабочих дней"],
+        "must_not_include": ["десяти рабочих дней"]
+      }
+    }
+  },
+  "answer": "Заявление передают секретарю в течение пяти рабочих дней. Дословное основание: «Заявление передают секретарю в течение пяти рабочих дней.» [/kb/norm/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md, п. 2]"
+}

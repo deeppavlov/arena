@@ -1,0 +1,19 @@
+{
+  "extends": "../../pyproject.toml",
+  "include": [
+    "tools",
+    "metric",
+    "acceptance",
+    "tests"
+  ],
+  "exclude": [
+    "proposals",
+    "campaigns",
+    "harness"
+  ],
+  "extraPaths": [
+    "../.."
+  ],
+  "venvPath": "../..",
+  "venv": ".venv"
+}

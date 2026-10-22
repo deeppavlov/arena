@@ -1,0 +1,68 @@
+model:
+  default: deepseek-ai/DeepSeek-V4-Flash-0731
+  provider: custom
+  base_url: http://arena-gateway.invalid/v1
+  api_mode: chat_completions
+  streaming: false
+  reasoning_echo: true
+agent:
+  max_turns: 10000
+  api_max_retries: 1
+  auto_recovery_cycles: 0
+  reasoning_effort: max
+  run_budget_seconds: null
+  gateway_timeout: 0
+  turn_liveness:
+    timeout_s: 0
+    poll_s: 15
+fallback_providers: []
+delegation:
+  max_iterations: 10000
+  max_concurrent_children: 30
+  oneshot_max_children: 30
+  max_spawn_depth: 3
+  child_timeout_seconds: 0
+  reasoning_effort: max
+  fallback_providers: []
+  subagent_auto_approve: true
+  worktree_isolation: true
+terminal:
+  backend: local
+  timeout: 604800
+  lifetime_seconds: 604800
+  cwd: /tmp/arena-workspace
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+auxiliary:
+  transient_retries: 0
+  compression: &auxiliary
+    provider: custom
+    model: deepseek-ai/DeepSeek-V4-Flash-0731
+    api_mode: chat_completions
+    reasoning_effort: max
+    timeout: 130410
+    fallback_chain: []
+  web_extract: *auxiliary
+  title_generation: *auxiliary
+  vision: *auxiliary
+  background_review: *auxiliary
+  curator: *auxiliary
+  moa_reference: *auxiliary
+  tts_audio_tags: *auxiliary
+  session_search: *auxiliary
+display:
+  tool_progress: off
+  show_reasoning: false
+  streaming: false
+web:
+  search_backend: ddgs
+tools:
+  tool_search:
+    enabled: "off"
+approvals:
+  mode: "off"
+timeouts:
+  tools:
+    concurrent_batch: 604800
+    sequential_call: 604800

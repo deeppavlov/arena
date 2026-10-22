@@ -8,8 +8,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/opt/arena PATH=/opt
 WORKDIR /opt/arena
 COPY --from=uv /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project && useradd --uid 10001 --create-home arena
+ARG ARENA_TRACKING=false
+RUN case "$ARENA_TRACKING" in true) set -- --extra tracking ;; false) set -- ;; *) exit 2 ;; esac \
+    && uv sync --frozen --no-dev --no-install-project "$@" \
+    && useradd --uid 10001 --create-home arena
 COPY evaluator ./evaluator
+COPY integrations ./integrations
 USER 10001:10001
 
 FROM runtime AS researcher

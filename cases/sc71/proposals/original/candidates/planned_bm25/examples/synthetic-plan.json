@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "question_sha256": "b19110ea4ed66ec9a77f026e3e2f1faf2f0fd8e8f240d389d645cbebfc983073",
+  "prompt_sha256": "fc0c52baad993502799d4b820c8e4b0146d5a2505d4b43696a0f0b3497003309",
+  "queries": [
+    "Согласование заявки комиссия",
+    "Публикация сведений по понедельникам"
+  ],
+  "model": null,
+  "model_calls": 0,
+  "usage": null,
+  "source": "provided_plan",
+  "synthetic_fixture": true
+}

@@ -2,6 +2,8 @@
 
 Команды предназначены для оператора. Перед исследовательским поиском [агент подготовки](../prompts/prepare.md) готовит кейс, метрику, проверки и описание условий кампании. Оператор проверяет подготовленный код, устанавливает его в закрытом окружении и запускает оценщики. Подготовка репозитория сама не развёртывает сервис и не запускает модели. Сначала прочитайте [границы доступа](../common/isolation.md).
 
+Каталог кампании `<campaign_dir>` задаётся явно; он может находиться в `cases/<case>/campaigns/<campaign>/` или в `runs/<campaign>/`. Конкретные серверные адреса, профили харнеса и сценарии приёмки храните в `cases/<case>/deploy/` и `cases/<case>/acceptance/`. Эта инструкция описывает общий контейнерный контракт.
+
 ## От подготовки к запуску поиска
 
 1. Пользователь описывает задачу и желаемую оценку в `cases/<case>/metric/`, указывает допустимые изменения, лимит решений и размеры входа/выхода private. Агент подготовки оформляет кампанию, реализует программную, модельную или смешанную оценку и проверяет её на открытых искусственных примерах. Модельные ответы в таких тестах подставные; реальные модельные эксперименты требуют отдельной задачи и зафиксированного числа решений.
@@ -9,8 +11,8 @@
 
    ```bash
    uv run python -m evaluator.prepare freeze \
-     --metric cases/my-case/metric --output runs/my-campaign/metric
-   uv run python -m evaluator.prepare verify --metric runs/my-campaign/metric
+     --metric cases/my-case/metric --output cases/my-case/campaigns/my-campaign/metric
+   uv run python -m evaluator.prepare verify --metric cases/my-case/campaigns/my-campaign/metric
    ```
 
    `freeze` и `verify` проверяют формат и целостность; они не выполняют оценку и не доказывают её качество. Готовые примеры лежат в `cases/template/metric/` и `cases/template/metric-examples/`. Их проверяет `uv run pytest tests/test_metric_examples.py` без моделей.
@@ -24,7 +26,7 @@
    ```
 
    Проведите приёмку в отдельном временном сервисе с собственными state/usage и токеном, искусственными данными и подставной моделью: верные и неверные ответы, программная агрегация, ошибки, учёт ресурсов, границы API и рестарт. Приёмка не расходует допуск настоящего private и не использует его данные.
-5. Запустите нужные public/private-сервисы и зафиксируйте готовность в `runs/<campaign>/preparation.md`. В записи нужны digest пакета и окружения, пройденные проверки, условия кампании и доступные исследователю URL. `/healthz` подтверждает только живой процесс, не корректность метрики или доступность модели. При пустом public отдельный public-сервис не нужен. Формально оценщик нужен к первому обращению, но готовность всех нужных оценщиков проверяется до начала поиска.
+5. Запустите нужные public/private-сервисы и зафиксируйте готовность в `<campaign_dir>/preparation.md`. В записи нужны digest пакета и окружения, пройденные проверки, условия кампании и доступные исследователю URL. `/healthz` подтверждает только живой процесс, не корректность метрики или доступность модели. При пустом public отдельный public-сервис не нужен. Формально оценщик нужен к первому обращению, но готовность всех нужных оценщиков проверяется до начала поиска.
 6. Передайте исследователю [стартовый промпт](../prompts/start.md), подготовленный кейс, открытый train и необходимые submit-доступы. Метрика и её окружение заморожены: не заменяйте пакет, модель, зависимости или образ в работающей кампании. Если обнаружилась ошибка измерителя, остановите кампанию и разберите её с оператором; переименование и удаление состояния не дают новой private-попытки.
 
 ## Данные и права
@@ -62,6 +64,8 @@ Assets — неизменяемый снимок кампании с зафик�
 | `ARENA_USES_MODEL` | Использует ли харнес по умолчанию модель: `true` или `false` |
 | `ARENA_RUNNER_IMAGE` | Неизменяемый digest образа харнеса по умолчанию |
 | `ARENA_HARNESSES` | JSON-реестр дополнительных доверенных харнесов |
+| `ARENA_RUNNER_SUPPORTS_BUILD` | Поддержка измеряемой подготовки харнесом по умолчанию, `false` по умолчанию |
+| `ARENA_RUNNER_SUPPORTS_ASSET_SELECTION` | Выбор опубликованных материалов этим харнесом, `false` по умолчанию |
 | `ARENA_PARAMETERS` | Фиксированные параметры запросов модели; не параметры эволюции харнеса |
 | `ARENA_MAX_BODY_BYTES` | Транспортный предел размера пакета; при больших пакетах настраивается отдельно от числа решений |
 | `ARENA_RELEASE_ID` | Идентификатор замороженных условий; смена ID не открывает новую private-попытку |
@@ -82,6 +86,8 @@ Assets — неизменяемый снимок кампании с зафик�
 {"program":{"image":"sha256:<digest>","uses_model":false,"network":"none"},"agent":{"image":"sha256:<digest>","uses_model":true,"network":"arena-runners"}}
 ```
 
+Для каждого зарегистрированного харнеса флаги `supports_build` и `supports_asset_selection` также задаются явно и по умолчанию равны `false`; именованные профили не наследуют эти флаги харнеса по умолчанию. При выключенных возможностях обычный `build.py` и параметр `asset_digests` сохраняют смысл, заданный адаптером; наличие файла или поля не подключает инфраструктуру автоматически.
+
 `solution.json` кандидата выбирает зарегистрированный ID и передаёт параметры адаптеру; произвольные образы и mounts не принимаются. Один и тот же пакет проверяется в одинаковой конфигурации на всех split. Протокол и комплектный runner описаны в [контракте](../common/runner-contract.md) и [runner/README.md](../runner/README.md).
 
 Соберите операторский runner отдельно и укажите digest. Изменяемые теги оценщик отвергает. Для локального образа получите ID:
@@ -90,7 +96,7 @@ Assets — неизменяемый снимок кампании с зафик�
 docker image inspect arena-runner:local --format '{{.Id}}'
 ```
 
-Зафиксируйте также базовые образы по digest. Dockerfile устанавливает зависимости из `uv.lock` через `uv sync --frozen`; теги базовых образов в шаблоне остаются выбором оператора.
+Зафиксируйте также базовые образы по digest. Dockerfile устанавливает зависимости из `uv.lock` через `uv sync --frozen`; теги базовых образов в шаблоне остаются выбором оператора. MLflow SDK устанавливается только при `docker build --build-arg ARENA_TRACKING=true ...`; по умолчанию этот extra выключен.
 
 Клиент ограничивает размер файлового пакета отдельно: `--max-bundle-bytes` или `ARENA_MAX_BUNDLE_BYTES` (по умолчанию 72 MiB). При большом числе финалистов согласуйте этот предел с `ARENA_MAX_BODY_BYTES` сервиса и reverse proxy.
 
@@ -168,4 +174,75 @@ ARENA_TRAIN_WORKSPACE=/srv/arena/train docker compose --profile train run --rm r
 
 Исследователь видит свой workspace и разрешённую сеть. Доступ к внутренней модели для train настраивается отдельно; закрытый gateway ему недоступен. Модельные вызовы с данными направляются только внутренним моделям; не передавайте данные облачному чату-оркестратору. Ограничение egress задаёт инфраструктура оператора.
 
-Общий MLflow настраивается через `ARENA_MLFLOW_URL`. Его доступность и права проверяет оператор. Правила экспорта train и public-score описаны в [MLflow](../common/mlflow.md); private автоматически туда не отправляется.
+В общем Compose `ARENA_MLFLOW_URL` передаётся исследователю как `MLFLOW_TRACKING_URI`. Пустое значение отключает общий экспорт. Закрытый получатель задаётся только доверенному сервису через `ARENA_OPERATOR_MLFLOW_TRACKING_URI`; выбранные получатели проверяет оператор. Адресов по умолчанию нет. Правила экспорта, очередей и разделения доступа описаны в [MLflow](../common/mlflow.md).
+
+## Необязательный train-сервис и подготовка материалов
+
+`uv run python -m evaluator.train serve` запускает доверенный измеритель открытого train с теми же runner и метрикой. Помимо общих настроек оценщика ему нужны `ARENA_CAMPAIGN_ID`, `ARENA_CASE_ID`, `ARENA_DATASET_ID`, `ARENA_CONDITIONS_ID` и собственные state, токен и данные. `ARENA_TRAIN_TRACKING=false` отключает экспорт train; при включённом экспорте используются только явно настроенные URI. Train допускает выбор подвыборки, возвращает результаты и трейсы; закрытый сервис сохраняет прежнюю границу public/private.
+
+Клиент работает с зарегистрированным снимком из журнала, а не с текущими изменяемыми файлами:
+
+```bash
+uv run python -m evaluator.train submit \
+  --url https://train-evaluator.example --token-file /run/secrets/train-submit \
+  --journal cases/my-case/campaigns/my-campaign/search.sqlite \
+  --candidate way-a --measurement way-a-train \
+  --dataset train-v1 --conditions conditions-v1 \
+  --train-data cases/my-case/dataset/train/dataset.jsonl
+uv run python -m evaluator.train status \
+  --url https://train-evaluator.example --token-file /run/secrets/train-submit \
+  --evaluation-id '<returned-id>'
+```
+
+Команда `result` дополнительно принимает `--journal`, `--measurement` и `--output`, сохраняет завершённый результат и связывает его с замером. `--example-id` у `submit` выбирает train-подвыборку. Повторные замеры неизменного кандидата используют уже полученные корректные ответы; отсутствие MLflow не препятствует измерению.
+
+Train-сервис может дополнительно предоставить publisher и build API. Они не включаются общим Compose автоматически: нужен отдельный сервис или Compose override, который передаёт флаги возможностей и пути хранилищ оценщику и монтирует соответствующие каталоги. Одного изменения `operator.env` недостаточно. Оператор задаёт `ARENA_ASSET_STAGING_DIR` для доступного исследователю staging, `ARENA_ASSET_STORE_DIR` для доверенного неизменяемого хранилища, `ARENA_BUILD_DIR` для закрытых квитанций и `ARENA_INPUT_ASSETS_DIGEST` для закреплённых исходных материалов. Runner и eval-сервисы получают это же хранилище через `ARENA_PUBLISHED_ASSETS_DIR` и одинаковые настройки харнеса. Исследователь не получает запись в публикации, квитанции или Docker socket. Общий предел одновременного исполнения задают `ARENA_SLOT_DIR` и `ARENA_EXECUTION_SLOTS`.
+
+```bash
+uv run python -m evaluator.assets publish \
+  --url https://train-evaluator.example --token-file /run/secrets/train-submit \
+  --path allowed-import
+uv run python -m evaluator.build submit \
+  --url https://train-evaluator.example --token-file /run/secrets/train-submit \
+  --journal cases/my-case/campaigns/my-campaign/search.sqlite --candidate way-a
+uv run python -m evaluator.build status \
+  --url https://train-evaluator.example --token-file /run/secrets/train-submit \
+  --digest '<candidate-digest>'
+```
+
+`ARENA_BUILD_DIR` обязателен при `supports_asset_selection: true`, даже если разрешены только готовые веса и `supports_build: false`. Это общий доверенный журнал квитанций и связей для данного хранилища публикаций. Пустой каталог вместо существующего журнала не допускается: потеря связей не должна превращать оплачиваемую подготовку в бесплатный импорт. Каталог и файлы журнала принадлежат UID оценщика, не доступны для записи группе или остальным пользователям и не являются символическими ссылками.
+
+Train-сервис создаёт журнал через `BuildStore` при старте с настроенными `ARENA_BUILD_DIR`, `ARENA_PUBLISHED_ASSETS_DIR` и `ARENA_INPUT_ASSETS_DIGEST`. Запустите его до закрытых оценщиков: они проверяют уже созданную конфигурацию. Для нового развёртывания без train-сервиса оператор может выполнить следующую инициализацию в окружении оценщика, с его окончательными переменными `ARENA_*` и UID:
+
+```python
+from evaluator.build import BuildStore, run_build
+from evaluator.build_receipts import build_environment
+from evaluator.execution import make_runner
+from evaluator.service import Settings
+
+settings = Settings.from_env()
+if (settings.build_dir is None or settings.published_assets_dir is None
+        or settings.input_assets_digest is None):
+    raise ValueError("Configure receipt storage, published assets and input digest")
+runner = make_runner(settings, settings.usage_dir or settings.state_dir / "usage")
+BuildStore(
+    settings.build_dir, settings.published_assets_dir, settings.input_assets_digest,
+    build_environment(runner, settings.parameters),
+    lambda candidate, output: run_build(runner, candidate, output),
+    dependency_assets=runner.build_asset_digests,
+)
+```
+
+Конструктор создаёт `configuration.json`, `receipts/`, `jobs/` и `bindings/`; вручную писать конфигурацию не нужно. Сам этот вызов не собирает кандидата, не запускает Docker и не обращается к модели. Отпечаток окружения вычисляется из того же реестра харнесов и параметров, которые будут у оценщиков. Не создавайте другой журнал для прежнего хранилища и не переинициализируйте состояние работающей кампании.
+
+Путь публикации относителен staging; API не принимает произвольный путь хоста. Build требует зарегистрированного кандидата и выбранного харнеса с `supports_build: true`. Операция, mounts, квитанции версии 2 и обязательный учёт зависимостей описаны в [общем контракте](../common/runner-contract.md). Новый формат предназначен для новых развёртываний: не заменяйте квитанции или runtime уже работающей кампании.
+
+Docker-монитор завершения внешнего исследователя вынесен в [необязательную интеграцию](../integrations/docker/README.md): `python -m integrations.docker.research_monitor`. Его конфигурация и доступ к Docker остаются у оператора; конкретная топология не является частью протокола оценки.
+
+## Инструменты и проверка JSON в gateway
+
+Gateway допускает клиентские `tools` и `tool_choice`. Оператор может закрепить одно или оба поля в `MODEL_PARAMETERS_JSON`: клиент может опустить закреплённое поле или повторить его точное JSON-значение, но не изменить. Незакреплённые поля выбирает клиент; итоговый набор инструментов и выбор проверяются на совместимость.
+
+Для структурированного ответа оператор задаёт список разрешённых схем через `MODEL_RESPONSE_SCHEMAS_JSON`; `response_schema` клиента должен точно совпадать с одной из них. Поддерживается ограниченное подмножество JSON Schema: типы, свойства, обязательные поля, дополнительные свойства, массивы, границы чисел и длины, `enum`, `const`, `title`, `description` и только шаблон `\S` для непустого текста. `$ref`, `$defs`, комбинаторы и другие регулярные выражения не поддерживаются. Предел схемы — 32768 байт, глубина 16, 2048 узлов; глубина JSON-ответа — 64. Неподдерживаемая схема отклоняется при настройке.
+
+`MODEL_STRICT_SCHEMA_INTEGERS=false` сохраняет стандартную семантику JSON Schema: `1.0` удовлетворяет `integer`. Если зафиксированная метрика требует именно JSON-целые без дробной формы, оператор явно включает `true` в её gateway. Флаг принимает только `true` или `false`. Невалидный ответ проходит прежние технические повторы с тем же запросом; политика проверки фиксируется до кампании.

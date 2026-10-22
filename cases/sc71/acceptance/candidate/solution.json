@@ -1,0 +1,8 @@
+{
+  "harness": "hermes",
+  "parameters": {
+    "mode": "retrieval",
+    "toolsets": ["delegation"],
+    "max_iterations": 10000
+  }
+}

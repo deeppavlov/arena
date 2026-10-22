@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "files": {
+    "README.md": {
+      "sha256": "78f8ddf0f8a220dffc8fb66f4684bb20d4e7a77b644627ec1a03fcea1060fb10",
+      "executable": false
+    },
+    "metric.json": {
+      "sha256": "e3e4edbfd278925d47869a6a9c71c111353c381d08dd82e22c86098d606d23e3",
+      "executable": false
+    },
+    "policy.json": {
+      "sha256": "05176fc2a03563f57a4a853cf9f9b7b75c92947748defbad6129db1980bad230",
+      "executable": false
+    },
+    "score.py": {
+      "sha256": "7c704e74dd70a593991147f3773598bea894989abfbdb924615fb4437861581c",
+      "executable": false
+    }
+  }
+}

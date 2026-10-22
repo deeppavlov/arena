@@ -413,6 +413,368 @@ def test_persists_resource_measurements_and_freezes_ranking_policy(settings: Set
         client(settings)
 
 
+def test_solved_answer_and_run_id_are_durable_before_judging(settings):
+    run_id = "11111111-1111-4111-8111-111111111111"
+
+    def judge(messages):
+        path = next(settings.state_dir.glob("*/details/candidate.json"))
+        details = json.loads(path.read_text())
+        pending = details["examples"][-1]
+        assert pending["answer"] == "saved-answer"
+        assert pending["status"] == "judging"
+        assert pending["resources"]["solver"]["run_id"] == run_id
+        return '{"score":4,"reason":"valid"}'
+
+    api = client(
+        settings, solve=lambda *args: replace(solved("saved-answer"), run_id=run_id),
+        complete=judge,
+    )
+    api.post("/v1/evaluations", json=submission())
+
+    assert api.get("/v1/evaluations").json() == {"status": "complete"}
+    details = json.loads(next(settings.state_dir.glob("*/details/candidate.json")).read_text())
+    assert all(item["resources"]["solver"]["run_id"] == run_id for item in details["examples"])
+    assert all(item.get("status") != "judging" for item in details["examples"])
+
+
+@pytest.mark.parametrize("split", ["private", "public"])
+@pytest.mark.parametrize("fails", [False, True])
+def test_closed_solver_and_judge_traces_are_exported_to_operator_only(
+    command_settings, monkeypatch, split, fails,
+):
+    import evaluator.service as service
+    from evaluator.trace_store import append_call
+
+    configured = replace(
+        command_settings, split=split, model="internal", model_base_url="http://internal/v1",
+        trace_dir=command_settings.state_dir / "traces",
+        tracking_dir=command_settings.state_dir / "tracking", case_id="synthetic-case",
+    )
+    metric = json.loads(configured.metric_path.read_text())
+    metric["command"]["uses_model"] = True
+    configured.metric_path.write_text(json.dumps(metric))
+    solver_id = "11111111-1111-4111-8111-111111111111"
+    judge_ids = iter([
+        "22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333",
+    ])
+    exports = []
+
+    def call(run_id, text):
+        append_call(configured.trace_dir, run_id, {
+            "name": "model", "span_type": "LLM", "inputs": {"messages": [text]},
+            "outputs": {"content": "closed response"}, "start_time_ns": 1, "end_time_ns": 2,
+        })
+
+    call(solver_id, "closed solver prompt")
+
+    def judge(*args, model_access, **kwargs):
+        run_id = next(judge_ids)
+        model_access.run_ids.append(run_id)
+        call(run_id, "closed judge prompt")
+        if fails:
+            raise service.CommandMetricError("closed failure", {
+                "model_run_id": run_id, "model_usage_complete": True,
+            })
+        return {"score": 1.0, "criteria": {}}
+
+    def export(path, queue_dir):
+        exports.append((json.loads(path.read_text()), queue_dir))
+        return {"operator": {"status": "tracking_pending"}}
+
+    monkeypatch.setattr(service, "evaluate_answer", judge)
+    monkeypatch.setattr(service, "export_configured", export)
+    api = client(configured, solve=lambda *args: replace(solved("closed answer"), run_id=solver_id))
+    accepted = api.post("/v1/evaluations", json=submission())
+    identifier = accepted.json().get("evaluation_id")
+    endpoint = f"/v1/evaluations/{identifier}" if identifier else "/v1/evaluations"
+    response = api.get(endpoint)
+
+    assert response.json()["status"] == ("failed" if fails else "complete")
+    assert "closed" not in accepted.text + response.text
+    assert len(exports) == 1
+    record = exports[0][0]
+    assert record["status"] == ("FAILED" if fails else "FINISHED")
+    assert record["params"]["case_id"] == "synthetic-case"
+    assert record["params"]["campaign_id"] == configured.release_id
+    assert record["examples"][0]["resources"]["solver"]["run_id"] == solver_id
+    assert record["examples"][0]["resources"]["judge"]["run_ids"] == [
+        "22222222-2222-4222-8222-222222222222",
+    ]
+    assert "closed solver prompt" in json.dumps(record["calls"])
+    assert "closed judge prompt" in json.dumps(record["calls"])
+    assert all(call.get("parent_id") for call in record["calls"] if call["name"] == "model")
+    assert exports[0][1].name == "queue"
+
+
+@pytest.mark.parametrize("field", ["trace_dir", "tracking_dir", "tracking_queue_dir"])
+def test_candidate_assets_never_expose_tracking_storage(settings, field):
+    assets = settings.state_dir.parent / "assets"
+    assets.mkdir()
+    configured = replace(settings, assets_dir=assets, case_id="case", **{field: assets / "closed"})
+    with pytest.raises(ValueError, match="assets"):
+        client(configured)
+
+
+@pytest.mark.parametrize("failure", [OSError, ValueError])
+def test_trace_read_failure_preserves_answer_and_evaluation(settings, monkeypatch, failure):
+
+    configured = replace(settings, trace_dir=settings.state_dir / "traces")
+
+    def missing(*args):
+        raise failure("storage unavailable")
+
+    monkeypatch.setattr("evaluator.trace_store.read_calls", missing)
+    api = client(configured, solve=lambda *args: replace(
+        solved("saved answer"), run_id="11111111-1111-4111-8111-111111111111",
+    ))
+    api.post("/v1/evaluations", json=submission())
+    assert api.get("/v1/evaluations").json() == {"status": "complete"}
+    details = json.loads(next(settings.state_dir.glob("*/details/candidate.json")).read_text())
+    assert details["examples"][0]["answer"] == "saved answer"
+    assert details["examples"][0]["calls"][0]["attributes"]["trace_errors"][0]["error_type"] == (
+        failure.__name__
+    )
+
+
+def test_failed_tracking_preserves_unknown_solver_usage(settings, monkeypatch):
+    import evaluator.service as service
+
+    exported = []
+    configured = replace(settings, tracking_dir=settings.state_dir / "tracking", case_id="case")
+
+    def fail(*args):
+        raise RunnerError("unmeasured failure")
+
+    def export(path, *args, **kwargs):
+        exported.append(json.loads(path.read_text()))
+        return {"status": "tracking_pending"}
+
+    monkeypatch.setattr(service, "export_configured", export)
+    api = client(configured, solve=fail)
+    api.post("/v1/evaluations", json=submission())
+
+    assert "solver_tokens" not in exported[0]["metrics"]
+    assert "solver_seconds" not in exported[0]["metrics"]
+    assert exported[0]["metrics"]["solver_usage_complete"] == 0
+
+
+@pytest.mark.parametrize("split", ["private", "public"])
+def test_capacity_busy_does_not_admit_or_seal_submission(settings, split):
+    from evaluator.capacity import acquire_slot
+
+    slots = settings.state_dir.parent / "slots"
+    slots.mkdir(mode=0o700)
+    configured = replace(settings, split=split, slot_dir=slots, execution_slots=1)
+    api = client(configured)
+    lease = acquire_slot(slots, 1)
+    assert lease is not None
+    try:
+        response = api.post("/v1/evaluations", json=submission())
+        assert response.status_code == 503
+        assert response.headers["Retry-After"] == "60"
+        assert not list(settings.state_dir.rglob("record.json"))
+        assert not (settings.state_dir / "candidates").exists()
+    finally:
+        lease.close()
+
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    lease = acquire_slot(slots, 1)
+    assert lease is not None
+    try:
+        repeated = api.post("/v1/evaluations", json=submission())
+        assert repeated.status_code == 200
+        assert repeated.json()["status"] == "complete"
+        if split == "private":
+            assert api.post("/v1/evaluations", json=submission("changed")).status_code == 409
+    finally:
+        lease.close()
+
+
+@pytest.mark.parametrize("stage", ["solver", "materialization", "worker", "lease"])
+def test_capacity_slot_is_released_on_execution_and_admission_failure(settings, monkeypatch, stage):
+    import evaluator.service as service
+    from evaluator.capacity import acquire_slot
+
+    slots = settings.state_dir.parent / "slots"
+    slots.mkdir(mode=0o700)
+    configured = replace(settings, slot_dir=slots, execution_slots=1)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("test failure")
+
+    if stage == "materialization":
+        monkeypatch.setattr(service, "materialize_candidate", fail)
+    if stage == "worker":
+        original_start = threading.Thread.start
+
+        def start(worker):
+            if getattr(getattr(worker, "_target", None), "__name__", None) == "execute":
+                fail()
+            return original_start(worker)
+
+        monkeypatch.setattr(threading.Thread, "start", start)
+    api = client(configured, solve=fail if stage == "solver" else None)
+    if stage == "lease":
+        original_open = Path.open
+
+        def open_path(path, *args, **kwargs):
+            if path.name == "execution.lock":
+                fail()
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "open", open_path)
+    response = api.post("/v1/evaluations", json=submission())
+    assert response.status_code == (202 if stage == "solver" else 503)
+    lease = acquire_slot(slots, 1)
+    assert lease is not None
+    lease.close()
+
+
+@pytest.mark.parametrize("count", [0, -1, True, 1.5])
+def test_settings_require_positive_integer_execution_slots(settings, count):
+    with pytest.raises(ValueError, match="execution_slots"):
+        replace(settings, execution_slots=count)
+
+
+def test_registered_assets_are_validated_before_private_admission(settings, monkeypatch):
+
+    observed = []
+
+    def reject(self, candidate_dir):
+        observed.append(candidate_dir)
+        raise RunnerError("unpublished candidate asset")
+
+    monkeypatch.setattr("evaluator.runner.HarnessRunner.validate_candidate", reject)
+    configured = replace(settings, runner_image="sha256:" + "a" * 64)
+    api = TestClient(create_app(configured), headers={"Authorization": "Bearer test-token"})
+
+    response = api.post("/v1/evaluations", json=submission())
+
+    assert response.status_code == 503
+    assert len(observed) == 1
+    assert not list(settings.state_dir.rglob("record.json"))
+    assert api.get("/v1/evaluations").status_code == 404
+
+
+@pytest.mark.parametrize("split", ["private", "public"])
+def test_preparation_resources_are_added_once_per_candidate(settings, monkeypatch, split):
+    import evaluator.service as service
+
+    preparation = {
+        "status": "FINISHED", "run_id": "11111111-1111-4111-8111-111111111111",
+        "resources": {"solver": {
+            "usage": {
+                "prompt_tokens": 10, "completion_tokens": 7, "total_tokens": 17,
+                "attempts": 2, "unreported_attempts": 1,
+            },
+            "wall_seconds": 7.0, "usage_complete": False,
+        }},
+        "calls": [{"name": "build", "inputs": {}, "outputs": {},
+                   "start_time_ns": 1, "end_time_ns": 2}],
+    }
+    exports = []
+
+    def receipt(root, candidate_dir, digest=None):
+        assert root == settings.state_dir.parent / "builds"
+        assert (candidate_dir / "build.py").is_file()
+        return preparation
+
+    def export(path, *args, **kwargs):
+        exports.append(json.loads(path.read_text()))
+        return {"status": "tracking_pending"}
+
+    monkeypatch.setattr(service, "load_build_receipt", receipt)
+    monkeypatch.setattr(service, "export_configured", export)
+    configured = replace(
+        settings, split=split, build_dir=settings.state_dir.parent / "builds",
+        runner_supports_build=True,
+        tracking_dir=settings.state_dir / "tracking", case_id="case",
+    )
+    body = submission()
+    candidates = body["candidates"]
+    assert isinstance(candidates, list)
+    candidates[0]["files"]["build.py"] = base64.b64encode(b"pass\n").decode()
+    api = client(configured)
+    response = api.post("/v1/evaluations", json=body)
+    evaluation_id = response.json().get("evaluation_id")
+    record = operator_record(configured, evaluation_id)
+    assert record["status"] == "complete"
+    assert record["scores"][0]["solver_tokens"] == 23
+    assert record["scores"][0]["solver_seconds"] == 11
+    assert record["scores"][0]["solver_unreported_attempts"] == 1
+    details = json.loads(next(settings.state_dir.rglob("details/candidate.json")).read_text())
+    assert details["preparation"] == preparation
+    assert all(item["resources"]["solver"]["usage"]["total_tokens"] == 3
+               for item in details["examples"])
+    assert exports[0]["preparation"] == preparation
+    assert sum(call["name"] == "build" for call in exports[0]["calls"]) == 1
+
+
+def test_missing_build_receipt_does_not_consume_private_attempt(settings, monkeypatch):
+    import evaluator.service as service
+
+    def unavailable(*args):
+        raise ValueError("build is incomplete")
+
+    monkeypatch.setattr(service, "load_build_receipt", unavailable)
+    settings = replace(settings, runner_supports_build=True)
+    api = client(settings)
+    body = submission()
+    candidates = body["candidates"]
+    assert isinstance(candidates, list)
+    candidates[0]["files"]["build.py"] = base64.b64encode(b"pass\n").decode()
+    response = api.post("/v1/evaluations", json=body)
+
+    assert response.status_code == 503
+    assert api.get("/v1/evaluations").status_code == 404
+    assert not list(settings.state_dir.rglob("record.json"))
+
+
+@pytest.mark.parametrize("split", ["private", "public"])
+@pytest.mark.parametrize("changed", ["environment_fingerprint", "input_assets_digest"])
+def test_build_configuration_must_match_current_service_before_startup(
+    settings, monkeypatch, split, changed,
+):
+    import evaluator.service as service
+
+    builds = settings.state_dir.parent / "builds"
+    builds.mkdir(mode=0o700)
+    configuration = {
+        "version": 2, "environment_fingerprint": "a" * 64, "input_assets_digest": "b" * 64,
+    }
+    configuration[changed] = "c" * 64
+    (builds / "configuration.json").write_text(json.dumps(configuration))
+    (builds / "configuration.json").chmod(0o600)
+    monkeypatch.setattr(service, "build_environment", lambda runner, parameters: "a" * 64)
+    configured = replace(
+        settings, split=split, runner_image="sha256:" + "a" * 64,
+        build_dir=builds, input_assets_digest="b" * 64,
+    )
+
+    with pytest.raises(ValueError, match="configuration"):
+        create_app(configured)
+    assert not list(settings.state_dir.rglob("record.json"))
+
+
+def test_matching_build_configuration_allows_service_startup(settings, monkeypatch):
+    import evaluator.service as service
+
+    builds = settings.state_dir.parent / "builds"
+    builds.mkdir(mode=0o700)
+    (builds / "configuration.json").write_text(json.dumps({
+        "version": 2, "environment_fingerprint": "a" * 64, "input_assets_digest": "b" * 64,
+    }))
+    (builds / "configuration.json").chmod(0o600)
+    monkeypatch.setattr(service, "build_environment", lambda runner, parameters: "a" * 64)
+    configured = replace(
+        settings, runner_image="sha256:" + "a" * 64, build_dir=builds, input_assets_digest="b" * 64,
+    )
+
+    api = TestClient(create_app(configured))
+
+    assert api.get("/healthz").json() == {"status": "ok"}
+
+
 def test_judge_resource_deltas_do_not_accumulate_between_examples(settings: Settings, monkeypatch):
     import evaluator.service as service
 
@@ -442,7 +804,9 @@ def test_runner_receives_configurable_long_limits_and_usage_path(settings: Setti
 
     captured = {}
 
-    class CapturingRunner(service.DockerRunner):
+    import evaluator.execution as execution
+
+    class CapturingRunner(execution.DockerRunner):
         def __post_init__(self):
             captured.update(self.configuration())
 
@@ -455,11 +819,16 @@ def test_runner_receives_configurable_long_limits_and_usage_path(settings: Setti
         assert complete.retry_delay == 0
         return {"score": 4.0, "criteria": {}}
 
-    monkeypatch.setattr(service, "DockerRunner", CapturingRunner)
+    monkeypatch.setattr(execution, "DockerRunner", CapturingRunner)
     monkeypatch.setattr(service, "evaluate_answer", judge)
+    monkeypatch.setattr(service, "validate_build_environment", lambda *args: None)
     configured = replace(
         settings, model_timeout=30000, runner_timeout=900000, prepare_timeout=200000,
         retry_delay=0, usage_dir=settings.state_dir.parent / "accounting",
+        runner_memory="32g", runner_cpus="8", runner_pids_limit=2048,
+        runner_tmpfs_size="16g", runner_tmpfs_exec=True,
+        published_assets_dir=settings.state_dir.parent / "published",
+        build_dir=settings.state_dir.parent / "builds",
     )
     api = TestClient(create_app(configured), headers={"Authorization": "Bearer test-token"})
     api.post("/v1/evaluations", json=submission())
@@ -469,6 +838,82 @@ def test_runner_receives_configurable_long_limits_and_usage_path(settings: Setti
     assert captured["prepare_timeout"] == 200000
     assert captured["retry_delay"] == 0
     assert captured["usage_dir"] == str(configured.usage_dir)
+    assert captured["memory"] == "32g"
+    assert captured["cpus"] == "8"
+    assert captured["pids_limit"] == 2048
+    assert captured["tmpfs_size"] == "16g"
+    assert captured["tmpfs_exec"] is True
+    assert captured["published_assets_dir"] == str(configured.published_assets_dir)
+    assert captured["build_dir"] == str(configured.build_dir)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("runner_memory", "32g,exec"), ("runner_cpus", "0"),
+    ("runner_pids_limit", True), ("runner_pids_limit", 0),
+    ("runner_tmpfs_size", "16g,suid"), ("runner_tmpfs_exec", "true"),
+])
+def test_settings_reject_invalid_runner_resources(settings, field, value):
+    with pytest.raises(ValueError, match="runner.*limit"):
+        replace(settings, **{field: value})
+
+
+def test_runner_resource_environment_is_operator_controlled(settings, monkeypatch):
+    environment = {
+        "DATASET_PATH": str(settings.dataset_path),
+        "METRIC_PATH": str(settings.metric_path),
+        "STATE_DIR": str(settings.state_dir),
+        "TOKEN": settings.token,
+        "RUNNER_IMAGE": settings.runner_image,
+        "RELEASE_ID": settings.release_id,
+        "MODEL": settings.model,
+        "MODEL_BASE_URL": settings.model_base_url,
+        "RUNNER_MEMORY": "32g",
+        "RUNNER_CPUS": "8",
+        "RUNNER_PIDS_LIMIT": "2048",
+        "RUNNER_TMPFS_SIZE": "16g",
+        "RUNNER_TMPFS_EXEC": "true",
+        "TRACE_DIR": str(settings.state_dir / "trace"),
+        "TRACKING_DIR": str(settings.state_dir / "tracking"),
+        "TRACKING_QUEUE_DIR": str(settings.state_dir / "queue"),
+        "CASE_ID": "case",
+        "SLOT_DIR": str(settings.state_dir / "slots"),
+        "EXECUTION_SLOTS": "3",
+        "PUBLISHED_ASSETS_DIR": str(settings.state_dir.parent / "published"),
+        "BUILD_DIR": str(settings.state_dir.parent / "builds"),
+        "INPUT_ASSETS_DIGEST": "f" * 64,
+        "RUNNER_SUPPORTS_BUILD": "true",
+        "RUNNER_SUPPORTS_ASSET_SELECTION": "true",
+        "ASSET_STAGING_DIR": str(settings.state_dir.parent / "staging"),
+        "ASSET_STORE_DIR": str(settings.state_dir.parent / "store"),
+    }
+    for name, value in environment.items():
+        monkeypatch.setenv("ARENA_" + name, value)
+
+    loaded = Settings.from_env()
+
+    assert loaded.runner_memory == "32g"
+    assert loaded.runner_cpus == "8"
+    assert loaded.runner_pids_limit == 2048
+    assert loaded.runner_tmpfs_size == "16g"
+    assert loaded.runner_tmpfs_exec is True
+    assert loaded.trace_dir == settings.state_dir / "trace"
+    assert loaded.tracking_dir == settings.state_dir / "tracking"
+    assert loaded.tracking_queue_dir == settings.state_dir / "queue"
+    assert loaded.case_id == "case"
+    assert loaded.slot_dir == settings.state_dir / "slots"
+    assert loaded.execution_slots == 3
+    assert loaded.published_assets_dir == settings.state_dir.parent / "published"
+    assert loaded.build_dir == settings.state_dir.parent / "builds"
+    assert loaded.input_assets_digest == "f" * 64
+    assert loaded.runner_supports_build is True
+    assert loaded.runner_supports_asset_selection is True
+    assert loaded.asset_staging_dir == settings.state_dir.parent / "staging"
+    assert loaded.asset_store_dir == settings.state_dir.parent / "store"
+    monkeypatch.setenv("ARENA_RUNNER_TMPFS_EXEC", "false")
+    assert Settings.from_env().runner_tmpfs_exec is False
+    monkeypatch.setenv("ARENA_RUNNER_TMPFS_EXEC", "yes")
+    with pytest.raises(ValueError, match="ARENA_RUNNER_TMPFS_EXEC"):
+        Settings.from_env()
 
 
 def test_assets_cannot_expose_resource_ledger(settings: Settings, tmp_path):
@@ -550,7 +995,9 @@ def test_failed_solver_preserves_private_measurements_and_ledger_reference(
     assert example["failure"] == "solver_failure"
     assert example["resources_complete"] is False
     assert example["run_id"] == run_id
-    assert example["resources"]["solver"] == {"usage": usage, "wall_seconds": seconds}
+    assert example["resources"]["solver"] == {
+        "usage": usage, "wall_seconds": seconds, **({"run_id": run_id} if run_id else {}),
+    }
     assert example["resources"]["judge"] == {"usage": empty_usage(), "wall_seconds": 0.0}
     record = json.loads(next(settings.state_dir.glob("*/record.json")).read_text())
     assert len(record["failure"]["message"]) <= 2000
@@ -741,7 +1188,6 @@ def test_model_free_private_metric_uses_direction_and_resource_tiebreak(
 
 
 def test_trusted_harness_registry_dispatches_candidate_manifest(settings: Settings, monkeypatch):
-    import evaluator.service as service
 
     invocations = []
 
@@ -749,7 +1195,7 @@ def test_trusted_harness_registry_dispatches_candidate_manifest(settings: Settin
         invocations.append((self.image, self.uses_model, self.network, parameters))
         return SolveResult("answer", empty_usage(), 1)
 
-    monkeypatch.setattr(service.DockerRunner, "__call__", run)
+    monkeypatch.setattr("evaluator.execution.DockerRunner.__call__", run)
     image = "sha256:" + "a" * 64
     alternative = "sha256:" + "b" * 64
     configured = replace(settings, runner_image=image, harnesses={
@@ -1464,3 +1910,70 @@ def test_metric_package_verified_before_private_admission(settings, tmp_path, ki
     )
     (package / "added.txt").write_text("later mutation")
     assert api.post("/v1/evaluations", json=submission()).json() == {"status": "complete"}
+
+
+@pytest.mark.parametrize("split", ["private", "public"])
+def test_model_free_candidate_helper_does_not_enable_preparation(command_settings, split):
+    configured = replace(command_settings, split=split)
+    body = submission()
+    candidates = body["candidates"]
+    assert isinstance(candidates, list)
+    candidates[0]["files"]["build.py"] = base64.b64encode(b"ordinary helper").decode()
+    api = TestClient(create_app(
+        configured, solve=lambda *args: SolveResult("3", empty_usage(), 1),
+    ), headers={"Authorization": "Bearer test-token"})
+    accepted = api.post("/v1/evaluations", json=body)
+    assert accepted.status_code == 202
+    record = operator_record(configured, accepted.json().get("evaluation_id"))
+    assert record["status"] == "complete"
+    assert record["scores"][0]["score"] == 3
+    assert record["scores"][0]["solver_tokens"] == 0
+    assert record["scores"][0]["judge_tokens"] == 0
+    assert not list(configured.state_dir.rglob("*.tracking.json"))
+
+
+def test_registered_ordinary_harness_preserves_adapter_parameters(command_settings, monkeypatch):
+    from evaluator.build import BuildStore
+    from evaluator.build_receipts import build_environment
+    from evaluator.execution import make_runner
+
+    image = "sha256:" + "a" * 64
+    builds = command_settings.state_dir.parent / "builds"
+    published = command_settings.state_dir.parent / "published"
+    configured = replace(
+        command_settings, runner_image=image, runner_supports_build=True,
+        runner_supports_asset_selection=True, build_dir=builds,
+        published_assets_dir=published, input_assets_digest="b" * 64,
+        harnesses={"ordinary": {"image": image, "uses_model": False}},
+    )
+    BuildStore(
+        builds, published, "b" * 64,
+        build_environment(make_runner(configured, configured.state_dir / "usage"),
+                          configured.parameters),
+        lambda *args: pytest.fail("ordinary evaluation must not run a trusted build"),
+    )
+    calls = []
+
+    def solve(self, candidate, task, *, parameters=None):
+        assert (candidate / "build.py").read_text() == "ordinary helper"
+        calls.append(parameters)
+        return SolveResult("3", empty_usage(), 1)
+
+    def receipt(*args):
+        pytest.fail("ordinary harness must not read trusted build receipts")
+
+    monkeypatch.setattr("evaluator.runner.DockerRunner.__call__", solve)
+    monkeypatch.setattr("evaluator.runner.load_build_receipt", receipt)
+    body = submission()
+    candidates = body["candidates"]
+    assert isinstance(candidates, list)
+    candidates[0]["files"].update({
+        "build.py": base64.b64encode(b"ordinary helper").decode(),
+        "solution.json": base64.b64encode(json.dumps({
+            "harness": "ordinary", "parameters": {"asset_digests": "adapter-owned"},
+        }).encode()).decode(),
+    })
+    api = TestClient(create_app(configured), headers={"Authorization": "Bearer test-token"})
+    assert api.post("/v1/evaluations", json=body).status_code == 202
+    assert api.get("/v1/evaluations").json() == {"status": "complete"}
+    assert calls == [{"asset_digests": "adapter-owned"}]

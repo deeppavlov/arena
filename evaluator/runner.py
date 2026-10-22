@@ -14,6 +14,8 @@ from types import MappingProxyType
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
+from evaluator.assets import AssetError, read_asset_manifest
+from evaluator.build_receipts import bound_build_receipt, load_build_receipt
 from evaluator.reliability import (
     MODEL_TIMEOUT,
     PREPARE_TIMEOUT,
@@ -26,6 +28,21 @@ from evaluator.usage import create_usage, read_usage, seal_usage
 
 MAX_OUTPUT_BYTES = 1024 * 1024
 MAX_TASK_BYTES = 8 * 1024 * 1024
+
+
+def validate_runner_resources(
+    memory: str, cpus: str, pids_limit: int, tmpfs_size: str, tmpfs_exec: bool,
+) -> None:
+    for name, value in (("memory", memory), ("tmpfs", tmpfs_size)):
+        if not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]*[bBkKmMgG]?", value):
+            raise ValueError(f"invalid runner {name} limit")
+    if (
+        not isinstance(cpus, str) or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", cpus)
+        or not math.isfinite(float(cpus)) or float(cpus) <= 0
+    ):
+        raise ValueError("invalid runner cpu limit")
+    if type(pids_limit) is not int or pids_limit <= 0 or type(tmpfs_exec) is not bool:
+        raise ValueError("invalid runner resource limits")
 
 
 class RunnerError(RuntimeError):
@@ -48,6 +65,7 @@ class SolveResult:
     answer: str
     usage: dict[str, int]
     wall_seconds: float
+    run_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +84,13 @@ class DockerRunner:
     cpus: str = "2"
     pids_limit: int = 128
     uses_model: bool = True
+    tmpfs_size: str = "128m"
+    tmpfs_exec: bool = False
+    published_assets_dir: Path | None = None
+    build_dir: Path | None = None
+    build_output_dir: Path | None = None
+    supports_build: bool = False
+    supports_asset_selection: bool = False
 
     def __post_init__(self) -> None:
         if not re.fullmatch(
@@ -74,6 +99,12 @@ class DockerRunner:
             raise ValueError("runner image must be pinned by sha256")
         if self.network == "host" or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", self.network):
             raise ValueError("invalid runner network")
+        if type(self.supports_build) is not bool or type(self.supports_asset_selection) is not bool:
+            raise ValueError("invalid runner capabilities")
+        if self.supports_asset_selection and self.build_dir is None:
+            raise ValueError("asset selection requires a trusted receipt ledger")
+        if self.build_output_dir is not None and not self.supports_build:
+            raise ValueError("runner does not support trusted builds")
         if type(self.uses_model) is not bool:
             raise ValueError("invalid runner model mode")
         if not self.uses_model and self.network != "none":
@@ -86,13 +117,11 @@ class DockerRunner:
             or isinstance(self.retry_delay, bool)
             or not math.isfinite(self.retry_delay)
             or self.retry_delay < 0
-            or self.pids_limit <= 0
         ):
             raise ValueError("invalid runner limits")
-        if not re.fullmatch(r"[1-9][0-9]*[bBkKmMgG]?", self.memory):
-            raise ValueError("invalid runner memory limit")
-        if not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", self.cpus) or float(self.cpus) <= 0:
-            raise ValueError("invalid runner cpu limit")
+        validate_runner_resources(
+            self.memory, self.cpus, self.pids_limit, self.tmpfs_size, self.tmpfs_exec,
+        )
         url = urlsplit(self.model_base_url)
         if self.uses_model and (
             url.scheme not in ("http", "https")
@@ -104,6 +133,11 @@ class DockerRunner:
             or url.password
         ):
             raise ValueError("invalid runner model gateway URL")
+        if self.assets_dir is not None and self.published_assets_dir is not None:
+            raw = self.assets_dir.resolve()
+            published = self.published_assets_dir.resolve()
+            if published.is_relative_to(raw) or raw.is_relative_to(published):
+                raise ValueError("raw and published runner assets must be separate trees")
 
     def configuration(self) -> dict[str, Any]:
         return {
@@ -115,10 +149,15 @@ class DockerRunner:
         self, candidate_dir: Path, input_text: str, *, parameters: dict[str, Any] | None = None,
     ) -> SolveResult:
         started = time.monotonic()
+        if self.build_output_dir is not None and input_text:
+            raise RunnerError("build input must be empty")
+        selected_assets = self.validate_assets(parameters)
+        prepared_assets = self.validate_preparation(candidate_dir, parameters)
         if self.uses_model and self.usage_dir is None:
             raise RunnerError("runner usage directory is required")
         run_id = str(uuid.uuid4())
         name = f"arena-runner-{run_id}"
+        tmpfs_mode = "exec" if self.tmpfs_exec else "noexec"
         command = [
             "docker",
             "run",
@@ -147,12 +186,24 @@ class DockerRunner:
             "--workdir",
             "/tmp",
             "--tmpfs",
-            "/tmp:rw,noexec,nosuid,nodev,size=128m,uid=10001,gid=10001",
+            f"/tmp:rw,{tmpfs_mode},nosuid,nodev,size={self.tmpfs_size},uid=10001,gid=10001",
             "--mount",
             self._mount(candidate_dir, "/candidate"),
         ]
         if self.assets_dir is not None:
             command.extend(["--mount", self._mount(self.assets_dir, "/assets")])
+        if selected_assets:
+            command.extend([
+                "--tmpfs", "/assets/derived:rw,noexec,nosuid,nodev,size=1m,mode=0555,uid=0,gid=0",
+            ])
+        for digest, directory in selected_assets:
+            command.extend(["--mount", self._mount(directory, f"/assets/derived/{digest}")])
+        if prepared_assets is not None:
+            command.extend(["--mount", self._mount(prepared_assets, "/assets/prepared")])
+        if self.build_output_dir is not None:
+            command.extend([
+                "--mount", self._mount(self.build_output_dir, "/output", readonly=False),
+            ])
         command.append(self.image)
         payload: dict[str, Any] = {
             "input": input_text,
@@ -162,6 +213,9 @@ class DockerRunner:
             if not isinstance(parameters, dict):
                 raise RunnerError("invalid harness parameters")
             payload["parameters"] = parameters
+        if self.build_output_dir is not None:
+            payload.pop("input")
+            payload["operation"] = "build"
         try:
             json.dumps(payload, allow_nan=False)
         except (TypeError, ValueError, RecursionError):
@@ -220,7 +274,7 @@ class DockerRunner:
             if not isinstance(answer, str):
                 raise RunnerError("invalid runner response")
             usage = self._seal(run_id)
-            return SolveResult(answer, usage, time.monotonic() - started)
+            return SolveResult(answer, usage, time.monotonic() - started, run_id)
         except BaseException as error:
             self._stop(process, name)
             with suppress(OSError, ValueError):
@@ -235,6 +289,68 @@ class DockerRunner:
                 process.stdin.close()
             if process.stdout is not None:
                 process.stdout.close()
+
+    def validate_assets(self, parameters: dict[str, Any] | None) -> list[tuple[str, Path]]:
+        if parameters is not None and not isinstance(parameters, dict):
+            raise RunnerError("invalid harness parameters")
+        if not self.supports_asset_selection:
+            return []
+        digests = parameters.get("asset_digests", []) if parameters is not None else []
+        if (
+            not isinstance(digests, list) or len(digests) > 16
+            or any(not isinstance(value, str) or not re.fullmatch(r"[a-f0-9]{64}", value)
+                   for value in digests)
+            or digests != sorted(set(digests))
+        ):
+            raise RunnerError("invalid runner asset selection")
+        if not digests:
+            return []
+        if self.assets_dir is not None:
+            mountpoint = self.assets_dir / "derived"
+            if mountpoint.is_symlink() or not mountpoint.is_dir():
+                raise RunnerError("invalid derived runner asset mountpoint")
+        return [(digest, self._published_asset(digest)) for digest in digests]
+
+    def validate_preparation(
+        self, candidate_dir: Path, parameters: dict[str, Any] | None,
+    ) -> Path | None:
+        if self.build_output_dir is not None:
+            return None
+        try:
+            receipt = self.preparation_receipt(candidate_dir)
+            if receipt is None and self.supports_asset_selection:
+                for digest in (parameters or {}).get("asset_digests", []):
+                    if bound_build_receipt(self.build_dir, digest) is not None:
+                        if not self.supports_build:
+                            raise RunnerError("imported preparation requires trusted build support")
+                        raise RunnerError("imported preparation requires build.py")
+        except (OSError, ValueError):
+            raise RunnerError("candidate preparation unavailable") from None
+        if receipt is None:
+            return None
+        if self.assets_dir is not None:
+            mountpoint = self.assets_dir / "prepared"
+            if mountpoint.is_symlink() or not mountpoint.is_dir():
+                raise RunnerError("invalid prepared runner asset mountpoint")
+        return self._published_asset(receipt["output_digest"])
+
+    def preparation_receipt(
+        self, candidate_dir: Path, candidate_digest: str | None = None,
+    ) -> dict[str, Any] | None:
+        if not self.supports_build:
+            return None
+        return load_build_receipt(self.build_dir, candidate_dir, candidate_digest)
+
+    def _published_asset(self, digest: str) -> Path:
+        store = self.published_assets_dir
+        if store is None or store.is_symlink() or not store.is_dir():
+            raise RunnerError("published runner assets unavailable")
+        directory = store / digest
+        try:
+            read_asset_manifest(directory, digest)
+        except (AssetError, OSError, ValueError):
+            raise RunnerError(f"published runner asset unavailable: {digest}") from None
+        return directory
 
     def _seal(self, run_id: str) -> dict[str, int]:
         if not self.uses_model:
@@ -253,7 +369,7 @@ class DockerRunner:
         return error
 
     @staticmethod
-    def _mount(directory: Path, target: str) -> str:
+    def _mount(directory: Path, target: str, *, readonly: bool = True) -> str:
         try:
             source = directory.resolve()
             valid = source.is_dir() and not any(
@@ -263,7 +379,7 @@ class DockerRunner:
             raise RunnerError("invalid runner mount") from None
         if not valid:
             raise RunnerError("invalid runner mount")
-        return f"type=bind,src={source},dst={target},readonly"
+        return f"type=bind,src={source},dst={target}" + (",readonly" if readonly else "")
 
     def _exchange(self, process: subprocess.Popen[bytes], task: bytes) -> bytes:
         assert process.stdin is not None
@@ -349,9 +465,30 @@ class HarnessRunner:
         return {**configuration, "digest": digest}
 
     def __call__(self, candidate_dir: Path, input_text: str) -> SolveResult:
+        runner, parameters = self.selection(candidate_dir)
+        return runner(candidate_dir, input_text, parameters=parameters)
+
+    def validate_candidate(self, candidate_dir: Path) -> None:
+        runner, parameters = self.selection(candidate_dir)
+        runner.validate_assets(parameters)
+        runner.validate_preparation(candidate_dir, parameters)
+
+    def preparation_receipt(
+        self, candidate_dir: Path, candidate_digest: str | None = None,
+    ) -> dict[str, Any] | None:
+        runner, _ = self.selection(candidate_dir)
+        return runner.preparation_receipt(candidate_dir, candidate_digest)
+
+    def build_asset_digests(self, candidate_dir: Path) -> list[str]:
+        runner, parameters = self.selection(candidate_dir)
+        if not runner.supports_build:
+            raise RunnerError("selected harness does not support trusted builds")
+        return [digest for digest, _ in runner.validate_assets(parameters)]
+
+    def selection(self, candidate_dir: Path) -> tuple[DockerRunner, dict[str, Any] | None]:
         manifest = candidate_dir / "solution.json"
         if not manifest.exists():
-            return self.default_runner(candidate_dir, input_text)
+            return self.default_runner, None
         try:
             with manifest.open("rb") as source:
                 raw = source.read(MAX_OUTPUT_BYTES + 1)
@@ -369,4 +506,4 @@ class HarnessRunner:
             json.dumps(parameters, allow_nan=False)
         except (OSError, TypeError, ValueError, RecursionError):
             raise RunnerError("invalid harness selection") from None
-        return self.registry[harness](candidate_dir, input_text, parameters=parameters)
+        return self.registry[harness], parameters

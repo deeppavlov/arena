@@ -1,0 +1,12 @@
+{
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic",
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "checks"
+  ],
+  "venvPath": "../../../../../",
+  "venv": ".venv"
+}

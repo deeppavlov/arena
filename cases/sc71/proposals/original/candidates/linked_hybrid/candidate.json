@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "build_argv": [
+    "python3",
+    "/candidate/build.py"
+  ],
+  "run_argv": [
+    "python3",
+    "/candidate/run.py"
+  ],
+  "config": {}
+}

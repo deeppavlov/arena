@@ -15,6 +15,12 @@
 !cases/template/**
 !runner/
 !runner/**
+!integrations/
+!integrations/**
+!cases/sc71/
+!cases/sc71/harness/
+!cases/sc71/harness/hermes/
+!cases/sc71/harness/hermes/**
 **/__pycache__
 **/*.pyc
 **/.env

@@ -1,0 +1,429 @@
+{
+  "campaign_id": "sc71-first-20261019",
+  "captured_at": "2026-10-19T18:53:11.632605+00:00",
+  "checks": {
+    "evaluator_api": [
+      {
+        "empty_status": 404,
+        "health_status": 200,
+        "service": "train",
+        "unauthorized_status": 401
+      },
+      {
+        "empty_status": 404,
+        "health_status": 200,
+        "service": "public",
+        "unauthorized_status": 401
+      },
+      {
+        "empty_status": 404,
+        "health_status": 200,
+        "service": "private",
+        "unauthorized_status": 401
+      }
+    ],
+    "hermes_cli": {
+      "assets": {
+        "error": "",
+        "returncode": 0
+      },
+      "build": {
+        "error": "",
+        "returncode": 0
+      },
+      "client": {
+        "error": "",
+        "returncode": 0
+      },
+      "search": {
+        "error": "",
+        "returncode": 0
+      },
+      "train": {
+        "error": "",
+        "returncode": 0
+      }
+    },
+    "hermes_strict_mock": {
+      "passed": true,
+      "scenarios": [
+        {
+          "passed": true,
+          "requests": 2,
+          "scenario": "retrieval"
+        },
+        {
+          "passed": true,
+          "requests": 2,
+          "scenario": "files"
+        },
+        {
+          "passed": true,
+          "requests": 3,
+          "scenario": "delegate"
+        },
+        {
+          "passed": true,
+          "requests": 6,
+          "scenario": "nested"
+        },
+        {
+          "passed": true,
+          "requests": 1,
+          "scenario": "failure"
+        }
+      ]
+    },
+    "native_web_search": {
+      "backend": "ddgs",
+      "llm_calls": 0,
+      "passed": true,
+      "query": "BM25 retrieval evaluation",
+      "results": 3,
+      "source_image": "sha256:82d71ed44a77a780b3caeb29bce0cdaf709b2ec506f05ddc3099f8546ed4407b"
+    },
+    "synthetic_build": {
+      "model_calls": 0,
+      "production_store_used": false,
+      "readonly_prepared": true,
+      "source_images": {
+        "evaluator": "sha256:ba01c4008398f4193a8e84538bfb884a2f0ec63a8d4351b32d2d8ded88109909",
+        "hermes": "sha256:cbcb04607e26f799d68dc18394ce2dc97b4b392d67166bf8720f38ac65a6fdc4"
+      },
+      "status": "passed",
+      "total_tokens": 0,
+      "wall_seconds": 7.799933507107198
+    }
+  },
+  "dataset": {
+    "kb_digest": "583c1de943acc3b45e463f2de95b4c41dd3d7e42e69babd137059fb009b144b5",
+    "kb_md_files": 4454,
+    "metric_digest": "e60f2fb93a0dd6d8703ed7d40ed44c54db943287ae687891fe87697b12396e29",
+    "per_topic": {
+      "private": 12,
+      "public": 6,
+      "train": 2
+    },
+    "private": 60,
+    "public": 30,
+    "topics": 5,
+    "train": 10
+  },
+  "evidence_paths": [
+    "operator/readiness-evidence.json",
+    "logs/hermes-wirefix-build.log",
+    "logs/hermes-wirefix-mock-check.json",
+    "logs/hermes-wirefix-cli-check.json",
+    "logs/network-check.jsonl",
+    "logs/worker-peer-check.json",
+    "logs/researcher-filesystem-check.json",
+    "logs/researcher-git-check.json",
+    "logs/evaluator-api-check.json",
+    "operator/build-smoke/run-20261019/result.json",
+    "operator/prelaunch-history/20261019-wire-message-fix",
+    "operator/acceptance/state.technical-retry-2.json",
+    "operator/acceptance/completed-summary.json",
+    "operator/acceptance/verification-migration-2/audit.json",
+    "operator/acceptance/technical-attempt-1-state.json",
+    "operator/acceptance/mlflow-technical-attempt-1",
+    "operator/acceptance/technical-retry-2-final-state.json",
+    "operator/acceptance/mlflow-technical-retry-2/verification-summary.json"
+  ],
+  "hermes_profile": {
+    "max_concurrent_children": 30,
+    "max_spawn_depth": 3,
+    "oneshot_max_children": 30,
+    "scope": "native per-batch concurrency and per-parent one-shot total"
+  },
+  "images": {
+    "evaluator": "sha256:ba01c4008398f4193a8e84538bfb884a2f0ec63a8d4351b32d2d8ded88109909",
+    "hermes": "sha256:a3f7696d01f77aa4d2789ac26b3c7e3414707b4e697c0e1b3913c6a99442a07d",
+    "infra": "sha256:2610755290920a44ef16a534dfbe7b8ee07c9c6b221e7ae9e0b6462f0ea7f96a"
+  },
+  "isolation": {
+    "networks": {
+      "sc71-control": {
+        "EnableIPv6": false,
+        "Internal": false
+      },
+      "sc71-egress": {
+        "EnableIPv6": false,
+        "Internal": false
+      },
+      "sc71-operator-tracking": {
+        "EnableIPv6": false,
+        "Internal": true
+      },
+      "sc71-researchers": {
+        "EnableIPv6": false,
+        "Internal": true
+      },
+      "sc71-workers": {
+        "EnableIPv6": false,
+        "Internal": true
+      }
+    },
+    "researcher_allowed_endpoints": true,
+    "researcher_operator_network_denied": true,
+    "researcher_public_internet_proxy": true,
+    "worker_gateway_only": true,
+    "worker_peer_denied": true
+  },
+  "journal": {
+    "filesystem": "ext2/ext3",
+    "max_solutions": 100,
+    "path": "/workspace/runs/sc71-first-20261019/search.sqlite3",
+    "proposed": 0,
+    "remaining_proposals": 100,
+    "running": [],
+    "stop_reason": null,
+    "stopped": false,
+    "stopped_at": null,
+    "volume": "sc71-campaign-runtime"
+  },
+  "model": {
+    "all_generative_roles_same_model": true,
+    "attempt_timeout_seconds": 21600,
+    "client_timeout_seconds": 130410,
+    "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "maximum_attempts": 6,
+    "parameters": {
+      "reasoning_effort": "max"
+    },
+    "retry_delay_seconds": [
+      30,
+      60,
+      120,
+      240,
+      300
+    ]
+  },
+  "operator_root": "/cephfs/home/malyshev_sa/arena-sc71-first-20261019",
+  "production": {
+    "build_bindings": 0,
+    "build_jobs": 0,
+    "build_receipts": 0,
+    "private_records": 0,
+    "public_records": 0,
+    "published_assets": 0,
+    "raw_asset_mountpoints_empty": {
+      "derived": true,
+      "prepared": true
+    },
+    "researcher_container_exists": false,
+    "search_started": false,
+    "train_records": 0
+  },
+  "ready": true,
+  "resources": {
+    "global_active_evaluations_or_builds": 4,
+    "preparation_timeout_seconds": 172800,
+    "solver_cpus": 8,
+    "solver_memory": "32g",
+    "solver_pids_limit": 2048,
+    "solver_timeout_seconds": 604800,
+    "solver_tmpfs": "16g"
+  },
+  "runtime_source": {
+    "evaluator_gateway_monitor": "e930bda",
+    "hermes": "3acabc18ac05c102d4c1d7851ed70a9f1f1debad"
+  },
+  "services": {
+    "internet-proxy": {
+      "health": null,
+      "status": "running"
+    },
+    "model-gateway": {
+      "health": "healthy",
+      "status": "running"
+    },
+    "private-evaluator": {
+      "health": "healthy",
+      "status": "running"
+    },
+    "public-evaluator": {
+      "health": "healthy",
+      "status": "running"
+    },
+    "research-monitor": {
+      "health": null,
+      "status": "running"
+    },
+    "researcher-gateway": {
+      "health": "healthy",
+      "status": "running"
+    },
+    "train-evaluator": {
+      "health": "healthy",
+      "status": "running"
+    }
+  },
+  "synthetic_acceptance": {
+    "accepted_totals": {
+      "model_calls": 20,
+      "total_tokens": 58164,
+      "wall_seconds": 55.90157630806789
+    },
+    "all_token_ledgers_complete": true,
+    "including_preserved_technical_failure": {
+      "model_calls": 21,
+      "total_tokens": 61921,
+      "wall_seconds": 69.76893656002358
+    },
+    "previous_technical_failure": {
+      "cause": "Hermes internal history fields rejected by strict gateway; adapter fixed before retry",
+      "exported_to_operator_and_shared_mlflow": true,
+      "model_calls": 1,
+      "preserved": true,
+      "quality_score": null,
+      "total_tokens": 3757,
+      "valid_final_answer_obtained": false,
+      "wall_seconds": 13.867360251955688
+    },
+    "private_admission_used": false,
+    "real_dataset_used": false,
+    "scenarios": [
+      {
+        "model_calls": 2,
+        "scenario": "retrieval",
+        "scenario_wall_seconds": 17.267353222239763,
+        "solver_wall_seconds": 16.468648024834692,
+        "status": "accepted",
+        "total_tokens": 7755
+      },
+      {
+        "completed_arena_search_calls": 4,
+        "completed_delegate_task_calls": 2,
+        "depth": "root-child-grandchild",
+        "model_calls": 9,
+        "scenario": "delegation",
+        "scenario_wall_seconds": 21.654221687000245,
+        "solver_wall_seconds": 20.829899861011654,
+        "status": "accepted",
+        "total_tokens": 40466,
+        "trusted_agents": 3,
+        "trusted_parent_child_edges": 2
+      },
+      {
+        "model_calls": 9,
+        "scenario": "judge",
+        "score": 5.0,
+        "scores": {
+          "accuracy": [
+            5,
+            5,
+            5
+          ],
+          "completeness": [
+            5,
+            5,
+            5
+          ],
+          "grounding": [
+            5,
+            5,
+            5
+          ]
+        },
+        "status": "accepted",
+        "total_tokens": 9943,
+        "valid_schema_votes": 9,
+        "votes_per_criterion": 3,
+        "wall_seconds": 16.98000139882788
+      }
+    ],
+    "search_proposals_used": 0,
+    "status": "passed",
+    "verification_used_network": "none"
+  },
+  "tracking": {
+    "closed_data_in_shared": false,
+    "final_acceptance_export": "verified",
+    "operator_host_port": 5050,
+    "operator_preserved": true,
+    "production_queues_periodically_flushed": true,
+    "runs": {
+      "delegation": {
+        "operator": {
+          "run_id": "14360aff022e4154ad7235208cb6c63d",
+          "spans": 11,
+          "status": "exported",
+          "trace_id": "tr-051d0a98823faec80110032ee5087190"
+        },
+        "shared": {
+          "run_id": "cb3a02d56f384245ae963c66a72e8931",
+          "spans": 11,
+          "status": "exported",
+          "trace_id": "tr-5a2544f46444e3c2b9ef97a1702d9bf4"
+        }
+      },
+      "judge": {
+        "operator": {
+          "run_id": "0a430906c5c24735b3c8a8f3749ee7ec",
+          "spans": 11,
+          "status": "exported",
+          "trace_id": "tr-67be58501452ab9ed1f0188e5be529db"
+        },
+        "shared": {
+          "run_id": "12b4a795d8e14a0f9e992ad2296f407e",
+          "spans": 11,
+          "status": "exported",
+          "trace_id": "tr-7d693f0ac4c94f4d19cb996d589f5bd7"
+        }
+      },
+      "retrieval": {
+        "operator": {
+          "run_id": "8076698bdbd44c14babbbf547bf2b5ff",
+          "spans": 4,
+          "status": "exported",
+          "trace_id": "tr-7347faa6bb729e32786f29a9f15fb018"
+        },
+        "shared": {
+          "run_id": "4a2aa10cd6a8492ea9304e20203736d8",
+          "spans": 4,
+          "status": "exported",
+          "trace_id": "tr-9327837c28e961a45a65b89a742e3c7c"
+        }
+      }
+    },
+    "shared_host_port": 5052,
+    "verified_properties": {
+      "exact_record_artifacts": true,
+      "terminal_run_statuses": true,
+      "trace_and_span_counts": true
+    }
+  },
+  "validation_status": "ready",
+  "version": 1,
+  "versions": {
+    "compose": "2.35.1",
+    "docker": "28.1.1",
+    "hermes_revision": "86fa9e6ca1de7ee71132d2be0103f3e37d1fa872",
+    "mlflow": "3.16.0",
+    "python": "3.14.8",
+    "uv": "uv 0.8.13"
+  },
+  "workspace": {
+    "clean_git": true,
+    "commit_count": 1,
+    "filesystem_canary": {
+      "campaign_writable": true,
+      "operator_env_absent": true,
+      "operator_mounts_absent": true,
+      "raw_kb_readonly": true,
+      "staging_writable": true,
+      "submit_tokens_readonly": true,
+      "uid": 10001,
+      "workspace_writable": true
+    },
+    "original_git_history_imported": false,
+    "remotes": [],
+    "worktree_canary": {
+      "fresh_git_commits": 1,
+      "remotes": [],
+      "single_campaign_journal": true,
+      "status": "clean",
+      "worktree_create_remove": true
+    }
+  }
+}

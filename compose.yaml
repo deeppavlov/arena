@@ -19,6 +19,8 @@ services:
     profiles: [train]
     build:
       context: .
+      args:
+        ARENA_TRACKING: ${ARENA_TRACKING:-false}
       target: researcher
     image: arena-researcher:local
     stdin_open: true
@@ -26,7 +28,7 @@ services:
     restart: "no"
     environment:
       HOME: /tmp
-      MLFLOW_TRACKING_URI: ${ARENA_MLFLOW_URL:-http://gpu6:5050}
+      MLFLOW_TRACKING_URI: ${ARENA_MLFLOW_URL:-}
       ARENA_MODEL_TIMEOUT: ${ARENA_MODEL_TIMEOUT:-21600}
       ARENA_RUNNER_TIMEOUT: ${ARENA_RUNNER_TIMEOUT:-604800}
       ARENA_PREPARE_TIMEOUT: ${ARENA_PREPARE_TIMEOUT:-172800}
@@ -45,6 +47,8 @@ services:
     profiles: [private]
     build:
       context: .
+      args:
+        ARENA_TRACKING: ${ARENA_TRACKING:-false}
       target: evaluator
     image: arena-evaluator:local
     command: [python, -m, evaluator]
@@ -138,6 +142,8 @@ services:
     profiles: [private]
     build:
       context: .
+      args:
+        ARENA_TRACKING: ${ARENA_TRACKING:-false}
       target: evaluator
     image: arena-evaluator:local
     command: [python, -m, evaluator.gateway]

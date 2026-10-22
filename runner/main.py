@@ -40,6 +40,19 @@ def run_program(path: Path, payload: dict, timeout: float | None = None) -> dict
     return result
 
 
+def build(task: dict) -> str:
+    uses_model = task.get("uses_model", True)
+    payload = {"assets_dir": "/assets", "build_dir": "/output", "uses_model": uses_model}
+    if "parameters" in task:
+        payload["parameters"] = task["parameters"]
+    if uses_model:
+        payload.update({key: task[key] for key in (
+            "model", "model_base_url", "model_request_timeout"
+        )})
+    run_program(Path("/candidate/build.py"), payload, task["prepare_timeout"])
+    return "build complete"
+
+
 def solve(task: dict) -> str:
     payload = {"input": task["input"], "assets_dir": "/assets"}
     if "parameters" in task:
@@ -96,8 +109,13 @@ def main() -> int:
         if not isinstance(task, dict) or type(task.get("uses_model", True)) is not bool:
             raise ValueError("invalid task")
         uses_model = task.get("uses_model", True)
-        if not isinstance(task.get("input"), str) or not isinstance(
-            task.get("parameters", {}), dict
+        operation = task.get("operation", "solve")
+        if operation not in ("solve", "build"):
+            raise ValueError("invalid operation")
+        if (
+            operation == "solve" and not isinstance(task.get("input"), str)
+            or operation == "build" and "input" in task
+            or not isinstance(task.get("parameters", {}), dict)
         ):
             raise ValueError("invalid task")
         if uses_model and any(
@@ -105,7 +123,8 @@ def main() -> int:
             for key in ("model", "model_base_url")
         ):
             raise ValueError("invalid task")
-        output = json.dumps({"answer": solve(task)})
+        answer = build(task) if operation == "build" else solve(task)
+        output = json.dumps({"answer": answer})
         if len(output.encode()) + 1 > MAX_BYTES:
             raise ValueError("answer too large")
         print(output)

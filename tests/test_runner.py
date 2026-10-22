@@ -115,6 +115,71 @@ def test_default_network_and_optional_assets(tmp_path, monkeypatch):
     assert command.count("--mount") == 1
 
 
+@pytest.mark.parametrize("tmpfs_exec,mode", [(False, "noexec"), (True, "exec")])
+def test_operator_resources_control_scratch_without_weakening_isolation(
+    tmp_path, monkeypatch, tmpfs_exec, mode,
+):
+    commands, _ = fake_docker(monkeypatch, 'print(\'{"answer":"ok"}\')')
+    runner = DockerRunner(
+        IMAGE, uses_model=False, memory="32g", cpus="8", pids_limit=2048,
+        tmpfs_size="16g", tmpfs_exec=tmpfs_exec,
+    )
+
+    runner(tmp_path, "task", parameters={"memory": "999g", "tmpfs_exec": not tmpfs_exec})
+
+    command = commands[0]
+    assert command[command.index("--memory") + 1] == "32g"
+    assert command[command.index("--cpus") + 1] == "8"
+    assert command[command.index("--pids-limit") + 1] == "2048"
+    assert command[command.index("--tmpfs") + 1] == (
+        f"/tmp:rw,{mode},nosuid,nodev,size=16g,uid=10001,gid=10001"
+    )
+    assert "--read-only" in command
+    assert command[command.index("--network") + 1] == "none"
+    assert "--privileged" not in command
+
+
+@pytest.mark.parametrize("field,value", [
+    ("memory", "0g"), ("memory", "32g,exec"), ("memory", 32),
+    ("cpus", "0"), ("cpus", "nan"), ("cpus", "9" * 400), ("cpus", 8),
+    ("pids_limit", 0), ("pids_limit", True), ("pids_limit", 2.5),
+    ("tmpfs_size", "0g"), ("tmpfs_size", "16g,suid"), ("tmpfs_size", 16),
+    ("tmpfs_exec", "false"), ("tmpfs_exec", 1),
+])
+def test_resource_limits_reject_invalid_operator_configuration(field, value):
+    with pytest.raises(ValueError, match="runner.*limit"):
+        DockerRunner(IMAGE, **{field: value})
+
+
+@pytest.mark.parametrize("uses_model", [False, True])
+def test_success_returns_trusted_run_id_for_trace_correlation(tmp_path, monkeypatch, uses_model):
+    commands, _ = fake_docker(monkeypatch, 'print(\'{"answer":"ok","run_id":"forged"}\')')
+    result = DockerRunner(
+        IMAGE, uses_model=uses_model, usage_dir=tmp_path / "usage",
+    )(tmp_path, "task")
+
+    command = commands[0]
+    name = command[command.index("--name") + 1]
+    assert result.run_id == name.removeprefix("arena-runner-")
+    assert result.run_id == str(UUID(result.run_id))
+    assert SolveResult("ok", {}, 1).run_id is None
+
+
+def test_resource_limits_are_frozen_in_harness_provenance():
+    from evaluator.runner import HarnessRunner
+
+    baseline = HarnessRunner(DockerRunner(IMAGE), {}).provenance()
+    changed = HarnessRunner(
+        DockerRunner(IMAGE, tmpfs_size="16g", tmpfs_exec=True), {},
+    ).provenance()
+
+    assert baseline["default"]["tmpfs_size"] == "128m"
+    assert baseline["default"]["tmpfs_exec"] is False
+    assert changed["default"]["tmpfs_size"] == "16g"
+    assert changed["default"]["tmpfs_exec"] is True
+    assert baseline["digest"] != changed["digest"]
+
+
 @pytest.mark.parametrize("directory", ["missing", "bad,name"])
 def test_rejects_invalid_mount_source(tmp_path, directory):
     candidate = tmp_path / directory

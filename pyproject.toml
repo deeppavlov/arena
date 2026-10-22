@@ -3,19 +3,30 @@ name = "arena"
 version = "0.1.0"
 description = "Prompt-first research arena with a private evaluator"
 requires-python = ">=3.12"
-dependencies = ["fastapi>=0.115,<1", "httpx>=0.28,<1", "uvicorn>=0.34,<1"]
+dependencies = [
+    "fastapi>=0.115,<1",
+    "httpx>=0.28,<1",
+    "jsonschema>=4.23,<5",
+    "uvicorn>=0.34,<1",
+]
+
+[project.optional-dependencies]
+tracking = [
+    "mlflow-skinny==3.16.0",
+]
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "pyright>=1.1.400", "ruff>=0.11"]
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["cases/sc71/proposals/original"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.pyright]
-include = ["evaluator", "tests"]
+include = ["evaluator", "runner", "integrations", "tests"]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
 

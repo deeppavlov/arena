@@ -10,17 +10,25 @@ import time
 from collections.abc import Callable
 from concurrent.futures import Future
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, BinaryIO, cast
+from uuid import uuid4
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from evaluator.build_receipts import (
+    build_environment,
+    load_build_receipt,
+    validate_build_environment,
+)
 from evaluator.candidates import materialize_candidate
+from evaluator.capacity import CapacityError, acquire_slot
 from evaluator.contracts import Example, Submission
+from evaluator.execution import collect_model_calls, make_runner
 from evaluator.judge import ModelClient
 from evaluator.metric_package import load_metric, metric_package_provenance
 from evaluator.metrics import (
@@ -42,7 +50,12 @@ from evaluator.reliability import (
     parse_usage,
     validate_timing,
 )
-from evaluator.runner import DockerRunner, HarnessRunner, RunnerError, SolveResult
+from evaluator.runner import (
+    RunnerError,
+    SolveResult,
+    validate_runner_resources,
+)
+from evaluator.tracking import export_configured
 
 MAX_BODY_BYTES = 70 * 1024 * 1024
 
@@ -73,6 +86,24 @@ class Settings:
     harnesses: dict[str, dict[str, Any]] = field(default_factory=dict)
     max_body_bytes: int | None = None
     parameters: dict[str, Any] = field(default_factory=dict)
+    runner_memory: str = "2g"
+    runner_cpus: str = "2"
+    runner_pids_limit: int = 128
+    runner_tmpfs_size: str = "128m"
+    runner_tmpfs_exec: bool = False
+    trace_dir: Path | None = None
+    tracking_dir: Path | None = None
+    tracking_queue_dir: Path | None = None
+    case_id: str = ""
+    slot_dir: Path | None = None
+    execution_slots: int = 4
+    published_assets_dir: Path | None = None
+    build_dir: Path | None = None
+    input_assets_digest: str | None = None
+    runner_supports_build: bool = False
+    runner_supports_asset_selection: bool = False
+    asset_staging_dir: Path | None = None
+    asset_store_dir: Path | None = None
 
     def __post_init__(self) -> None:
         if any(not value.strip() for value in (self.token, self.runner_image, self.release_id)):
@@ -83,8 +114,11 @@ class Settings:
             raise ValueError("output_count must be between 1 and finalists")
         if self.split not in {"private", "public"}:
             raise ValueError("split must be private or public")
-        if type(self.uses_model) is not bool:
-            raise ValueError("uses_model must be a boolean")
+        for name in ("uses_model", "runner_supports_build", "runner_supports_asset_selection"):
+            if type(getattr(self, name)) is not bool:
+                raise ValueError(f"{name} must be a boolean")
+        if (self.asset_staging_dir is None) != (self.asset_store_dir is None):
+            raise ValueError("asset staging and store directories must be configured together")
         if self.max_body_bytes is not None and (
             type(self.max_body_bytes) is not int or self.max_body_bytes < 1
         ):
@@ -95,9 +129,12 @@ class Settings:
             if (
                 not isinstance(name, str) or not name.strip()
                 or not isinstance(config, dict)
-                or set(config) - {"image", "uses_model", "network"}
+                or set(config) - {"image", "uses_model", "network",
+                                  "supports_build", "supports_asset_selection"}
                 or not isinstance(config.get("image"), str) or not config["image"].strip()
                 or type(config.get("uses_model", self.uses_model)) is not bool
+                or type(config.get("supports_build", False)) is not bool
+                or type(config.get("supports_asset_selection", False)) is not bool
                 or not isinstance(config.get("network", self.runner_network), str)
             ):
                 raise ValueError("invalid harness registry")
@@ -108,8 +145,16 @@ class Settings:
         for name in ("runner_timeout", "model_timeout", "prepare_timeout"):
             validate_timing(getattr(self, name), name)
         validate_timing(self.retry_delay, "retry_delay", allow_zero=True)
+        validate_runner_resources(
+            self.runner_memory, self.runner_cpus, self.runner_pids_limit,
+            self.runner_tmpfs_size, self.runner_tmpfs_exec,
+        )
         if not isinstance(self.parameters, dict):
             raise ValueError("parameters must be a JSON object")
+        if self.tracking_dir is not None and not self.case_id.strip():
+            raise ValueError("case_id is required for tracking export")
+        if type(self.execution_slots) is not int or self.execution_slots < 1:
+            raise ValueError("execution_slots must be a positive integer")
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -125,9 +170,26 @@ class Settings:
 
         assets = value("ASSETS_DIR", "")
         usage = value("USAGE_DIR", "")
+        trace = value("TRACE_DIR", "")
+        tracking = value("TRACKING_DIR", "")
+        tracking_queue = value("TRACKING_QUEUE_DIR", "")
+        slots = value("SLOT_DIR", "")
+        published_assets = value("PUBLISHED_ASSETS_DIR", "")
+        builds = value("BUILD_DIR", "")
+        asset_staging = value("ASSET_STAGING_DIR", "")
+        asset_store = value("ASSET_STORE_DIR", "")
+        capabilities = {}
+        for name in ("RUNNER_SUPPORTS_BUILD", "RUNNER_SUPPORTS_ASSET_SELECTION"):
+            enabled = value(name, "false").lower()
+            if enabled not in {"true", "false"}:
+                raise ValueError(f"ARENA_{name} must be true or false")
+            capabilities[name.lower()] = enabled == "true"
         uses_model = value("USES_MODEL", "true").lower()
         if uses_model not in {"true", "false"}:
             raise ValueError("ARENA_USES_MODEL must be true or false")
+        tmpfs_exec = value("RUNNER_TMPFS_EXEC", "false").lower()
+        if tmpfs_exec not in {"true", "false"}:
+            raise ValueError("ARENA_RUNNER_TMPFS_EXEC must be true or false")
         body_bytes = value("MAX_BODY_BYTES", "")
         return cls(
             dataset_path=Path(value("DATASET_PATH")),
@@ -154,6 +216,23 @@ class Settings:
             harnesses=json.loads(value("HARNESSES", "{}")),
             max_body_bytes=int(body_bytes) if body_bytes else None,
             parameters=json.loads(value("PARAMETERS", "{}")),
+            runner_memory=value("RUNNER_MEMORY", "2g"),
+            runner_cpus=value("RUNNER_CPUS", "2"),
+            runner_pids_limit=int(value("RUNNER_PIDS_LIMIT", "128")),
+            runner_tmpfs_size=value("RUNNER_TMPFS_SIZE", "128m"),
+            runner_tmpfs_exec=tmpfs_exec == "true",
+            trace_dir=Path(trace) if trace else None,
+            tracking_dir=Path(tracking) if tracking else None,
+            tracking_queue_dir=Path(tracking_queue) if tracking_queue else None,
+            case_id=value("CASE_ID", ""),
+            slot_dir=Path(slots) if slots else None,
+            execution_slots=int(value("EXECUTION_SLOTS", "4")),
+            published_assets_dir=Path(published_assets) if published_assets else None,
+            build_dir=Path(builds) if builds else None,
+            input_assets_digest=value("INPUT_ASSETS_DIGEST", "") or None,
+            asset_staging_dir=Path(asset_staging) if asset_staging else None,
+            asset_store_dir=Path(asset_store) if asset_store else None,
+            **capabilities,
         )
 
 
@@ -265,11 +344,14 @@ def _normalized_provenance(value: dict[str, Any]) -> dict[str, Any]:
 
 def _judge_resources(
     usage: dict[str, int], seconds: float, diagnostics: dict[str, Any] | None = None,
+    run_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     resources: dict[str, Any] = {"usage": usage, "wall_seconds": seconds}
     if diagnostics and "model_usage_complete" in diagnostics:
         resources["usage_complete"] = diagnostics["model_usage_complete"]
         resources["run_id"] = diagnostics.get("model_run_id")
+    if run_ids:
+        resources["run_ids"] = run_ids
     return resources
 
 
@@ -322,6 +404,15 @@ def create_app(
     usage_dir = (settings.usage_dir or root / "usage").resolve()
     if usage_dir.is_relative_to(candidate_root):
         raise ValueError("usage directory must be outside candidate directories")
+    tracking_paths = [
+        path.resolve() for path in (
+            settings.trace_dir, settings.tracking_dir, settings.tracking_queue_dir,
+            settings.slot_dir,
+            settings.build_dir,
+        ) if path is not None
+    ]
+    if any(path.is_relative_to(candidate_root) for path in tracking_paths):
+        raise ValueError("tracking must be outside candidate directories")
     for private_path in (settings.dataset_path, settings.metric_path):
         if private_path.resolve().is_relative_to(candidate_root):
             raise ValueError("private data must be outside candidate directories")
@@ -329,11 +420,14 @@ def create_app(
         assets = settings.assets_dir.resolve()
         private_paths = (
             settings.dataset_path.resolve(), settings.metric_path.resolve(), root, usage_dir,
+            *tracking_paths,
         )
         if any(path.is_relative_to(assets) for path in private_paths):
             raise ValueError("assets must not contain private data or evaluator state")
         if assets.is_relative_to(root) or assets.is_relative_to(usage_dir):
             raise ValueError("assets must be outside evaluator state and usage directory")
+        if any(assets.is_relative_to(path) for path in tracking_paths):
+            raise ValueError("assets must be outside tracking directories")
     command = command_provenance(metric)
     if command and any(
         Path(path).resolve().is_relative_to(candidate_root)
@@ -368,27 +462,14 @@ def create_app(
 
         return tracked_complete, judge_usage
 
-    def make_runner(config: dict[str, Any]) -> DockerRunner:
-        return DockerRunner(
-            image=config.get("image", settings.runner_image),
-            network=config.get("network", settings.runner_network),
-            uses_model=config.get("uses_model", settings.uses_model),
-            model=settings.model,
-            model_base_url=settings.runner_model_base_url,
-            assets_dir=settings.assets_dir,
-            timeout=settings.runner_timeout,
-            model_timeout=settings.model_timeout,
-            prepare_timeout=settings.prepare_timeout,
-            retry_delay=settings.retry_delay,
-            usage_dir=usage_dir,
-        )
-
     harness_runner = None
     if solve is None:
-        harness_runner = HarnessRunner(
-            make_runner({}),
-            {name: make_runner(config) for name, config in settings.harnesses.items()},
-        )
+        harness_runner = make_runner(settings, usage_dir)
+        if settings.build_dir is not None:
+            validate_build_environment(
+                settings.build_dir, build_environment(harness_runner, settings.parameters),
+                settings.input_assets_digest,
+            )
         solve = harness_runner
     directory = root / dataset_digest
     directory.mkdir(mode=0o700, exist_ok=True)
@@ -477,11 +558,51 @@ def create_app(
         else:
             recover(directory)
 
+    def stage_calls(
+        name: str, inputs: Any, outputs: Any, started: int, run_ids: list[str],
+        *, failed: bool = False,
+    ) -> list[dict[str, Any]]:
+        if settings.trace_dir is None and settings.tracking_dir is None:
+            return []
+        span_id = str(uuid4())
+        calls = [{
+            "name": name, "span_type": "CHAIN", "span_id": span_id,
+            "inputs": inputs, "outputs": outputs, "attributes": {"run_ids": run_ids},
+            "start_time_ns": started, "end_time_ns": time.time_ns(),
+            "status": "ERROR" if failed else "OK",
+        }]
+        model_calls, errors = collect_model_calls(settings.trace_dir, run_ids, parent_id=span_id)
+        calls.extend(model_calls)
+        if errors:
+            calls[0]["attributes"]["trace_errors"] = errors
+        return calls
+
+    def candidate_preparation(candidate_dir: Path, digest: str) -> dict[str, Any] | None:
+        if harness_runner is not None:
+            return harness_runner.preparation_receipt(candidate_dir, digest)
+        if settings.runner_supports_build:
+            return load_build_receipt(settings.build_dir, candidate_dir, digest)
+        return None
+
     def measure_candidate(
         candidate: dict[str, Any], details_path: Path, judge_complete, judge_usage,
     ) -> dict[str, Any]:
         details = []
+        document: dict[str, Any] = {"candidate_id": candidate["id"], "examples": details}
+        preparation = candidate_preparation(Path(candidate["path"]), candidate["digest"])
+        preparation_usage = empty_usage()
+        preparation_seconds = 0.0
+        if preparation is not None:
+            document["preparation"] = preparation
+            resources = preparation["resources"]["solver"]
+            preparation_usage = _usage(resources["usage"])
+            preparation_seconds = validate_timing(
+                resources["wall_seconds"], "preparation wall time", allow_zero=True,
+            )
+            _write_json(details_path, document)
+        access = replace(model_access, run_ids=[]) if model_access is not None else None
         for example in examples:
+            solver_started = time.time_ns()
             try:
                 solved = solve(Path(candidate["path"]), example.input)
             except Exception as error:
@@ -503,19 +624,27 @@ def create_app(
                             pass
                     if isinstance(error.run_id, str) and len(error.run_id) <= 64:
                         run_id = error.run_id
-                details.append({
+                failed_detail = {
                     "example_id": example.id, "failure": "solver_failure",
                     "error_type": type(error).__name__[:100],
                     "resources_complete": False, "run_id": run_id,
                     "resources": {
-                        "solver": {"usage": failed_usage, "wall_seconds": failed_seconds},
+                        "solver": {
+                            "usage": failed_usage, "wall_seconds": failed_seconds,
+                            **({"run_id": run_id} if run_id else {}),
+                        },
                         "judge": {"usage": empty_usage(), "wall_seconds": 0.0},
                     },
-                })
-                _write_json(
-                    details_path,
-                    {"candidate_id": candidate["id"], "examples": details},
+                }
+                calls = stage_calls(
+                    "solver", {"example_id": example.id, "input": example.input},
+                    {"failure": "solver_failure"}, solver_started,
+                    [run_id] if run_id else [], failed=True,
                 )
+                if calls:
+                    failed_detail["calls"] = calls
+                details.append(failed_detail)
+                _write_json(details_path, document)
                 raise
             if not isinstance(solved, SolveResult) or not isinstance(solved.answer, str):
                 raise ValueError("solver must return an answer with measured resources")
@@ -525,15 +654,35 @@ def create_app(
             solver_seconds = validate_timing(
                 solved.wall_seconds, "solver wall time", allow_zero=True,
             )
+            detail: dict[str, Any] = {
+                "example_id": example.id, "answer": solved.answer, "status": "judging",
+                "resources": {
+                    "solver": {
+                        "usage": solver_usage, "wall_seconds": solver_seconds,
+                        **({"run_id": solved.run_id} if solved.run_id else {}),
+                    },
+                },
+            }
+            calls = stage_calls(
+                "solver", {"example_id": example.id, "input": example.input},
+                {"answer": solved.answer}, solver_started,
+                [solved.run_id] if solved.run_id else [],
+            )
+            if calls:
+                detail["calls"] = calls
+            details.append(detail)
+            _write_json(details_path, document)
             with judge_lock:
                 before_judge = _usage(judge_usage)
                 started = time.monotonic()
+                judge_started = time.time_ns()
+                before_ids = len(access.run_ids) if access is not None else 0
                 result: dict[str, Any] = {"failure": "judge_failure"}
                 try:
                     result = evaluate_answer(
                         metric, example, solved.answer, judge_complete,
                         retries=MODEL_RETRIES, retry_delay=settings.retry_delay,
-                        model_access=model_access, usage=judge_usage,
+                        model_access=access, usage=judge_usage,
                     )
                 except CommandMetricError as error:
                     result["diagnostics"] = error.diagnostics
@@ -548,28 +697,28 @@ def create_app(
                     example_judge_usage = _usage({
                         key: after_judge[key] - before_judge[key] for key in before_judge
                     })
-                    details.append({
-                        "example_id": example.id, "answer": solved.answer, **result,
-                        "resources": {
-                            "solver": {
-                                "usage": solver_usage, "wall_seconds": solver_seconds,
-                            },
-                            "judge": _judge_resources(
-                                example_judge_usage, judge_seconds, result.get("diagnostics"),
-                            ),
-                        },
-                    })
-                    _write_json(
-                        details_path,
-                        {"candidate_id": candidate["id"], "examples": details},
+                    run_ids = access.run_ids[before_ids:] if access is not None else []
+                    detail.pop("status", None)
+                    detail.update(result)
+                    detail["resources"]["judge"] = _judge_resources(
+                        example_judge_usage, judge_seconds, result.get("diagnostics"), run_ids,
                     )
+                    calls = stage_calls(
+                        "judge", {"example": example.model_dump(), "answer": solved.answer},
+                        result, judge_started, run_ids, failed="failure" in result,
+                    )
+                    if calls:
+                        detail.setdefault("calls", []).extend(calls)
+                    _write_json(details_path, document)
         with judge_lock:
             before_aggregation = _usage(judge_usage)
             aggregate_started = time.monotonic()
+            aggregation_started = time.time_ns()
+            before_ids = len(access.run_ids) if access is not None else 0
             aggregation: dict[str, Any] = {"status": "failed"}
             try:
                 candidate_score = aggregate_results(
-                    metric, details, model_access=model_access, usage=judge_usage,
+                    metric, details, model_access=access, usage=judge_usage,
                 )
                 aggregation.update({"status": "complete", "score": candidate_score})
             except CommandMetricError as error:
@@ -589,13 +738,20 @@ def create_app(
                 aggregation["resources"] = {
                     "judge": _judge_resources(
                         aggregation_usage, aggregation_seconds, aggregation.get("diagnostics"),
+                        access.run_ids[before_ids:] if access is not None else [],
                     ),
                 }
-                _write_json(
-                    details_path,
-                    {"candidate_id": candidate["id"], "examples": details,
-                     "aggregation": aggregation},
+                calls = stage_calls(
+                    "aggregation", {"example_ids": [example.id for example in examples]},
+                    {"status": aggregation["status"], "score": aggregation.get("score")},
+                    aggregation_started,
+                    access.run_ids[before_ids:] if access is not None else [],
+                    failed=aggregation["status"] != "complete",
                 )
+                if calls:
+                    aggregation["calls"] = calls
+                document["aggregation"] = aggregation
+                _write_json(details_path, document)
         return {
             "candidate_id": candidate["id"],
             "digest": candidate["digest"],
@@ -603,7 +759,7 @@ def create_app(
             **{
                 f"{role}_{name}": sum(
                     item["resources"][role]["usage"][key] for item in details
-                ) + (aggregation_usage[key] if role == "judge" else 0)
+                ) + (aggregation_usage[key] if role == "judge" else preparation_usage[key])
                 for role in ("solver", "judge")
                 for name, key in (
                     ("tokens", "total_tokens"),
@@ -613,7 +769,7 @@ def create_app(
             **{
                 f"{role}_seconds": validate_timing(
                     sum(item["resources"][role]["wall_seconds"] for item in details)
-                    + (aggregation_seconds if role == "judge" else 0.0),
+                    + (aggregation_seconds if role == "judge" else preparation_seconds),
                     f"{role} total time", allow_zero=True,
                 )
                 for role in ("solver", "judge")
@@ -654,13 +810,73 @@ def create_app(
                     details["candidate_id"] = candidate["id"]
                     _write_json(details_path, details)
 
+    def export_evaluation(record: dict[str, Any], run_dir: Path) -> None:
+        if settings.tracking_dir is None:
+            return
+        scores = {score["candidate_id"]: score for score in record.get("scores", [])}
+        queue = settings.tracking_queue_dir or settings.tracking_dir / "queue"
+        for candidate in record["candidates"]:
+            details_path = run_dir / "details" / f"{candidate['id']}.json"
+            if not details_path.exists():
+                continue
+            details = json.loads(details_path.read_text())
+            score = scores.get(candidate["id"], {})
+            finished = bool(score) or details.get("aggregation", {}).get("status") == "complete"
+            stages = [
+                details.get("preparation", {}), *details["examples"],
+                details.get("aggregation", {}),
+            ]
+            calls = [call for stage in stages for call in stage.get("calls", [])]
+            metrics = {key: value for key, value in score.items()
+                       if key not in {"candidate_id", "digest"}}
+            if not score:
+                if finished:
+                    metrics["score"] = details["aggregation"]["score"]
+                for role in ("solver", "judge"):
+                    measured = [
+                        stage["resources"][role] for stage in stages
+                        if role in stage.get("resources", {})
+                    ]
+                    usages = [item["usage"] for item in measured if item.get("usage")]
+                    seconds = [item["wall_seconds"] for item in measured
+                               if item.get("wall_seconds") is not None]
+                    if usages:
+                        metrics[f"{role}_tokens"] = sum(item["total_tokens"] for item in usages)
+                        metrics[f"{role}_unreported_attempts"] = sum(
+                            item["unreported_attempts"] for item in usages
+                        )
+                    if seconds:
+                        metrics[f"{role}_seconds"] = sum(seconds)
+                    metrics[f"{role}_usage_complete"] = int(
+                        len(usages) == len(measured)
+                        and all(item["unreported_attempts"] == 0 for item in usages)
+                    )
+            now = time.time_ns()
+            exported = {
+                "split": settings.split, "status": "FINISHED" if finished else "FAILED",
+                "params": {
+                    "campaign_id": settings.release_id, "case_id": settings.case_id,
+                    "candidate_id": candidate["id"], "candidate_digest": candidate["digest"],
+                    "model": settings.model, "metric_version": metric.version,
+                    "direction": metric.direction,
+                },
+                "metrics": metrics, "calls": calls,
+                "start_time_ns": min((call["start_time_ns"] for call in calls), default=now),
+                "end_time_ns": max((call["end_time_ns"] for call in calls), default=now),
+                "examples": details["examples"], "aggregation": details.get("aggregation"),
+                **({"preparation": details["preparation"]} if "preparation" in details else {}),
+            }
+            path = settings.tracking_dir / record["batch_digest"] / f"{candidate['id']}.json"
+            _write_json(path, exported)
+            receipts = export_configured(path, queue)
+            _write_json(path.with_suffix(".tracking.json"), receipts)
+
     def evaluate(record: dict[str, Any], lease: BinaryIO, run_dir: Path) -> None:
         try:
             judge_complete, judge_usage = make_judge()
-            scores = [
-                candidate_score(candidate, run_dir, judge_complete, judge_usage)
-                for candidate in record["candidates"]
-            ]
+            scores = []
+            for candidate in record["candidates"]:
+                scores.append(candidate_score(candidate, run_dir, judge_complete, judge_usage))
             record["scores"] = scores
             if settings.split == "private":
                 record["winners"] = choose_winners(
@@ -680,16 +896,27 @@ def create_app(
         finally:
             try:
                 _write_json(run_dir / "record.json", record)
+                try:
+                    export_evaluation(record, run_dir)
+                except Exception as error:
+                    _write_json(run_dir / "tracking-error.json", {
+                        "status": "tracking_pending", "error_type": type(error).__name__,
+                    })
             finally:
                 lease.close()
 
     def execute(
         record: dict[str, Any], lease: BinaryIO, run_dir: Path, completion: Future[None],
         started: threading.Event,
+        slot: BinaryIO | None,
     ) -> None:
         started.set()
         try:
-            evaluate(record, lease, run_dir)
+            try:
+                evaluate(record, lease, run_dir)
+            finally:
+                if slot is not None:
+                    slot.close()
         except BaseException as error:
             completion.set_exception(error)
         else:
@@ -752,9 +979,18 @@ def create_app(
                 command_provenance(metric)
             except Exception:
                 raise HTTPException(503, "evaluation unavailable") from None
-            run_dir.mkdir(mode=0o700, exist_ok=True)
-            lease = execution_lease(run_dir)
             try:
+                slot = acquire_slot(settings.slot_dir, settings.execution_slots)
+            except CapacityError:
+                raise HTTPException(
+                    503, "evaluation capacity is busy", headers={"Retry-After": "60"},
+                ) from None
+            except (OSError, ValueError):
+                raise HTTPException(503, "evaluation unavailable") from None
+            lease = None
+            try:
+                run_dir.mkdir(mode=0o700, exist_ok=True)
+                lease = execution_lease(run_dir)
                 candidates = []
                 dataset_candidates = candidate_root / dataset_digest
                 dataset_candidates.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -762,6 +998,9 @@ def create_app(
                 for candidate in submission.candidates:
                     candidate_dir = batch_dir / candidate.id
                     materialize_candidate(candidate, candidate_dir)
+                    if harness_runner is not None:
+                        harness_runner.validate_candidate(candidate_dir)
+                    candidate_preparation(candidate_dir, candidate.digest())
                     candidates.append({
                         "id": candidate.id,
                         "digest": candidate.digest(),
@@ -773,15 +1012,19 @@ def create_app(
                 }
                 _write_json(run_dir / "record.json", record)
             except Exception:
-                lease.close()
+                if lease is not None:
+                    lease.close()
+                if slot is not None:
+                    slot.close()
                 raise HTTPException(503, "evaluation unavailable") from None
-            response = JSONResponse(_public(record, settings.split), status_code=202)
-            completion: Future[None] = Future()
-            started = threading.Event()
-            worker = threading.Thread(
-                target=execute, args=(record, lease, run_dir, completion, started), daemon=True,
-            )
             try:
+                response = JSONResponse(_public(record, settings.split), status_code=202)
+                completion: Future[None] = Future()
+                started = threading.Event()
+                worker = threading.Thread(
+                    target=execute, args=(record, lease, run_dir, completion, started, slot),
+                    daemon=True,
+                )
                 worker.start()
                 started.wait()
             except Exception:
@@ -791,6 +1034,8 @@ def create_app(
                     _write_json(run_dir / "record.json", record)
                 finally:
                     lease.close()
+                    if slot is not None:
+                        slot.close()
                 raise HTTPException(503, "evaluation unavailable") from None
             background.add_task(wait_for_evaluation, completion)
             return response
