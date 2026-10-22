@@ -4,6 +4,5 @@ dataset/train/
 dataset/public/
 dataset/private/
 runtime/
-campaigns/*/local-notes/
 campaigns/*/*.sqlite3*
 campaigns/*/records/
