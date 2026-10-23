@@ -6,7 +6,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from evaluator.client import ClientError, main, pack_candidate, request
+from evaluator.client import ClientError, main, pack_candidate, request, search_readiness
 from evaluator.contracts import Submission
 
 
@@ -285,6 +285,96 @@ def test_http_failure_does_not_expose_response(
     with pytest.raises(ClientError) as error:
         request("GET", "http://evaluator:8080", token)
     assert str(error.value) == "evaluator returned HTTP 500"
+
+
+@pytest.mark.parametrize(("body", "expected"), [
+    ({"detail": {"code": "no_evaluation"}}, "no_evaluation"),
+    ({"detail": "Not Found"}, None),
+    ({"detail": "no evaluation"}, None),
+    ({"detail": {"code": "private-example test-token"}}, None),
+    ({"detail": {"code": "no_evaluation", "message": "private-example"}}, None),
+    ({"detail": {"code": ["no_evaluation"]}}, None),
+    ([], None),
+])
+def test_http_failure_keeps_only_known_structured_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: object, expected: str | None,
+) -> None:
+    token = tmp_path / "token"
+    token.write_text("test-token")
+    original_client = httpx.Client
+    monkeypatch.setattr(httpx, "Client", lambda **kwargs: original_client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(404, json=body)), **kwargs,
+    ))
+    with pytest.raises(ClientError) as error:
+        request("GET", "http://evaluator", token)
+    assert error.value.status_code == 404
+    assert error.value.error_code == expected
+    assert str(error.value) == "evaluator returned HTTP 404"
+
+
+def test_non_http_client_error_has_no_response_code(tmp_path: Path) -> None:
+    with pytest.raises(ClientError) as error:
+        request("GET", "http://evaluator", tmp_path / "missing-token")
+    assert error.value.status_code is None
+    assert error.value.error_code is None
+
+
+@pytest.fixture
+def campaign_readiness():
+    return {
+        "mode": "campaign", "gate_enabled": True, "journal_ready": True,
+        "max_solutions": 100, "finalists": 10, "release_id": "synthetic-release",
+    }
+
+
+def test_search_readiness_cli_checks_published_campaign_conditions(
+    monkeypatch, tmp_path, campaign_readiness, capsys,
+):
+    token = tmp_path / "token"
+    token.write_text("test-token")
+    received = []
+
+    def handle(outgoing):
+        received.append(outgoing)
+        return httpx.Response(200, json=campaign_readiness)
+
+    original_client = httpx.Client
+    monkeypatch.setattr(httpx, "Client", lambda **kwargs: original_client(
+        transport=httpx.MockTransport(handle), **kwargs,
+    ))
+    assert main([
+        "search-readiness", "--url", "http://evaluator", "--token-file", str(token),
+        "--require-campaign", "--max-solutions", "100", "--finalists", "10",
+        "--release-id", "synthetic-release",
+    ]) == 0
+    assert str(received[0].url) == "http://evaluator/v1/search-readiness"
+    assert received[0].method == "GET"
+    assert received[0].headers["Authorization"] == "Bearer test-token"
+    assert json.loads(capsys.readouterr().out) == campaign_readiness
+
+
+@pytest.mark.parametrize("changed", [
+    {"mode": "standalone", "gate_enabled": False, "journal_ready": None, "max_solutions": None},
+    {"gate_enabled": False},
+    {"gate_enabled": 1},
+    {"journal_ready": False},
+    {"max_solutions": 99},
+    {"max_solutions": True},
+    {"finalists": 9},
+    {"release_id": "another-release"},
+    {"score": 4},
+])
+def test_search_readiness_rejects_disabled_or_mismatched_campaign(
+    monkeypatch, tmp_path, campaign_readiness, changed,
+):
+    monkeypatch.setattr("evaluator.client.request", lambda *args, **kwargs: {
+        **campaign_readiness, **changed,
+    })
+    with pytest.raises(ClientError, match="search readiness"):
+        search_readiness(
+            "http://evaluator", tmp_path / "token", require_campaign=True,
+            max_solutions=100, finalists=10, release_id="synthetic-release",
+        )
 
 
 def test_invalid_bundle_is_not_echoed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

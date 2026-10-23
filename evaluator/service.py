@@ -4,11 +4,13 @@ import hashlib
 import json
 import os
 import secrets
+import sqlite3
 import tempfile
 import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import Future
+from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -55,6 +57,7 @@ from evaluator.runner import (
     SolveResult,
     validate_runner_resources,
 )
+from evaluator.search import Journal, SearchError
 from evaluator.tracking import export_configured
 
 MAX_BODY_BYTES = 70 * 1024 * 1024
@@ -104,6 +107,10 @@ class Settings:
     runner_supports_asset_selection: bool = False
     asset_staging_dir: Path | None = None
     asset_store_dir: Path | None = None
+    search_mode: str = "standalone"
+    search_journal: Path | None = None
+    search_max_solutions: int | None = None
+    search_stop_path: Path | None = None
 
     def __post_init__(self) -> None:
         if any(not value.strip() for value in (self.token, self.runner_image, self.release_id)):
@@ -114,6 +121,20 @@ class Settings:
             raise ValueError("output_count must be between 1 and finalists")
         if self.split not in {"private", "public"}:
             raise ValueError("split must be private or public")
+        if self.search_mode not in {"standalone", "campaign"}:
+            raise ValueError("search mode must be standalone or campaign")
+        if self.search_mode == "campaign" and self.search_journal is None:
+            raise ValueError("search campaign requires a journal and max_solutions")
+        if self.search_mode == "standalone" and self.search_journal is not None:
+            raise ValueError("search journal requires campaign mode")
+        if (self.search_journal is None) != (self.search_max_solutions is None):
+            raise ValueError("search journal and max_solutions must be configured together")
+        if self.search_max_solutions is not None and (
+            type(self.search_max_solutions) is not int or self.search_max_solutions < 1
+        ):
+            raise ValueError("search max_solutions must be a positive integer")
+        if self.search_stop_path is not None and self.search_journal is None:
+            raise ValueError("search stop path requires a search journal")
         for name in ("uses_model", "runner_supports_build", "runner_supports_asset_selection"):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"{name} must be a boolean")
@@ -178,6 +199,9 @@ class Settings:
         builds = value("BUILD_DIR", "")
         asset_staging = value("ASSET_STAGING_DIR", "")
         asset_store = value("ASSET_STORE_DIR", "")
+        search_journal = value("SEARCH_JOURNAL", "")
+        search_max_solutions = value("SEARCH_MAX_SOLUTIONS", "")
+        search_stop = value("SEARCH_STOP_PATH", "")
         capabilities = {}
         for name in ("RUNNER_SUPPORTS_BUILD", "RUNNER_SUPPORTS_ASSET_SELECTION"):
             enabled = value(name, "false").lower()
@@ -232,6 +256,10 @@ class Settings:
             input_assets_digest=value("INPUT_ASSETS_DIGEST", "") or None,
             asset_staging_dir=Path(asset_staging) if asset_staging else None,
             asset_store_dir=Path(asset_store) if asset_store else None,
+            search_mode=value("SEARCH_MODE", "standalone"),
+            search_journal=Path(search_journal) if search_journal else None,
+            search_max_solutions=int(search_max_solutions) if search_max_solutions else None,
+            search_stop_path=Path(search_stop) if search_stop else None,
             **capabilities,
         )
 
@@ -409,6 +437,7 @@ def create_app(
             settings.trace_dir, settings.tracking_dir, settings.tracking_queue_dir,
             settings.slot_dir,
             settings.build_dir,
+            settings.search_journal, settings.search_stop_path,
         ) if path is not None
     ]
     if any(path.is_relative_to(candidate_root) for path in tracking_paths):
@@ -939,13 +968,34 @@ def create_app(
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/v1/search-readiness")
+    def search_readiness() -> dict[str, Any]:
+        campaign = settings.search_mode == "campaign"
+        enabled = campaign and settings.split == "private"
+        if campaign:
+            try:
+                state = Journal(cast(Path, settings.search_journal)).status()
+                if (
+                    state["max_solutions"] != settings.search_max_solutions
+                    or state["remaining_proposals"] < 0
+                ):
+                    raise ValueError("search proposal limit differs from configured campaign")
+            except (OSError, sqlite3.Error, ValueError, KeyError, TypeError):
+                raise HTTPException(503, "search admission unavailable") from None
+        return {
+            "mode": settings.search_mode, "gate_enabled": enabled,
+            "journal_ready": True if campaign else None,
+            "max_solutions": settings.search_max_solutions,
+            "finalists": settings.finalists, "release_id": settings.release_id,
+        }
+
     @app.get("/v1/evaluations")
     def status() -> dict[str, Any]:
         if settings.split == "public":
             raise HTTPException(422, "evaluation ID is required")
         record = read_record(directory)
         if record is None:
-            raise HTTPException(404, "no evaluation")
+            raise HTTPException(404, {"code": "no_evaluation"})
         return _public(record, settings.split)
 
     @app.get("/v1/evaluations/{evaluation_id}")
@@ -953,10 +1003,10 @@ def create_app(
         if settings.split != "public" or len(evaluation_id) != 64 or any(
             character not in "0123456789abcdef" for character in evaluation_id
         ):
-            raise HTTPException(404, "no evaluation")
+            raise HTTPException(404, {"code": "no_evaluation"})
         record = read_record(directory / evaluation_id)
         if record is None:
-            raise HTTPException(404, "no evaluation")
+            raise HTTPException(404, {"code": "no_evaluation"})
         return _public(record, settings.split)
 
     @app.post("/v1/evaluations")
@@ -966,13 +1016,26 @@ def create_app(
             raise HTTPException(422, "invalid submission")
         digest = submission.digest()
         run_dir = directory / digest if settings.split == "public" else directory
-        with (directory / "reservation.lock").open("a+b") as lock:
+        with (directory / "reservation.lock").open("a+b") as lock, ExitStack() as admission_guard:
             fcntl.flock(lock, fcntl.LOCK_EX)
             existing = read_record(run_dir)
             if existing is not None:
                 if existing["batch_digest"] != digest:
                     raise HTTPException(409, "private evaluation is sealed")
                 return JSONResponse(_public(existing, settings.split))
+            search_admission = None
+            if settings.split == "private" and settings.search_journal is not None:
+                try:
+                    search_admission = admission_guard.enter_context(
+                        Journal(settings.search_journal).private_admission(
+                            submission, max_solutions=cast(int, settings.search_max_solutions),
+                            human_stop_path=settings.search_stop_path,
+                        ),
+                    )
+                except SearchError:
+                    raise HTTPException(409, "search is not ready for private evaluation") from None
+                except (OSError, sqlite3.Error, ValueError, KeyError, TypeError):
+                    raise HTTPException(503, "search admission unavailable") from None
             try:
                 if metric_package_provenance(settings.metric_path) != metric_package:
                     raise ValueError("metric package differs from frozen configuration")
@@ -999,6 +1062,10 @@ def create_app(
                     candidate_dir = batch_dir / candidate.id
                     materialize_candidate(candidate, candidate_dir)
                     if harness_runner is not None:
+                        try:
+                            harness_runner.selection(candidate_dir)
+                        except RunnerError:
+                            raise HTTPException(422, "invalid submission") from None
                         harness_runner.validate_candidate(candidate_dir)
                     candidate_preparation(candidate_dir, candidate.digest())
                     candidates.append({
@@ -1010,13 +1077,18 @@ def create_app(
                     "status": "running", "batch_digest": digest, "candidates": candidates,
                     "provenance": provenance, "release_id": settings.release_id,
                 }
+                if search_admission is not None:
+                    record["search_admission"] = search_admission
                 _write_json(run_dir / "record.json", record)
-            except Exception:
+            except Exception as error:
                 if lease is not None:
                     lease.close()
                 if slot is not None:
                     slot.close()
+                if isinstance(error, HTTPException):
+                    raise
                 raise HTTPException(503, "evaluation unavailable") from None
+            admission_guard.close()
             try:
                 response = JSONResponse(_public(record, settings.split), status_code=202)
                 completion: Future[None] = Future()

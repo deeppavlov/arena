@@ -1578,3 +1578,39 @@ def test_gateway_retries_with_effective_fixed_tool_configuration(choice: object)
     assert len(requests) == 2
     assert requests[0].content == requests[1].content
     assert json.loads(requests[0].content) == {**body, **fixed}
+
+
+def test_scoped_gateway_does_not_call_model_before_durable_attempt_reservation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from evaluator import usage as usage_store
+
+    run_id = str(uuid4())
+    capability = usage_store.create_usage(tmp_path, run_id)
+    original_save = usage_store._save
+
+    def fail_attempt_save(path, value):
+        if value["attempts"]:
+            raise OSError("synthetic storage failure")
+        original_save(path, value)
+
+    calls = []
+
+    def upstream(request):
+        calls.append(request)
+        return httpx.Response(200, json=valid_response())
+
+    monkeypatch.setattr(usage_store, "_save", fail_attempt_save)
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model", usage_dir=tmp_path,
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body(),
+        )
+    assert response.status_code == 503
+    assert calls == []
+    assert usage_store.read_usage(tmp_path, run_id)["attempts"] == 0

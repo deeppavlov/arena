@@ -20,7 +20,7 @@ from urllib.parse import quote
 from pydantic import ValidationError
 
 from evaluator.candidates import candidate_digest, materialize_files, validate_candidate_path
-from evaluator.contracts import Candidate
+from evaluator.contracts import Candidate, Submission
 from evaluator.filesystem import candidate_paths
 from evaluator.numeric import parse_score, validate_score
 
@@ -137,7 +137,7 @@ class Journal:
         with journal._connection() as connection:
             connection.execute(
                 "CREATE TABLE campaign (max_solutions TEXT NOT NULL, stopped_at TEXT, "
-                "stop_reason TEXT)"
+                "stop_reason TEXT, finalization TEXT)"
             )
             connection.execute(
                 "INSERT INTO campaign (max_solutions) VALUES (?)", (str(max_solutions),)
@@ -154,13 +154,13 @@ class Journal:
         return journal
 
     @contextmanager
-    def _connection(self) -> Iterator[sqlite3.Connection]:
-        uri = "file:" + quote(str(self.path.resolve())) + "?mode=rw"
+    def _connection(self, *, readonly: bool = False) -> Iterator[sqlite3.Connection]:
+        uri = "file:" + quote(str(self.path.resolve())) + ("?mode=ro" if readonly else "?mode=rw")
         connection = sqlite3.connect(uri, uri=True, timeout=30)
         connection.row_factory = sqlite3.Row
         try:
             with connection:
-                connection.execute("BEGIN IMMEDIATE")
+                connection.execute("BEGIN" if readonly else "BEGIN IMMEDIATE")
                 yield connection
         finally:
             connection.close()
@@ -168,6 +168,8 @@ class Journal:
     @staticmethod
     def _open(connection: sqlite3.Connection) -> sqlite3.Row:
         campaign = connection.execute("SELECT * FROM campaign").fetchone()
+        if "finalization" in campaign.keys() and campaign["finalization"] is not None:
+            raise SearchError("search is finalized")
         if campaign["stopped_at"] is not None:
             raise SearchError("search is stopped")
         return campaign
@@ -355,6 +357,11 @@ class Journal:
     def _status(connection: sqlite3.Connection) -> dict[str, Any]:
         campaign = dict(connection.execute("SELECT * FROM campaign").fetchone())
         campaign["max_solutions"] = int(campaign["max_solutions"])
+        campaign["finalization"] = (
+            json.loads(campaign["finalization"]) if campaign.get("finalization") else None
+        )
+        if campaign["finalization"] is not None and not isinstance(campaign["finalization"], dict):
+            raise ValueError("invalid search finalization")
         proposed = connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0]
         running = [row[0] for row in connection.execute(
             "SELECT id FROM measurements WHERE completion_order IS NULL ORDER BY rowid"
@@ -365,7 +372,84 @@ class Journal:
             "proposed": proposed,
             "remaining_proposals": campaign["max_solutions"] - proposed,
             "running": running,
+            "completed_measurements": connection.execute(
+                "SELECT COUNT(*) FROM measurements WHERE completion_order IS NOT NULL"
+            ).fetchone()[0],
         }
+
+    @staticmethod
+    def _finalists(connection: sqlite3.Connection, submission: Submission) -> None:
+        for candidate in submission.candidates:
+            row = connection.execute(
+                "SELECT record FROM candidates WHERE id = ?", (candidate.id,),
+            ).fetchone()
+            if row is None:
+                raise SearchError("finalist must be registered")
+            record = json.loads(row["record"])
+            if not isinstance(record, dict):
+                raise ValueError("invalid registered candidate")
+            if record.get("digest_version") != 2 or record.get("digest") != candidate.digest():
+                raise SearchError("finalist digest differs from registered snapshot")
+            if record.get("snapshot_error") or record.get("bundle_error"):
+                raise SearchError("finalist snapshot is unavailable")
+
+    def finalize(self, submission: Submission, *, replace: bool = False) -> dict[str, Any]:
+        with self._connection() as connection:
+            status = self._status(connection)
+            previous = status["finalization"]
+            if previous is not None:
+                if previous["batch_digest"] == submission.digest():
+                    return previous
+                if not replace:
+                    raise SearchError("search has a different draft batch; use --replace")
+            if status["remaining_proposals"] > 0 and not status["stopped"]:
+                raise SearchError("proposal limit is not reached and search is not stopped")
+            if status["running"]:
+                raise SearchError("search has running evaluations")
+            self._finalists(connection, submission)
+            finalization: dict[str, Any] = {
+                "batch_digest": submission.digest(), "finalized_at": datetime.now(UTC).isoformat(),
+            }
+            if previous is not None:
+                finalization["previous"] = [
+                    *previous.get("previous", []),
+                    {key: value for key, value in previous.items() if key != "previous"},
+                ]
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(campaign)")}
+            if "finalization" not in columns:
+                connection.execute("ALTER TABLE campaign ADD COLUMN finalization TEXT")
+            connection.execute("UPDATE campaign SET finalization = ?", (_json(finalization),))
+            return finalization
+
+    @contextmanager
+    def private_admission(
+        self, submission: Submission, *, max_solutions: int, human_stop_path: Path | None = None,
+    ) -> Iterator[dict[str, Any]]:
+        with self._connection(readonly=True) as connection:
+            status = self._status(connection)
+            if status["max_solutions"] != max_solutions or status["remaining_proposals"] < 0:
+                raise SearchError("search proposal limit differs from configured campaign")
+            finalization = status["finalization"]
+            if finalization is None or finalization.get("batch_digest") != submission.digest():
+                raise SearchError("search is not finalized with this batch")
+            if status["running"]:
+                raise SearchError("search has running evaluations")
+            self._finalists(connection, submission)
+            human_stop = None
+            if status["remaining_proposals"] > 0:
+                if human_stop_path is not None:
+                    human_stop = json.loads(human_stop_path.read_text())
+                if not isinstance(human_stop, dict) or not status["stopped"]:
+                    raise SearchError("early private admission requires a human stop command")
+                if (
+                    human_stop.get("batch_digest") != submission.digest()
+                    or human_stop.get("stopped_at") != status["stopped_at"]
+                    or human_stop.get("reason") != status["stop_reason"]
+                    or not isinstance(human_stop.get("source_ref"), str)
+                    or not human_stop["source_ref"].strip()
+                ):
+                    raise SearchError("human stop command differs from finalized search")
+            yield {**status, "human_stop": human_stop}
 
     def stop(self, reason: str) -> dict[str, Any]:
         _text(reason, "reason")
@@ -377,7 +461,7 @@ class Journal:
             return self._status(connection)
 
     def status(self) -> dict[str, Any]:
-        with self._connection() as connection:
+        with self._connection(readonly=True) as connection:
             return self._status(connection)
 
     def export(self) -> dict[str, Any]:
@@ -578,6 +662,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     _resource_arguments(finishing, "judge-", required=False)
     stopping = commands.add_parser("stop")
     stopping.add_argument("--reason", required=True)
+    finalizing = commands.add_parser("finalize")
+    finalizing.add_argument("--bundle", type=Path, required=True)
+    finalizing.add_argument("--replace", action="store_true")
     commands.add_parser("status")
     commands.add_parser("export")
     restoring = commands.add_parser("restore")
@@ -620,6 +707,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         elif arguments.command == "stop":
             result = journal.stop(arguments.reason)
+        elif arguments.command == "finalize":
+            result = journal.finalize(
+                Submission.model_validate_json(arguments.bundle.read_bytes()),
+                replace=arguments.replace,
+            )
         elif arguments.command == "status":
             result = journal.status()
         elif arguments.command == "export":

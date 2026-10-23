@@ -1,11 +1,13 @@
 import json
 import os
-from concurrent.futures import ProcessPoolExecutor
+import threading
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
 from evaluator.client import pack_candidate
+from evaluator.contracts import Submission
 from evaluator.search import Journal, Resources, SearchError, main
 
 ZERO = Resources(total_tokens=0, seconds=0)
@@ -121,6 +123,125 @@ def test_stop_drains_running_only_and_persists(journal: Journal, source: Path):
     assert reopened.status()["running"] == []
     assert reopened.status()["stop_reason"] == "human requested selection"
     assert reopened.stop("another reason")["stop_reason"] == "human requested selection"
+
+
+def test_finalization_requires_complete_search_and_drained_checks(tmp_path: Path, source: Path):
+    journal = Journal.create(tmp_path / "search.sqlite", max_solutions=2)
+    propose(journal, source, "one")
+    batch = Submission(candidates=[pack_candidate("one", source)])
+    with pytest.raises(SearchError, match="proposal limit"):
+        journal.finalize(batch)
+    propose(journal, source, "two")
+    begin(journal, "running", "two")
+    with pytest.raises(SearchError, match="running"):
+        journal.finalize(batch)
+    finish(journal, "running", 3)
+    sealed = journal.finalize(batch)
+    assert sealed["batch_digest"] == batch.digest()
+    assert Journal(journal.path).finalize(batch) == sealed
+    assert journal.status()["finalization"] == sealed
+    with pytest.raises(SearchError, match="finalized"):
+        begin(journal, "late", "one")
+    with pytest.raises(SearchError, match="finalized"):
+        propose(journal, source, "late")
+    with pytest.raises(SearchError, match="different"):
+        journal.finalize(Submission(candidates=[pack_candidate("two", source)]))
+
+
+def test_finalist_reselection_preserves_history_and_does_not_reopen_search(
+    tmp_path: Path, source: Path,
+):
+    journal = Journal.create(tmp_path / "search.sqlite", max_solutions=2)
+    propose(journal, source, "one")
+    propose(journal, source, "two")
+    first = Submission(candidates=[pack_candidate("one", source)])
+    second = Submission(candidates=[pack_candidate("two", source)])
+    initial = journal.finalize(first)
+    with pytest.raises(SearchError, match="different"):
+        journal.finalize(second)
+    selected = journal.finalize(second, replace=True)
+    assert selected["batch_digest"] == second.digest()
+    assert selected["previous"] == [initial]
+    assert journal.finalize(second, replace=True) == selected
+    with pytest.raises(SearchError, match="finalized"):
+        begin(journal, "late", "one")
+    with pytest.raises(SearchError, match="finalized"):
+        propose(journal, source, "late")
+    reverted = journal.finalize(first, replace=True)
+    assert reverted["previous"] == [
+        initial, {key: value for key, value in selected.items() if key != "previous"},
+    ]
+    assert journal.status()["finalization"] == reverted
+
+
+def test_finalization_binds_registered_candidate_contents(journal: Journal, source: Path):
+    propose(journal, source, "one")
+    journal.stop("human requested selection")
+    with pytest.raises(SearchError, match="registered"):
+        journal.finalize(Submission(candidates=[pack_candidate("unknown", source)]))
+    (source / "solve.py").write_text("changed")
+    with pytest.raises(SearchError, match="digest"):
+        journal.finalize(Submission(candidates=[pack_candidate("one", source)]))
+    assert journal.status()["finalization"] is None
+
+
+def test_finalization_cli_and_legacy_journal(journal: Journal, source: Path, capsys):
+    import sqlite3
+
+    propose(journal, source, "one")
+    journal.stop("human requested selection")
+    with sqlite3.connect(journal.path) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(campaign)")}
+        if "finalization" in columns:
+            connection.execute("ALTER TABLE campaign DROP COLUMN finalization")
+    assert journal.status()["finalization"] is None
+    batch = Submission(candidates=[pack_candidate("one", source)])
+    bundle = source.parent / "bundle.json"
+    bundle.write_text(batch.model_dump_json())
+    assert main(["--journal", str(journal.path), "finalize", "--bundle", str(bundle)]) == 0
+    assert json.loads(capsys.readouterr().out)["batch_digest"] == batch.digest()
+
+
+def test_private_admission_reads_a_readonly_journal(tmp_path: Path, source: Path):
+    directory = tmp_path / "readonly"
+    journal = Journal.create(directory / "search.sqlite", max_solutions=1)
+    propose(journal, source, "one")
+    batch = Submission(candidates=[pack_candidate("one", source)])
+    journal.finalize(batch)
+    journal.path.chmod(0o444)
+    directory.chmod(0o555)
+    try:
+        with journal.private_admission(batch, max_solutions=1) as admission:
+            assert admission["remaining_proposals"] == 0
+            assert admission["finalization"]["batch_digest"] == batch.digest()
+    finally:
+        directory.chmod(0o755)
+        journal.path.chmod(0o644)
+
+
+def test_private_admission_keeps_the_selected_snapshot_until_acceptance(
+    tmp_path: Path, source: Path,
+):
+    journal = Journal.create(tmp_path / "admission.sqlite", max_solutions=2)
+    propose(journal, source, "one")
+    propose(journal, source, "two")
+    first = Submission(candidates=[pack_candidate("one", source)])
+    second = Submission(candidates=[pack_candidate("two", source)])
+    journal.finalize(first)
+    started = threading.Event()
+
+    def reselect():
+        started.set()
+        return journal.finalize(second, replace=True)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        with journal.private_admission(first, max_solutions=2) as admission:
+            future = executor.submit(reselect)
+            assert started.wait(2)
+            with pytest.raises(TimeoutError):
+                future.result(timeout=0.1)
+            assert admission["finalization"]["batch_digest"] == first.digest()
+        assert future.result(timeout=5)["batch_digest"] == second.digest()
 
 
 def test_snapshot_and_lineage_are_immutable(journal: Journal, source: Path, tmp_path: Path):

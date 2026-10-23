@@ -362,3 +362,31 @@ def test_capabilities_are_random_private_and_scoped_before_begin(tmp_path: Path)
         seal_usage(tmp_path, first_id)
     end_request(tmp_path, first_id)
     assert seal_usage(tmp_path, first_id) == counters()
+
+
+@pytest.mark.parametrize("reported", [True, False])
+def test_reserved_attempt_is_completed_without_counting_a_second_attempt(
+    tmp_path: Path, reported: bool,
+) -> None:
+    run_id = str(uuid4())
+    capability = create_usage(tmp_path, run_id)
+    begin_request(tmp_path, run_id, capability)
+    add_usage(tmp_path, run_id, None)
+    assert read_usage(tmp_path, run_id) == {
+        **counters(), "attempts": 1, "unreported_attempts": 1,
+    }
+    response_usage = {"prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5}
+    add_usage(tmp_path, run_id, response_usage if reported else None, reserved=True)
+    end_request(tmp_path, run_id)
+    assert seal_usage(tmp_path, run_id) == {
+        **counters(), **(response_usage if reported else {}),
+        "attempts": 1, "unreported_attempts": 0 if reported else 1,
+    }
+
+
+def test_unreserved_attempt_cannot_be_completed(tmp_path: Path) -> None:
+    run_id = str(uuid4())
+    create_usage(tmp_path, run_id)
+    with pytest.raises(ValueError, match="reserved"):
+        add_usage(tmp_path, run_id, None, reserved=True)
+    assert read_usage(tmp_path, run_id) == counters()

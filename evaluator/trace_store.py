@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -19,9 +20,14 @@ def append_call(
     _save(target, redact(call, secrets=secrets))
 
 
+def call_paths(directory: Path, run_id: str) -> list[Path]:
+    return sorted(_directory(directory, run_id).glob("*.json"))
+
+
+def iter_calls(directory: Path, run_id: str) -> Iterator[dict[str, Any]]:
+    for path in call_paths(directory, run_id):
+        yield json.loads(path.read_text(encoding="utf-8"))
+
+
 def read_calls(directory: Path, run_id: str) -> list[dict[str, Any]]:
-    calls = [
-        json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted(_directory(directory, run_id).glob("*.json"))
-    ]
-    return sorted(calls, key=lambda call: call.get("start_time_ns", 0))
+    return sorted(iter_calls(directory, run_id), key=lambda call: call.get("start_time_ns", 0))

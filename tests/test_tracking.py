@@ -411,3 +411,304 @@ def test_failed_operator_export_restores_absent_shared_environment(
         _publish(record(), "http://operator-tracking", "export-one", True)
     assert "MLFLOW_TRACKING_URI" not in os.environ
     assert sdk.set_tracking_uri.call_args.args == ("file:///tmp/mlruns",)
+
+
+def test_external_calls_are_durable_redacted_and_preserve_their_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://shared-tracking")
+    source = tmp_path / "call.json"
+    source.write_text(json.dumps({"name": "model", "inputs": "Bearer secret-token"}))
+    value = record()
+    value["calls"] = []
+    value["call_files"] = [str(source)]
+    value["params"]["role"] = "orchestrator"
+    publish = Mock(side_effect=ConnectionError("unavailable"))
+    monkeypatch.setattr("evaluator.tracking._publish", publish)
+    path = save(tmp_path, value)
+    assert export_record(path)["status"] == "tracking_pending"
+    published = publish.call_args.args[0]
+    snapshot = Path(published["call_files"][0])
+    assert snapshot != source
+    assert json.loads(snapshot.read_text()) == {
+        "name": "model", "inputs": "[REDACTED]", "attributes": {"role": "orchestrator"},
+    }
+    source.unlink()
+    publish.side_effect = None
+    publish.return_value = "run-one"
+    assert flush_queue(tmp_path / ".tracking") == [{"status": "exported", "run_id": "run-one"}]
+    assert export_record(path) == {"status": "exported", "run_id": "run-one"}
+    assert publish.call_count == 2
+
+
+def test_public_external_calls_are_never_read_or_exported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://shared-tracking")
+    value = record("public")
+    value["call_files"] = [str(tmp_path / "absent-private-call.json")]
+    publish = Mock(return_value="run-one")
+    monkeypatch.setattr("evaluator.tracking._publish", publish)
+    assert export_record(save(tmp_path, value))["status"] == "exported"
+    assert "call_files" not in publish.call_args.args[0]
+    assert not (tmp_path / ".tracking" / "calls").exists()
+
+
+def test_external_trace_retry_checks_each_call_and_uploads_only_missing_calls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from evaluator.tracking import _publish
+
+    paths = []
+    for index in range(2):
+        path = tmp_path / f"{index}.json"
+        path.write_text(json.dumps({"name": f"model-{index}", "inputs": str(index)}))
+        paths.append(str(path))
+    value = record()
+    value["calls"] = []
+    value["call_files"] = paths
+    run = SimpleNamespace(info=SimpleNamespace(run_id="run-one"), data=SimpleNamespace(tags={}))
+    client = Mock()
+    client.get_experiment_by_name.return_value = SimpleNamespace(experiment_id="experiment-one")
+    client.search_runs.return_value = [run]
+    first = SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name="model-0")]))
+    second = SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name="model-1")]))
+    client.search_traces.side_effect = [[], [], [first], [], [second]]
+    sdk = MagicMock()
+    sdk.MlflowClient.return_value = client
+    sdk.start_run.return_value.__enter__.return_value = run
+    monkeypatch.setattr("evaluator.tracking.importlib.import_module", Mock(return_value=sdk))
+    with pytest.raises(RuntimeError, match="trace"):
+        _publish(value, "http://tracking", "export-one", False)
+    assert sdk.set_tags.call_args.args[0]["arena_execution_status"] == "FINISHED"
+    assert sdk.set_tags.call_args.args[0]["arena_export_complete"] == "false"
+    assert _publish(value, "http://tracking", "export-one", False) == "run-one"
+    assert [call.args[0] for call in sdk.start_span_no_context.call_args_list] == [
+        "model-0", "model-1",
+    ]
+    filters = [call.kwargs["filter_string"] for call in client.search_traces.call_args_list]
+    assert filters[0] == filters[1] == filters[2]
+    assert filters[3] == filters[4] != filters[0]
+    assert all(call.kwargs["max_results"] == 1 for call in client.search_traces.call_args_list)
+    assert sum(call.args[1].startswith("calls/") for call in sdk.log_dict.call_args_list) == 2
+    assert all("call_files" not in call.args[0] for call in sdk.log_dict.call_args_list)
+
+
+def test_retry_of_one_destination_does_not_republish_the_other(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://shared-tracking")
+    monkeypatch.setenv("ARENA_OPERATOR_MLFLOW_TRACKING_URI", "http://operator-tracking")
+    publish = Mock(side_effect=["shared-run", ConnectionError("unavailable"), "operator-run"])
+    monkeypatch.setattr("evaluator.tracking._publish", publish)
+    path = save(tmp_path, record())
+    assert export_configured(path)["operator"]["status"] == "tracking_pending"
+    assert export_configured(path) == {
+        "shared": {"status": "exported", "run_id": "shared-run"},
+        "operator": {"status": "exported", "run_id": "operator-run"},
+    }
+    assert [call.args[3] for call in publish.call_args_list] == [False, True, True]
+
+
+def test_external_call_export_memory_does_not_grow_with_payload_total(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import tracemalloc
+
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://shared-tracking")
+    paths = []
+    for index in range(64):
+        source = tmp_path / f"call-{index}.json"
+        source.write_text(json.dumps({"name": "model", "inputs": str(index) + "x" * 262144}))
+        paths.append(str(source))
+    value = record()
+    value["calls"] = []
+    value["call_files"] = paths
+    path = save(tmp_path, value)
+    monkeypatch.setattr("evaluator.tracking._publish", Mock(return_value="run-one"))
+    tracemalloc.start()
+    try:
+        assert export_record(path)["status"] == "exported"
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 8 * 1024 * 1024
+
+
+def test_trace_ack_requires_payload_and_follows_pages() -> None:
+    from types import SimpleNamespace
+
+    from evaluator.tracking import _call_trace_available
+
+    class Page(list):
+        token = "next"
+
+    empty = SimpleNamespace(data=SimpleNamespace(spans=[]))
+    complete = SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name="model")]))
+    client = Mock()
+    client.search_traces.side_effect = [Page([empty]), [complete]]
+    assert _call_trace_available(client, {"max_results": 1}, "model")
+    assert client.search_traces.call_args.kwargs == {"max_results": 1, "page_token": "next"}
+    client.search_traces.side_effect = [[empty]]
+    assert not _call_trace_available(client, {"max_results": 1}, "model")
+
+
+def test_external_and_inline_calls_cannot_be_mixed() -> None:
+    value = record()
+    value["call_files"] = ["/trace/call.json"]
+    with pytest.raises(ValueError, match="either calls or call_files"):
+        sanitize_record(value)
+
+
+@pytest.mark.parametrize("retry", [False, True])
+@pytest.mark.parametrize("operator", [False, True])
+@pytest.mark.parametrize("secret_key", ["MODEL_API_KEY", "MLFLOW_TRACKING_TOKEN"])
+def test_external_call_artifacts_and_spans_use_current_secrets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, retry: bool, operator: bool,
+    secret_key: str,
+) -> None:
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://shared-tracking")
+    monkeypatch.setenv("ARENA_OPERATOR_MLFLOW_TRACKING_URI", "http://operator-tracking")
+    secret = "newly-recognized-credential"
+    source = tmp_path / "call.json"
+    source.write_text(json.dumps({
+        "name": "model", "inputs": {"text": secret}, "outputs": secret,
+        "attributes": {"note": secret},
+    }))
+    value = record()
+    value["calls"] = []
+    value["call_files"] = [str(source)]
+    path = save(tmp_path, value)
+    run = SimpleNamespace(info=SimpleNamespace(run_id="run-one"), data=SimpleNamespace(tags={}))
+    sdk = MagicMock()
+    sdk.start_run.return_value.__enter__.return_value = run
+    client = Mock()
+    client.get_experiment_by_name.return_value = SimpleNamespace(experiment_id="experiment-one")
+    client.search_runs.return_value = []
+    client.search_traces.side_effect = [
+        [], [SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name="model")]))],
+    ]
+    sdk.MlflowClient.side_effect = ConnectionError("offline") if retry else None
+    sdk.MlflowClient.return_value = client
+    monkeypatch.setattr("evaluator.tracking.importlib.import_module", Mock(return_value=sdk))
+    queue = tmp_path / "queue"
+    if retry:
+        assert export_record(path, queue, operator=operator)["status"] == "tracking_pending"
+        snapshot = next((queue / "calls").glob("*.json"))
+        assert secret in snapshot.read_text()
+        source.unlink()
+    monkeypatch.setenv(secret_key, secret)
+    sdk.MlflowClient.side_effect = None
+    result = (
+        flush_queue(queue, operator=operator)[0] if retry
+        else export_record(path, queue, operator=operator)
+    )
+    assert result == {"status": "exported", "run_id": "run-one"}
+    uploaded = [call.args[0] for call in sdk.log_dict.call_args_list
+                if call.args[1].startswith("calls/")]
+    uploaded.extend(json.loads(Path(call.args[0]).read_text())
+                    for call in sdk.log_artifact.call_args_list)
+    assert len(uploaded) == 1
+    assert uploaded[0]["inputs"] == {"text": "[REDACTED]"}
+    assert secret not in json.dumps(uploaded)
+    assert sdk.start_span_no_context.call_args.kwargs["inputs"] == {"text": "[REDACTED]"}
+    assert sdk.start_span_no_context.return_value.end.call_args.kwargs["outputs"] == "[REDACTED]"
+    assert secret not in json.dumps(sdk.start_span_no_context.call_args.kwargs)
+    assert flush_queue(queue, operator=operator) == []
+    assert sdk.start_span_no_context.call_count == 1
+
+
+@pytest.mark.parametrize("operation", ["set_tags", "log_params", "log_metrics", "set_tag"])
+def test_run_logging_failure_stays_pending_with_async_logging_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: str,
+) -> None:
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://shared-tracking")
+    monkeypatch.setenv("MLFLOW_ENABLE_ASYNC_LOGGING", "true")
+    value = record()
+    value["calls"] = []
+    run = SimpleNamespace(info=SimpleNamespace(run_id="run-one"))
+    sdk = MagicMock()
+    sdk.start_run.return_value.__enter__.return_value = run
+    client = sdk.MlflowClient.return_value
+    client.search_runs.return_value = []
+
+    def fail_log(*args, synchronous=None, **kwargs):
+        if synchronous:
+            raise ConnectionError("log delivery failed")
+        return Mock(wait=Mock(side_effect=ConnectionError("log delivery failed")))
+
+    target = client if operation == "set_tag" else sdk
+    getattr(target, operation).side_effect = fail_log
+    monkeypatch.setattr("evaluator.tracking.importlib.import_module", Mock(return_value=sdk))
+    assert export_record(save(tmp_path, value))["status"] == "tracking_pending"
+    queued = json.loads(next((tmp_path / ".tracking").glob("*.json")).read_text())
+    assert queued["error"] == "log delivery failed"
+
+
+@pytest.mark.parametrize("operator", [False, True])
+def test_resume_does_not_queue_background_tags(
+    monkeypatch: pytest.MonkeyPatch, operator: bool,
+) -> None:
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from evaluator.tracking import _publish
+
+    monkeypatch.setenv("MLFLOW_ENABLE_ASYNC_LOGGING", "true")
+    run = SimpleNamespace(info=SimpleNamespace(run_id="run-one"), data=SimpleNamespace(tags={}))
+    sdk = MagicMock()
+    sdk.MlflowClient.return_value.search_runs.return_value = [run]
+    context = MagicMock()
+    context.__enter__.return_value = run
+    background = Mock()
+
+    def start_run(*, run_id, tags=None, **kwargs):
+        if run_id and tags:
+            background(tags)
+        return context
+
+    sdk.start_run.side_effect = start_run
+    monkeypatch.setattr("evaluator.tracking.importlib.import_module", Mock(return_value=sdk))
+    value = record()
+    value["calls"] = []
+    assert _publish(value, "http://tracking", "export-one", operator) == "run-one"
+    background.assert_not_called()
+    assert sdk.set_tags.call_args.kwargs["synchronous"] is True
+
+
+def test_new_secret_does_not_duplicate_previously_delivered_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from evaluator.tracking import _publish
+
+    secret = "newly-recognized-credential"
+    monkeypatch.setenv("MODEL_API_KEY", secret)
+    source = tmp_path / "queued-call.json"
+    source.write_text(json.dumps({"name": secret, "inputs": "question"}))
+    value = record()
+    value["calls"] = []
+    value["call_files"] = [str(source)]
+    sdk = MagicMock()
+    run = SimpleNamespace(info=SimpleNamespace(run_id="run-one"), data=SimpleNamespace(tags={}))
+    sdk.start_run.return_value.__enter__.return_value = run
+    client = sdk.MlflowClient.return_value
+    client.search_runs.return_value = [run]
+    client.search_traces.return_value = [
+        SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name=secret)])),
+    ]
+    monkeypatch.setattr("evaluator.tracking.importlib.import_module", Mock(return_value=sdk))
+    assert _publish(value, "http://tracking", "export-one", False) == "run-one"
+    sdk.start_span_no_context.assert_not_called()
+    assert [call.args[1] for call in sdk.log_dict.call_args_list] == ["record.json"]

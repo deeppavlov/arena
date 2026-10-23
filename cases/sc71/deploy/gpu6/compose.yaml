@@ -124,7 +124,15 @@ services:
       ARENA_STATE_DIR: ${ARENA_ROOT}/operator/state/private
       ARENA_TRACKING_DIR: ${ARENA_ROOT}/operator/state/private/tracking
       ARENA_TOKEN_FILE: /run/secrets/private-token
+      ARENA_FINALISTS: ${SC71_FINALISTS:?}
+      ARENA_RELEASE_ID: ${SC71_PRIVATE_RELEASE_ID:?}
+      ARENA_SEARCH_MODE: campaign
+      ARENA_SEARCH_JOURNAL: /search/search.sqlite3
+      ARENA_SEARCH_MAX_SOLUTIONS: "100"
+      ARENA_SEARCH_STOP_PATH: /operator-search/stop.json
     volumes:
+      - campaign-runtime:/search:ro
+      - ${ARENA_ROOT}/operator/search:/operator-search:ro
       - ${ARENA_ROOT}/operator/dataset/private/dataset.jsonl:/private/dataset.jsonl:ro
       - ${ARENA_ROOT}/operator/metric:/private/metric:ro
       - ${ARENA_ROOT}/operator/state:${ARENA_ROOT}/operator/state
@@ -174,6 +182,7 @@ services:
     environment:
       MLFLOW_TRACKING_URI: http://shared-tracking:5000
       ARENA_OPERATOR_MLFLOW_TRACKING_URI: http://operator-tracking:5000
+      MLFLOW_ENABLE_ASYNC_TRACE_LOGGING: "false"
     volumes:
       - ${ARENA_ROOT}/operator/research-monitor.json:/run/research-monitor.json:ro
       - ${ARENA_ROOT}/operator/launch:${ARENA_ROOT}/operator/launch:ro
@@ -187,7 +196,19 @@ services:
     profiles: [search]
     image: ${ARENA_HERMES_IMAGE:?}
     entrypoint: [python, /opt/arena/cases/sc71/harness/hermes/researcher.py]
-    command: [--prompt-file, /workspace/cases/sc71/campaigns/sc71-first-20261019/start.md]
+    command:
+      - --prompt-file
+      - /workspace/cases/sc71/campaigns/sc71-first-20261019/start.md
+      - --journal
+      - /workspace/cases/sc71/campaigns/sc71-first-20261019/search.sqlite3
+      - --private-url
+      - http://private-evaluator:8080
+      - --private-token-file
+      - /run/arena/private-token
+      - --private-finalists
+      - ${SC71_FINALISTS:?}
+      - --private-release-id
+      - ${SC71_PRIVATE_RELEASE_ID:?}
     mem_limit: 32g
     cpus: 8
     pids_limit: 2048

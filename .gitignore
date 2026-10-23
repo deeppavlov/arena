@@ -13,3 +13,4 @@ cases/*/results/*
 cases/*/artifacts/*
 !cases/*/artifacts/README.md
 artifacts
+/archive/local/

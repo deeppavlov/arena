@@ -85,7 +85,9 @@ def ensure_open(directory: Path, run_id: str) -> None:
             raise ValueError("Usage run is closed")
 
 
-def add_usage(directory: Path, run_id: str, response_usage: dict[str, int] | None) -> None:
+def add_usage(
+    directory: Path, run_id: str, response_usage: dict[str, int] | None, *, reserved: bool = False,
+) -> None:
     path, lock_path = _paths(directory, run_id)
     usage = None if response_usage is None else parse_usage(response_usage)
     with lock_path.open("r+") as lock:
@@ -94,6 +96,11 @@ def add_usage(directory: Path, run_id: str, response_usage: dict[str, int] | Non
         if value["closed"] and not value["active_requests"]:
             raise ValueError("Usage run is closed")
         counters = _counters(value)
+        if reserved:
+            if not counters["unreported_attempts"]:
+                raise ValueError("Usage run has no reserved attempts")
+            counters["attempts"] -= 1
+            counters["unreported_attempts"] -= 1
         accumulate_usage(counters, usage)
         value.update(counters)
         _save(path, value)

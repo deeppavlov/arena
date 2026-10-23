@@ -77,6 +77,8 @@ def sanitize_record(record: dict[str, Any], *, operator: bool = False) -> dict[s
             "metrics": {"score": record["metrics"]["score"]}
             if record["metrics"].get("score") is not None else {},
         }
+    if record.get("calls") and record.get("call_files"):
+        raise ValueError("Tracking record must use either calls or call_files")
     return redact(record, secrets=_environment_secrets())
 
 
@@ -170,6 +172,7 @@ def _tracking_uri(mlflow: Any, uri: str):
 
 def _publish(record: dict[str, Any], uri: str, export_id: str, operator: bool) -> str:
     mlflow = importlib.import_module("mlflow")
+    secrets = _environment_secrets()
     with _EXPORT_LOCK, _credentials(operator), _tracking_uri(mlflow, uri):
         client = mlflow.MlflowClient(tracking_uri=uri)
         name = f"arena-{'operator' if operator else record['split']}/{record['params']['case_id']}"
@@ -184,24 +187,31 @@ def _publish(record: dict[str, Any], uri: str, export_id: str, operator: bool) -
         with mlflow.start_run(
             run_id=run_id, experiment_id=experiment_id,
             run_name=str(record["params"]["candidate_id"]),
-            tags={"arena_export_id": export_id},
+            tags={"arena_export_id": export_id} if run_id is None else None,
         ) as run:
             run_id = run.info.run_id
             mlflow.set_tags({
                 "split": record["split"], "campaign_id": record["params"]["campaign_id"],
                 "arena_export_id": export_id,
                 "arena_visibility": "operator" if operator else "shared",
-            })
+                "arena_execution_status": record["status"], "arena_export_complete": "false",
+            }, synchronous=True)
             mlflow.log_params({
                 key: (json.dumps(value, ensure_ascii=False)
                       if isinstance(value, (dict, list)) else value)
                 for key, value in record["params"].items() if value is not None
-            })
+            }, synchronous=True)
             mlflow.log_metrics({
                 key: value for key, value in record["metrics"].items()
                 if isinstance(value, (int, float)) and not isinstance(value, bool)
-            })
-            mlflow.log_dict(record, "record.json")
+            }, synchronous=True)
+            artifact = {key: value for key, value in record.items() if key != "call_files"}
+            if record.get("call_files"):
+                artifact["call_artifacts"] = [
+                    f"calls/{Path(path).name}" for path in record["call_files"]
+                ]
+            mlflow.log_dict(artifact, "record.json")
+            _publish_call_files(mlflow, client, record, experiment_id, run_id, export_id, secrets)
             if record.get("calls"):
                 traces = client.search_traces(
                     locations=[experiment_id], run_id=run_id, max_results=1,
@@ -213,8 +223,83 @@ def _publish(record: dict[str, Any], uri: str, export_id: str, operator: bool) -
                     ):
                         raise RuntimeError("Exported trace is not available from tracking server")
         client.set_terminated(run_id, status=record["status"])
-        client.set_tag(run_id, "arena_export_complete", "true")
+        client.set_tag(run_id, "arena_export_complete", "true", synchronous=True)
         return run_id
+
+
+def _publish_call_files(
+    mlflow: Any, client: Any, record: dict[str, Any], experiment_id: str, run_id: str,
+    export_id: str, secrets: tuple[str, ...],
+) -> None:
+    for index, filename in enumerate(record.get("call_files", [])):
+        path = Path(filename)
+        call = redact(json.loads(path.read_text(encoding="utf-8")), secrets=secrets)
+        call_id = hashlib.sha256(f"{export_id}:{index}".encode()).hexdigest()
+        query = {
+            "locations": [experiment_id], "run_id": run_id, "max_results": 1,
+            "filter_string": f"tag.arena_call_id = '{call_id}'", "include_spans": True,
+        }
+        if _call_trace_available(client, query, call["name"], secrets=secrets):
+            continue
+        mlflow.log_dict(call, f"calls/{path.name}")
+        span = mlflow.start_span_no_context(
+            call["name"], span_type=call.get("span_type", "UNKNOWN"),
+            inputs=call.get("inputs"), attributes={
+                **call.get("attributes", {}), "run_id": run_id,
+                "source_span_id": call.get("span_id"), "source_parent_id": call.get("parent_id"),
+            },
+            tags={"arena_call_id": call_id}, experiment_id=experiment_id,
+            start_time_ns=call.get("start_time_ns", record["start_time_ns"]),
+        )
+        span.end(
+            outputs=call.get("outputs"), status=call.get("status", "OK"),
+            end_time_ns=call.get("end_time_ns", record["end_time_ns"]),
+        )
+        mlflow.flush_trace_async_logging()
+        if not _call_trace_available(client, query, call["name"], secrets=secrets):
+            raise RuntimeError("Exported call trace is not available from tracking server")
+
+
+def _call_trace_available(
+    client: Any, query: dict[str, Any], name: str, *, secrets: tuple[str, ...] = (),
+) -> bool:
+    while True:
+        traces = client.search_traces(**query)
+        if any(len(trace.data.spans) == 1
+               and redact(trace.data.spans[0].name, secrets=secrets) == name for trace in traces):
+            return True
+        token = getattr(traces, "token", None)
+        if not token:
+            return False
+        query = {**query, "page_token": token}
+
+
+def _digest(value: Any) -> str:
+    digest = hashlib.sha256()
+    for chunk in json.JSONEncoder(sort_keys=True, ensure_ascii=False).iterencode(value):
+        digest.update(chunk.encode())
+    return digest.hexdigest()
+
+
+def _snapshot_calls(record: dict[str, Any], directory: Path) -> None:
+    paths = []
+    secrets = _environment_secrets()
+    for filename in record.get("call_files", []):
+        source = Path(filename)
+        if not source.is_absolute():
+            raise ValueError("External call paths must be absolute")
+        call = json.loads(source.read_text(encoding="utf-8"))
+        if record["params"].get("role"):
+            call["attributes"] = {
+                **call.get("attributes", {}), "role": record["params"]["role"],
+            }
+        call = redact(call, secrets=secrets)
+        path = directory / "calls" / f"{_digest(call)}.json"
+        if not path.exists():
+            _save(path, call)
+        paths.append(str(path.resolve()))
+    if "call_files" in record:
+        record["call_files"] = paths
 
 
 def _ordered_calls(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -287,18 +372,20 @@ def export_record(
 ) -> dict[str, str]:
     uri = _destination(operator)
     record = sanitize_record(json.loads(record_path.read_text(encoding="utf-8")), operator=operator)
-    identity = json.dumps([uri, operator, record], sort_keys=True, ensure_ascii=False).encode()
-    export_id = hashlib.sha256(identity).hexdigest()
     directory = queue_dir if queue_dir is not None else record_path.parent / ".tracking"
     directory.mkdir(parents=True, mode=0o700, exist_ok=True)
+    export_id = _digest([uri, operator, record])
     path = directory / f"{export_id}.json"
     with (directory / f"{export_id}.lock").open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        entry = json.loads(path.read_text()) if path.exists() else {
-            "uri": uri, "operator": operator, "record": record, "export_id": export_id,
-            "status": "tracking_pending",
-        }
-        if not path.exists():
+        if path.exists():
+            entry = json.loads(path.read_text())
+        else:
+            _snapshot_calls(record, directory)
+            entry = {
+                "uri": uri, "operator": operator, "record": record, "export_id": export_id,
+                "status": "tracking_pending",
+            }
             _save(path, entry)
         return _export(path, entry)
 

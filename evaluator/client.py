@@ -8,6 +8,7 @@ import stat
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Literal
 
 import httpx
 from pydantic import ValidationError
@@ -20,7 +21,12 @@ MAX_BUNDLE_BYTES = 72 * 1024 * 1024
 
 
 class ClientError(Exception):
-    pass
+    def __init__(
+        self, message: str, *, status_code: int | None = None, error_code: str | None = None,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.error_code = error_code
 
 
 def pack_candidate(identifier: str, directory: Path) -> Candidate:
@@ -72,7 +78,12 @@ def request(
     *,
     timeout: float | str | None = None,
     evaluation_id: str | None = None,
+    resource: Literal["evaluations", "search-readiness"] = "evaluations",
 ) -> dict[str, object]:
+    if resource not in {"evaluations", "search-readiness"} or (
+        resource != "evaluations" and evaluation_id is not None
+    ):
+        raise ClientError("invalid evaluator resource")
     if evaluation_id is not None and not re.fullmatch(r"[0-9a-f]{64}", evaluation_id):
         raise ClientError("invalid evaluation ID")
     try:
@@ -104,7 +115,7 @@ def request(
     if not token or len(token) > 4096 or any(not 33 <= ord(char) <= 126 for char in token):
         raise ClientError("invalid evaluator token file")
     suffix = f"/{evaluation_id}" if evaluation_id is not None else ""
-    endpoint = url.copy_with(path=url.path.rstrip("/") + "/v1/evaluations" + suffix)
+    endpoint = url.copy_with(path=url.path.rstrip("/") + "/v1/" + resource + suffix)
     try:
         with httpx.Client(follow_redirects=False, trust_env=False, timeout=seconds) as client:
             response = client.request(
@@ -113,13 +124,60 @@ def request(
     except httpx.HTTPError as error:
         raise ClientError("evaluator request failed") from error
     if not 200 <= response.status_code < 300:
-        raise ClientError(f"evaluator returned HTTP {response.status_code}")
+        error_code = None
+        try:
+            body = response.json()
+        except ValueError:
+            body = None
+        if body == {"detail": {"code": "no_evaluation"}}:
+            error_code = "no_evaluation"
+        raise ClientError(
+            f"evaluator returned HTTP {response.status_code}",
+            status_code=response.status_code, error_code=error_code,
+        )
     try:
         result = response.json()
     except ValueError as error:
         raise ClientError("evaluator returned invalid JSON") from error
     if not isinstance(result, dict):
         raise ClientError("evaluator returned invalid JSON")
+    return result
+
+
+def search_readiness(
+    base_url: str,
+    token_file: Path,
+    *,
+    timeout: float | str | None = None,
+    require_campaign: bool = False,
+    max_solutions: int | None = None,
+    finalists: int | None = None,
+    release_id: str | None = None,
+) -> dict[str, object]:
+    result = request("GET", base_url, token_file, timeout=timeout, resource="search-readiness")
+    if (
+        set(result) != {"mode", "gate_enabled", "journal_ready", "max_solutions",
+                        "finalists", "release_id"}
+        or result["mode"] not in ("campaign", "standalone")
+        or type(result["gate_enabled"]) is not bool
+        or (result["journal_ready"] is not None and type(result["journal_ready"]) is not bool)
+        or (result["max_solutions"] is not None and (
+            type(result["max_solutions"]) is not int or result["max_solutions"] <= 0
+        ))
+        or type(result["finalists"]) is not int or result["finalists"] <= 0
+        or not isinstance(result["release_id"], str)
+    ):
+        raise ClientError("invalid search readiness response")
+    if require_campaign and (
+        result["mode"] != "campaign" or result["gate_enabled"] is not True
+        or result["journal_ready"] is not True or result["max_solutions"] is None
+    ):
+        raise ClientError("search readiness requires an enabled campaign admission gate")
+    for name, expected in (
+        ("max_solutions", max_solutions), ("finalists", finalists), ("release_id", release_id),
+    ):
+        if expected is not None and result[name] != expected:
+            raise ClientError(f"search readiness differs from expected {name}")
     return result
 
 
@@ -138,7 +196,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     status = commands.add_parser("status", help="read evaluation status and permitted results")
     status.add_argument("--evaluation-id", help="public evaluation ID returned by submit")
-    for command in (submit, status):
+    readiness = commands.add_parser("search-readiness", help="verify campaign admission settings")
+    readiness.add_argument("--require-campaign", action="store_true")
+    readiness.add_argument("--max-solutions", type=int)
+    readiness.add_argument("--finalists", type=int)
+    readiness.add_argument("--release-id")
+    for command in (submit, status, readiness):
         command.add_argument("--url", required=True)
         command.add_argument("--token-file", type=Path, required=True)
         command.add_argument(
@@ -190,6 +253,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 arguments.token_file,
                 submission.model_dump(mode="json"),
                 timeout=arguments.timeout,
+            )
+        elif arguments.command == "search-readiness":
+            result = search_readiness(
+                arguments.url, arguments.token_file, timeout=arguments.timeout,
+                require_campaign=arguments.require_campaign, max_solutions=arguments.max_solutions,
+                finalists=arguments.finalists, release_id=arguments.release_id,
             )
         else:
             result = request(

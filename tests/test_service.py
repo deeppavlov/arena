@@ -18,9 +18,11 @@ from fastapi.testclient import TestClient
 
 from evaluator.candidates import materialize_candidate
 from evaluator.client import pack_candidate
+from evaluator.contracts import Submission
 from evaluator.judge import ModelClient
 from evaluator.reliability import empty_usage
 from evaluator.runner import RunnerError, SolveResult
+from evaluator.search import Journal, Resources
 from evaluator.service import Settings, create_app
 
 
@@ -119,6 +121,230 @@ def test_evaluates_once_and_exposes_only_status(settings: Settings):
     assert restarted.post("/v1/evaluations", json=submission("c")).status_code == 409
     private_files = list(settings.state_dir.rglob("*.json"))
     assert any("private-answer" in path.read_text() for path in private_files)
+
+
+def campaign_settings(settings: Settings, *, limit: int = 1):
+    source = settings.state_dir.parent / "search-candidate"
+    source.mkdir()
+    (source / "prompt.txt").write_text("a")
+    journal = Journal.create(source.parent / "search.sqlite", max_solutions=limit)
+    journal.propose(
+        "candidate", source, hypothesis="synthetic", change="initial", resources=Resources(0, 0),
+    )
+    configured = replace(
+        settings, search_mode="campaign", search_journal=journal.path, search_max_solutions=limit,
+    )
+    return configured, journal, Submission.model_validate(submission())
+
+
+def test_private_campaign_rejects_unfinished_search_before_reservation(settings: Settings):
+    configured, journal, batch = campaign_settings(settings, limit=100)
+    api = client(configured)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 409
+    journal.stop("agent selected finalists")
+    journal.finalize(batch)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 409
+    assert api.get("/v1/evaluations").status_code == 404
+    assert not list(settings.state_dir.rglob("record.json"))
+
+
+def test_private_campaign_admits_frozen_complete_search_and_preserves_replay(settings: Settings):
+    configured, journal, batch = campaign_settings(settings)
+    configured = replace(configured, search_stop_path=journal.path.parent / "absent-stop.json")
+    api = client(configured)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 409
+    journal.finalize(batch)
+    assert api.post("/v1/evaluations", json=submission("changed")).status_code == 409
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    record = operator_record(settings)
+    assert record["search_admission"]["finalization"]["batch_digest"] == batch.digest()
+    journal.path.unlink()
+    restarted = client(configured)
+    assert restarted.post("/v1/evaluations", json=submission()).json() == {"status": "complete"}
+    assert restarted.get("/v1/evaluations").json() == {"status": "complete"}
+
+
+def test_private_rejected_finalist_count_can_be_corrected_before_admission(settings: Settings):
+    configured, journal, first = campaign_settings(settings, limit=2)
+    configured = replace(configured, finalists=2)
+    source = journal.path.parent / "other"
+    source.mkdir()
+    (source / "prompt.txt").write_text("other")
+    journal.propose(
+        "other", source, hypothesis="synthetic", change="other", resources=Resources(0, 0),
+    )
+    corrected = Submission(candidates=[*first.candidates, pack_candidate("other", source)])
+    journal.finalize(first)
+    api = client(configured)
+    assert api.post("/v1/evaluations", json=first.model_dump()).status_code == 422
+    assert api.get("/v1/evaluations").status_code == 404
+    journal.finalize(corrected, replace=True)
+    assert api.post("/v1/evaluations", json=corrected.model_dump()).status_code == 202
+    assert operator_record(settings)["batch_digest"] == corrected.digest()
+
+
+def test_private_rejected_harness_can_be_replaced_with_registered_candidate(settings, monkeypatch):
+    configured, journal, valid = campaign_settings(settings, limit=2)
+    configured = replace(configured, runner_image="sha256:" + "a" * 64)
+    source = journal.path.parent / "unsupported"
+    source.mkdir()
+    (source / "solution.json").write_text(json.dumps({"harness": "unsupported"}))
+    journal.propose(
+        "unsupported", source, hypothesis="synthetic", change="unsupported",
+        resources=Resources(0, 0),
+    )
+    invalid = Submission(candidates=[pack_candidate("unsupported", source)])
+    journal.finalize(invalid)
+    calls = []
+
+    def run(self, candidate, task, *, parameters=None):
+        calls.append(candidate.name)
+        return solved()
+
+    monkeypatch.setattr("evaluator.execution.DockerRunner.__call__", run)
+    api = TestClient(create_app(configured, complete=lambda _: '{"score":4,"reason":"ok"}'),
+                     headers={"Authorization": "Bearer test-token"})
+    assert api.post("/v1/evaluations", json=invalid.model_dump()).status_code == 422
+    assert api.get("/v1/evaluations").status_code == 404
+    assert calls == []
+    journal.finalize(valid, replace=True)
+    assert api.post("/v1/evaluations", json=valid.model_dump()).status_code == 202
+    assert calls == ["candidate", "candidate"]
+    journal.finalize(invalid, replace=True)
+    assert api.post("/v1/evaluations", json=invalid.model_dump()).status_code == 409
+    assert api.post("/v1/evaluations", json=valid.model_dump()).json() == {"status": "complete"}
+    assert calls == ["candidate", "candidate"]
+
+
+def test_existing_private_evaluation_survives_enabling_campaign_gate(settings: Settings):
+    api = client(settings)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    configured = replace(
+        settings, search_mode="campaign",
+        search_journal=settings.state_dir.parent / "missing.sqlite",
+        search_max_solutions=100,
+    )
+    restarted = client(configured)
+    assert restarted.get("/v1/evaluations").json() == {"status": "complete"}
+    assert restarted.post("/v1/evaluations", json=submission()).json() == {"status": "complete"}
+
+
+def test_private_campaign_requires_bound_operator_command_for_early_stop(settings: Settings):
+    configured, journal, batch = campaign_settings(settings, limit=100)
+    stopped = journal.stop("user requested selection")
+    journal.finalize(batch)
+    stop_path = journal.path.parent / "operator-stop.json"
+    configured = replace(configured, search_stop_path=stop_path)
+    api = client(configured)
+    assert api.post("/v1/evaluations", json=submission()).status_code == 503
+    approval = {
+        "batch_digest": batch.digest(), "stopped_at": stopped["stopped_at"],
+        "reason": stopped["stop_reason"], "source_ref": "user-message-123",
+    }
+    for field in approval:
+        stop_path.write_text(json.dumps({
+            **approval, field: "wrong" if field != "source_ref" else "",
+        }))
+        assert api.post("/v1/evaluations", json=submission()).status_code == 409
+    stop_path.write_text(json.dumps(approval))
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+    assert operator_record(settings)["search_admission"]["human_stop"] == approval
+
+
+@pytest.mark.parametrize("failure", [
+    "missing", "budget", "running", "candidate", "candidate_type", "finalization_type",
+])
+def test_private_campaign_gate_fails_closed(settings: Settings, failure):
+    import sqlite3
+
+    configured, journal, batch = campaign_settings(settings)
+    journal.finalize(batch)
+    expected = 409
+    if failure == "missing":
+        journal.path.unlink()
+        expected = 503
+    elif failure == "budget":
+        configured = replace(configured, search_max_solutions=2)
+    else:
+        with sqlite3.connect(journal.path) as connection:
+            if failure == "running":
+                connection.execute(
+                    "INSERT INTO measurements VALUES ('late', 'candidate', '{}', NULL)",
+                )
+            elif failure == "candidate":
+                connection.execute("UPDATE candidates SET record = '{}' ")
+            elif failure == "candidate_type":
+                connection.execute("UPDATE candidates SET record = '[]'")
+                expected = 503
+            else:
+                connection.execute("UPDATE campaign SET finalization = '[]'")
+                expected = 503
+    api = client(configured)
+    assert api.post("/v1/evaluations", json=submission()).status_code == expected
+    assert api.get("/v1/evaluations").status_code == 404
+
+
+def test_public_campaign_does_not_require_search_finalization(settings: Settings):
+    configured, _, _ = campaign_settings(settings, limit=100)
+    api = client(replace(configured, split="public"))
+    assert api.post("/v1/evaluations", json=submission()).status_code == 202
+
+
+@pytest.mark.parametrize("overrides", [
+    {"search_journal": Path("journal")}, {"search_max_solutions": 1},
+    {"search_journal": Path("journal"), "search_max_solutions": 0},
+    {"search_journal": Path("journal"), "search_max_solutions": True},
+    {"search_stop_path": Path("stop.json")},
+])
+def test_campaign_gate_configuration_is_complete(settings: Settings, overrides):
+    with pytest.raises(ValueError, match="search"):
+        replace(settings, **overrides)
+
+
+def test_search_readiness_requires_explicit_campaign_settings(settings: Settings):
+    with pytest.raises(ValueError, match="search"):
+        replace(settings, search_mode="campaign")
+    with pytest.raises(ValueError, match="search"):
+        replace(settings, search_mode="unknown")
+    with pytest.raises(ValueError, match="search"):
+        replace(settings, search_journal=Path("journal"), search_max_solutions=1)
+
+
+def test_search_readiness_is_authenticated_and_checks_the_journal(settings: Settings):
+    configured, journal, _ = campaign_settings(settings, limit=100)
+    api = client(configured)
+    assert api.get("/v1/search-readiness").json() == {
+        "mode": "campaign", "gate_enabled": True, "journal_ready": True,
+        "max_solutions": 100, "finalists": 1, "release_id": "release-1",
+    }
+    assert TestClient(api.app).get("/v1/search-readiness").status_code == 401
+    public = client(replace(configured, split="public")).get("/v1/search-readiness").json()
+    assert public["mode"] == "campaign"
+    assert public["gate_enabled"] is False
+    assert public["journal_ready"] is True
+    assert client(replace(configured, search_max_solutions=1)).get(
+        "/v1/search-readiness",
+    ).status_code == 503
+    journal.path.chmod(0o444)
+    assert api.get("/v1/search-readiness").status_code == 200
+    journal.path.unlink()
+    assert api.get("/v1/search-readiness").status_code == 503
+
+
+def test_standalone_readiness_does_not_claim_a_campaign_gate(settings: Settings):
+    assert client(settings).get("/v1/search-readiness").json() == {
+        "mode": "standalone", "gate_enabled": False, "journal_ready": None,
+        "max_solutions": None, "finalists": 1, "release_id": "release-1",
+    }
+
+
+def test_no_evaluation_is_distinct_from_an_invalid_route(settings: Settings):
+    api = client(settings)
+    missing = api.get("/v1/evaluations")
+    invalid = api.get("/v1/v1/evaluations")
+    assert missing.status_code == invalid.status_code == 404
+    assert missing.json() == {"detail": {"code": "no_evaluation"}}
+    assert invalid.json() != missing.json()
 
 
 def test_auth_before_parsing_and_size_limit(settings: Settings, monkeypatch):
@@ -1223,6 +1449,9 @@ def test_service_environment_supports_model_free_public_configuration(
         "RUNNER_IMAGE": "sha256:" + "a" * 64, "RELEASE_ID": "release",
         "FINALISTS": "9", "OUTPUT_COUNT": "3", "SPLIT": "public", "MAX_BODY_BYTES": "300",
         "HARNESSES": json.dumps({"program": {"image": "sha256:" + "b" * 64}}),
+        "SEARCH_MODE": "campaign",
+        "SEARCH_JOURNAL": str(settings.state_dir.parent / "search.sqlite"),
+        "SEARCH_MAX_SOLUTIONS": "100", "SEARCH_STOP_PATH": "/operator/stop.json",
     }
     for name, value in values.items():
         monkeypatch.setenv("ARENA_" + name, value)
@@ -1236,6 +1465,10 @@ def test_service_environment_supports_model_free_public_configuration(
     assert loaded.max_body_bytes == 300
     assert loaded.uses_model is False
     assert loaded.harnesses["program"]["image"].startswith("sha256:")
+    assert loaded.search_mode == "campaign"
+    assert loaded.search_journal == settings.state_dir.parent / "search.sqlite"
+    assert loaded.search_max_solutions == 100
+    assert loaded.search_stop_path == Path("/operator/stop.json")
 
 
 def test_transport_byte_limit_is_operator_configurable(settings: Settings):

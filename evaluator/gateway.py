@@ -346,6 +346,13 @@ def create_gateway(
         delays = retry_delays(retry_delay=settings.retry_delay)
         for attempt in range(len(delays) + 1):
             ensure_running(run_id)
+            if settings.usage_dir is not None and run_id is not None:
+                try:
+                    add_usage(settings.usage_dir, run_id, None)
+                except (OSError, ValueError):
+                    raise HTTPException(
+                        status_code=503, detail="Model accounting unavailable"
+                    ) from None
             usage = None
             started = time_ns()
             traced_output: dict[str, object] = {"error": "Model unavailable"}
@@ -391,7 +398,7 @@ def create_gateway(
             finally:
                 if settings.usage_dir is not None and run_id is not None:
                     try:
-                        add_usage(settings.usage_dir, run_id, usage)
+                        add_usage(settings.usage_dir, run_id, usage, reserved=True)
                     except (OSError, ValueError):
                         raise HTTPException(
                             status_code=503, detail="Model accounting unavailable"

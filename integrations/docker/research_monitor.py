@@ -11,7 +11,6 @@ from typing import Any, Self
 from uuid import UUID
 
 from evaluator.reliability import empty_usage
-from evaluator.trace_store import read_calls
 from evaluator.tracking import _save, export_record, flush_queue, sanitize_record
 from evaluator.usage import _load
 
@@ -79,15 +78,17 @@ def _timestamp_ns(value: str) -> int:
 def _record(
     config: Settings, run_id: str, container_id: str, state: dict[str, Any], usage: dict[str, int],
 ) -> dict[str, Any]:
-    calls = read_calls(config.trace_dir, run_id)
-    started = min([_timestamp_ns(state["StartedAt"])] + [call["start_time_ns"] for call in calls])
-    finished = max([_timestamp_ns(state["FinishedAt"])] + [call["end_time_ns"] for call in calls])
+    call_files = sorted((config.trace_dir / run_id).resolve().glob("*.json"))
+    started = _timestamp_ns(state["StartedAt"])
+    finished = _timestamp_ns(state["FinishedAt"])
+    for path in call_files:
+        call = json.loads(path.read_text(encoding="utf-8"))
+        started = min(started, call["start_time_ns"])
+        finished = max(finished, call["end_time_ns"])
     if finished < started:
         raise ValueError("Container completion precedes start")
     wall_seconds = (finished - started) / 1_000_000_000
     success = state["Status"] == "exited" and state["ExitCode"] == 0 and not state["OOMKilled"]
-    for call in calls:
-        call["attributes"] = {**call.get("attributes", {}), "role": "orchestrator"}
     return sanitize_record({
         "split": "train", "status": "FINISHED" if success else "FAILED",
         "params": {**config.params, "candidate_id": "orchestrator", "role": "orchestrator",
@@ -95,16 +96,17 @@ def _record(
         "metrics": {
             "orchestrator_tokens": usage["total_tokens"], "orchestrator_seconds": wall_seconds,
             "orchestrator_attempts": usage["attempts"],
-            "orchestrator_trace_attempts": len(calls),
+            "orchestrator_trace_attempts": len(call_files),
             "orchestrator_unreported_attempts": usage["unreported_attempts"],
             "wall_seconds": wall_seconds,
         },
         "resources": {"orchestrator": {
             "run_id": run_id, "usage": usage, "wall_seconds": wall_seconds,
         }},
-        "trace_complete": len(calls) == usage["attempts"],
+        "trace_complete": len(call_files) == usage["attempts"],
         "container_id": container_id, "exit_code": state["ExitCode"],
-        "oom_killed": state["OOMKilled"], "calls": calls,
+        "oom_killed": state["OOMKilled"], "calls": [],
+        "call_files": [str(path) for path in call_files],
         "start_time_ns": started, "end_time_ns": finished,
     })
 
@@ -121,7 +123,7 @@ def _monitor(config: Settings) -> dict[str, Any]:
         return {"status": "awaiting_container", "run_id": run_id}
     if not isinstance(container_id, str) or not re.fullmatch(r"[a-f0-9]{64}", container_id):
         raise ValueError("Monitor requires a trusted Docker container ID")
-    path = config.state_dir / "records" / f"{run_id}.json"
+    path = config.state_dir / "records" / f"{run_id}.manifest.json"
     if not path.exists():
         state = _inspect_container(container_id)
         if state["Status"] not in {"exited", "dead"}:
@@ -137,7 +139,7 @@ def _monitor(config: Settings) -> dict[str, Any]:
     for operator, name in ((False, "shared"), (True, "operator")):
         try:
             exports[name] = export_record(
-                path, config.state_dir / "queues" / name, operator=operator,
+                path, config.state_dir / "manifest-queues" / name, operator=operator,
             )
         except Exception as error:
             exports[name] = {"status": "error", "error_type": type(error).__name__}
@@ -157,8 +159,8 @@ def monitor_once(config: Settings) -> dict[str, Any]:
 def flush_pending(config: Settings) -> list[dict[str, Any]]:
     results = []
     for operator, directories in (
-        (False, (*config.shared_queues, config.state_dir / "queues" / "shared")),
-        (True, (*config.operator_queues, config.state_dir / "queues" / "operator")),
+        (False, (*config.shared_queues, config.state_dir / "manifest-queues" / "shared")),
+        (True, (*config.operator_queues, config.state_dir / "manifest-queues" / "operator")),
     ):
         for directory in directories:
             try:

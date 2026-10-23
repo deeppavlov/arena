@@ -36,3 +36,28 @@ def test_redacts_known_secrets_even_in_unstructured_response(tmp_path: Path) -> 
         tmp_path, run_id, {"secret-value": "I echoed secret-value"}, secrets=("secret-value",),
     )
     assert read_calls(tmp_path, run_id) == [{"[REDACTED]": "I echoed [REDACTED]"}]
+
+
+def test_call_iterator_loads_only_the_requested_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from evaluator.trace_store import call_paths, iter_calls
+
+    run_id = str(uuid4())
+    append_call(tmp_path, run_id, {"name": "one"})
+    append_call(tmp_path, run_id, {"name": "two"})
+    paths = call_paths(tmp_path, run_id)
+    original = Path.read_text
+    loaded = []
+
+    def read(path: Path, *args: object, **kwargs: object) -> str:
+        loaded.append(path)
+        return original(path, encoding="utf-8")
+
+    monkeypatch.setattr(Path, "read_text", read)
+    calls = iter_calls(tmp_path, run_id)
+    assert loaded == []
+    next(calls)
+    assert loaded == [paths[0]]
+    next(calls)
+    assert loaded == paths
