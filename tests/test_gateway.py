@@ -138,7 +138,6 @@ def test_gateway_does_not_follow_redirects_or_expose_errors(status: int) -> None
         {"choices": []},
         {"choices": [{"message": {"content": None}}]},
         {"choices": [{"message": {"content": {"secret": "state"}}}]},
-        {"choices": [{"message": {"content": "ok"}}], "usage": {"total_tokens": "secret"}},
     ],
 )
 def test_gateway_rejects_malformed_upstream_response(payload: dict[str, object]) -> None:
@@ -343,20 +342,26 @@ def test_gateway_bounds_entire_upstream_call_time() -> None:
 
 
 @pytest.mark.parametrize("finish_reason", [{}, {"finish_reason": "stop"}])
-def test_gateway_rejects_response_without_usage(finish_reason: dict[str, str]) -> None:
+def test_gateway_accepts_response_without_usage(finish_reason: dict[str, str]) -> None:
+    calls = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "complete"}, **finish_reason}]},
+        )
+
     app = create_gateway(
         GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(
-                200,
-                json={"choices": [{"message": {"content": "complete"}, **finish_reason}]},
-            )
-        ),
+        transport=httpx.MockTransport(upstream),
     )
     with TestClient(app) as client:
         response = client.post("/v1/chat/completions", json=request_body())
-    assert response.status_code == 502
-    assert response.json() == {"detail": "Model unavailable"}
+    assert response.status_code == 200
+    assert response.json()["choices"][0]["message"]["content"] == "complete"
+    assert response.json()["usage"] is None
+    assert len(calls) == 1
 
 
 @pytest.mark.parametrize(
@@ -467,10 +472,10 @@ def test_gateway_retries_transient_failures_and_preserves_request(retry_waits: l
     with TestClient(app) as client:
         response = client.post("/v1/chat/completions", json=request_body())
     assert response.status_code == 200
-    assert response.json() == valid_response()
-    assert len(requests) == 6
+    assert response.json() == {"choices": [{"message": {"content": "ok"}}], "usage": None}
+    assert len(requests) == 5
     assert all(request.content == requests[0].content for request in requests)
-    assert retry_waits == [30, 60, 120, 240, 300]
+    assert retry_waits == [30, 60, 120, 240]
 
 
 def test_gateway_stops_after_five_retries(retry_waits: list[float]) -> None:
@@ -623,11 +628,13 @@ def test_scoped_gateway_counts_unreported_usage_as_unknown(tmp_path: Path, usage
             f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body()
         )
     assert response.status_code == 200
+    assert response.json()["usage"] is None
+    assert calls == 1
     assert read_usage(tmp_path, run_id) == {
-        "prompt_tokens": 12,
-        "completion_tokens": 3,
-        "total_tokens": 15,
-        "attempts": 2,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "attempts": 1,
         "unreported_attempts": 1,
     }
 
@@ -1614,3 +1621,191 @@ def test_scoped_gateway_does_not_call_model_before_durable_attempt_reservation(
     assert response.status_code == 503
     assert calls == []
     assert usage_store.read_usage(tmp_path, run_id)["attempts"] == 0
+
+
+@pytest.mark.parametrize("usage", [None, {"total_tokens": "private usage value"}])
+def test_gateway_accepts_tool_call_with_unknown_usage_once(tmp_path: Path, usage: object) -> None:
+    from evaluator.trace_store import read_calls
+    from evaluator.usage import create_usage, read_usage
+
+    run_id = str(uuid4())
+    capability = create_usage(tmp_path, run_id)
+    requests = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={**tool_response(), "usage": usage})
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model",
+            usage_dir=tmp_path, trace_dir=tmp_path / "traces",
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=tool_request(),
+        )
+    assert response.status_code == 200
+    assert response.json() == {**tool_response(), "usage": None}
+    assert len(requests) == 1
+    assert read_usage(tmp_path, run_id)["unreported_attempts"] == 1
+    trace = read_calls(tmp_path / "traces", run_id)[0]
+    assert trace["status"] == "OK"
+    assert trace["attributes"]["usage_reason"] == ("missing" if usage is None else "invalid")
+    assert "private usage value" not in json.dumps(trace)
+
+
+@pytest.mark.parametrize(
+    "failure,reason,error_type,http_status",
+    [
+        (httpx.ConnectError("private endpoint"), "request", "ConnectError", None),
+        (httpx.ReadTimeout("private endpoint"), "request", "ReadTimeout", None),
+        (TimeoutError("private endpoint"), "request", "TimeoutError", None),
+        (httpx.Response(200, content=b'{"choices":'), "response_decode", "JSONDecodeError", 200),
+        (httpx.Response(503, content=b"private error body"), "http_status", "JSONDecodeError", 503),
+        (httpx.Response(200, json={"choices": []}), "response_validation", "ValidationError", 200),
+    ],
+)
+def test_gateway_records_safe_failure_diagnostics_and_attempt_ids(
+    tmp_path: Path, failure: Exception | httpx.Response,
+    reason: str, error_type: str, http_status: int | None,
+) -> None:
+    from uuid import UUID
+
+    from evaluator.trace_store import read_calls
+    from evaluator.usage import create_usage, read_usage
+
+    run_id = str(uuid4())
+    capability = create_usage(tmp_path, run_id)
+    requests = []
+    provider_id = str(uuid4())
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) == 1:
+            if isinstance(failure, Exception):
+                raise failure
+            failure.headers["x-request-id"] = "private header value"
+            return failure
+        return httpx.Response(
+            200, json=valid_response(), headers={"x-request-id": provider_id},
+        )
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model",
+            usage_dir=tmp_path, trace_dir=tmp_path / "traces",
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body(),
+        )
+    assert response.status_code == 200
+    assert len(requests) == 2
+    traces = read_calls(tmp_path / "traces", run_id)
+    ids = [str(UUID(request.headers["x-request-id"])) for request in requests]
+    assert len(set(ids)) == 2
+    assert [trace["attributes"]["request_id"] for trace in traces] == ids
+    failed, success = [trace["attributes"] for trace in traces]
+    assert failed["error_reason"] == reason
+    assert failed["exception_type"] == error_type
+    assert failed.get("http_status") == http_status
+    assert "upstream_request_id" not in failed
+    assert success["upstream_request_id"] == provider_id
+    assert success["usage_reason"] == "reported"
+    assert "error_reason" not in success
+    assert "private" not in json.dumps(traces)
+    assert read_usage(tmp_path, run_id)["unreported_attempts"] == 1
+
+
+def test_gateway_retains_http_error_usage_and_safe_provider_id(tmp_path: Path) -> None:
+    from evaluator.trace_store import read_calls
+    from evaluator.usage import create_usage, read_usage
+
+    run_id = str(uuid4())
+    capability = create_usage(tmp_path, run_id)
+    requests = []
+    provider_id = str(uuid4())
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            503 if len(requests) == 1 else 200, json=valid_response(),
+            headers={"x-litellm-call-id": provider_id},
+        )
+
+    app = create_gateway(
+        GatewaySettings(
+            base_url="http://internal-model/v1", model="fixed-model",
+            usage_dir=tmp_path, trace_dir=tmp_path / "traces",
+        ),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body(),
+        )
+    assert response.status_code == 200
+    assert len(requests) == 2
+    usage = read_usage(tmp_path, run_id)
+    assert usage["total_tokens"] == 30
+    assert usage["unreported_attempts"] == 0
+    failed = read_calls(tmp_path / "traces", run_id)[0]["attributes"]
+    assert failed["error_reason"] == "http_status"
+    assert failed["http_status"] == 503
+    assert failed["usage_reason"] == "reported"
+    assert failed["upstream_request_id"] == provider_id
+
+
+def test_gateway_records_cancellation_without_retrying(
+    tmp_path: Path, retry_waits: list[float],
+) -> None:
+    from evaluator.trace_store import read_calls
+    from evaluator.usage import create_usage, read_usage
+
+    run_id = str(uuid4())
+    capability = create_usage(tmp_path, run_id)
+    calls = []
+
+    async def scenario() -> None:
+        started = asyncio.Event()
+
+        async def upstream(request: httpx.Request) -> httpx.Response:
+            calls.append(request)
+            started.set()
+            await asyncio.Future()
+            raise AssertionError("Cancelled request must not finish")
+
+        app = create_gateway(
+            GatewaySettings(
+                base_url="http://internal-model/v1", model="fixed-model",
+                usage_dir=tmp_path, trace_dir=tmp_path / "traces",
+            ),
+            transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://gateway",
+        ) as client:
+            task = asyncio.create_task(client.post(
+                f"/runs/{run_id}/{capability}/v1/chat/completions", json=request_body(),
+            ))
+            await asyncio.wait_for(started.wait(), timeout=1)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+    asyncio.run(scenario())
+    assert len(calls) == 1
+    assert retry_waits == []
+    usage = read_usage(tmp_path, run_id)
+    assert usage["attempts"] == usage["unreported_attempts"] == 1
+    assert json.loads((tmp_path / f"{run_id}.json").read_text())["active_requests"] == 0
+    traces = read_calls(tmp_path / "traces", run_id)
+    assert len(traces) == 1
+    assert traces[0]["status"] == "ERROR"
+    assert traces[0]["attributes"]["error_reason"] == "cancelled"
+    assert traces[0]["attributes"]["exception_type"] == "CancelledError"

@@ -96,8 +96,7 @@ class ModelClient:
                     try:
                         usage = parse_usage(data.get("usage") if isinstance(data, dict) else None)
                     except ValueError:
-                        response.raise_for_status()
-                        raise
+                        usage = None
                     response.raise_for_status()
             try:
                 choice = data["choices"][0]

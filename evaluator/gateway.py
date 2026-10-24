@@ -7,6 +7,7 @@ from pathlib import Path
 from time import time_ns
 from typing import Literal, Self
 from urllib.parse import urlsplit
+from uuid import UUID, uuid4
 
 import httpx
 import uvicorn
@@ -247,7 +248,31 @@ class Usage(BaseModel):
 
 class ModelResponse(BaseModel):
     choices: list[Choice] = Field(min_length=1, max_length=16)
-    usage: Usage
+    usage: Usage | None
+
+
+def _exception_type(error: Exception) -> str:
+    name = type(error).__name__
+    if name in {
+        "ConnectError", "ReadError", "WriteError", "CloseError", "ConnectTimeout",
+        "ReadTimeout", "WriteTimeout", "PoolTimeout", "RemoteProtocolError",
+        "LocalProtocolError", "ProxyError", "UnsupportedProtocol", "DecodingError",
+        "TooManyRedirects", "HTTPStatusError", "TimeoutError", "JSONDecodeError",
+        "UnicodeDecodeError", "ValidationError", "ValueError",
+    }:
+        return name
+    return "HTTPError" if isinstance(error, httpx.HTTPError) else "ValueError"
+
+
+def _upstream_request_id(headers: httpx.Headers) -> str | None:
+    for name in ("x-request-id", "x-litellm-call-id"):
+        value = headers.get(name, "")
+        try:
+            if len(value) == 36 and str(UUID(value)) == value.lower():
+                return value
+        except ValueError:
+            pass
+    return None
 
 
 def create_gateway(
@@ -357,6 +382,11 @@ def create_gateway(
             started = time_ns()
             traced_output: dict[str, object] = {"error": "Model unavailable"}
             status = "ERROR"
+            request_id = str(uuid4())
+            diagnostics: dict[str, object] = {
+                "request_id": request_id, "usage_reason": "response_unavailable",
+            }
+            error_reason = "request"
             try:
                 async with asyncio.timeout(settings.timeout_seconds):
                     async with httpx.AsyncClient(
@@ -368,22 +398,45 @@ def create_gateway(
                         async with client.stream(
                             "POST",
                             f"{settings.base_url}/chat/completions",
-                            headers=headers,
+                            headers={**headers, "X-Request-ID": request_id},
                             json=payload,
                         ) as response:
+                            diagnostics["http_status"] = response.status_code
+                            upstream_id = _upstream_request_id(response.headers)
+                            if upstream_id is not None:
+                                diagnostics["upstream_request_id"] = upstream_id
+                            error_reason = (
+                                "response_read" if response.status_code == 200 else "http_status"
+                            )
                             output = bytearray()
                             async for chunk in response.aiter_bytes():
                                 if len(output) + len(chunk) > settings.max_response_bytes:
+                                    error_reason = "response_too_large"
                                     raise ValueError("Upstream response too large")
                                 output.extend(chunk)
+                diagnostics["usage_reason"] = "unreadable_response"
+                if response.status_code == 200:
+                    error_reason = "response_decode"
                 decoded = json.loads(output)
                 if not isinstance(decoded, dict):
+                    if response.status_code == 200:
+                        error_reason = "response_shape"
                     raise ValueError("Invalid model response")
-                usage = parse_usage(decoded.get("usage"))
+                diagnostics["usage_reason"] = (
+                    "missing" if decoded.get("usage") is None else "invalid"
+                )
+                try:
+                    usage = parse_usage(decoded.get("usage"))
+                except ValueError:
+                    pass
+                else:
+                    diagnostics["usage_reason"] = "reported"
                 if response.status_code != 200:
                     raise ValueError("Upstream failure")
-                result = ModelResponse.model_validate(decoded)
+                error_reason = "response_validation"
+                result = ModelResponse.model_validate({**decoded, "usage": usage})
                 traced_output = result.model_dump(exclude_unset=True)
+                error_reason = "response_schema"
                 for choice in result.choices:
                     if choice.finish_reason == "tool_calls":
                         if not parsed.tools:
@@ -392,7 +445,13 @@ def create_gateway(
                         validate_response_content(choice.message.content or "", schema_validator)
                 status = "OK"
                 return traced_output
-            except (httpx.HTTPError, TimeoutError, ValueError):
+            except asyncio.CancelledError:
+                diagnostics.update(error_reason="cancelled", exception_type="CancelledError")
+                raise
+            except (httpx.HTTPError, TimeoutError, ValueError) as error:
+                diagnostics.update(
+                    error_reason=error_reason, exception_type=_exception_type(error),
+                )
                 if attempt == len(delays):
                     raise HTTPException(status_code=502, detail="Model unavailable") from None
             finally:
@@ -418,6 +477,7 @@ def create_gateway(
                                     "attempt": attempt + 1,
                                     "usage": usage,
                                     "caller_metadata": parsed.trace_metadata,
+                                    **diagnostics,
                                 },
                                 "status": status,
                                 "start_time_ns": started,

@@ -279,19 +279,21 @@ def test_client_retries_transport_then_malformed_completion_then_succeeds(
         attempts += 1
         if attempts == 1:
             raise httpx.ReadTimeout("slow", request=request)
-        content = "" if attempts == 2 else "recovered"
+        if attempts == 2:
+            return httpx.Response(200, content=b'{"choices":[')
+        content = "" if attempts == 3 else "recovered"
         return httpx.Response(200, json=response_payload(content))
 
     install_transport(monkeypatch, handler)
     client = ModelClient("http://internal-model/v1", "fixed")
     assert client.complete([]) == "recovered"
-    assert attempts == 3
+    assert attempts == 4
     assert client.usage == {
         "prompt_tokens": 20,
         "completion_tokens": 10,
         "total_tokens": 30,
-        "attempts": 3,
-        "unreported_attempts": 1,
+        "attempts": 4,
+        "unreported_attempts": 2,
     }
 
 
@@ -377,17 +379,64 @@ def test_injected_judge_callable_retries_vote_validation(metric: Metric, example
     assert calls == 7
 
 
-@pytest.mark.parametrize("usage", [None, {}, {"total_tokens": 5}])
-def test_client_requires_measured_token_usage(
+@pytest.mark.parametrize("usage", [
+    None,
+    {},
+    {"total_tokens": 5},
+    {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 16},
+])
+def test_client_keeps_valid_response_with_unknown_usage(
     monkeypatch: pytest.MonkeyPatch, usage: Any
 ) -> None:
-    install_transport(
-        monkeypatch, lambda _: httpx.Response(200, json=response_payload("ok", usage=usage))
-    )
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        payload = (
+            response_payload("first", usage=usage) if calls == 1 else response_payload("later")
+        )
+        return httpx.Response(200, json=payload)
+
+    install_transport(monkeypatch, handler)
     client = ModelClient("http://internal-model/v1", "fixed")
-    with pytest.raises(ValueError, match="usage"):
-        client.complete([])
-    assert client.usage["attempts"] == client.usage["unreported_attempts"] == 6
+    assert client.complete([]) == "first"
+    assert calls == 1
+    assert client.usage == {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "attempts": 1,
+        "unreported_attempts": 1,
+    }
+
+
+def test_judge_retries_invalid_vote_but_keeps_valid_vote_with_unknown_usage(
+    monkeypatch: pytest.MonkeyPatch, metric: Metric, example: Example,
+) -> None:
+    configured = Metric.model_validate({**metric.model_dump(), "votes": 1})
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        content = "invalid" if calls == 1 else '{"score": 4, "reason": "ok"}'
+        payload = response_payload(content)
+        if calls <= 2:
+            payload.pop("usage")
+        return httpx.Response(200, json=payload)
+
+    install_transport(monkeypatch, handler)
+    client = ModelClient("http://internal-model/v1", "fixed")
+    assert judge_answer(configured, example, "Ответ", client)["score"] == 4
+    assert calls == 3
+    assert client.usage == {
+        "prompt_tokens": 10,
+        "completion_tokens": 5,
+        "total_tokens": 15,
+        "attempts": 3,
+        "unreported_attempts": 2,
+    }
 
 
 def test_default_timeout_allows_slow_models(monkeypatch: pytest.MonkeyPatch) -> None:
