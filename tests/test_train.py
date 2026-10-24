@@ -146,6 +146,59 @@ def test_subset_validation_and_authentication(settings):
     assert client.get("/v1/evaluations/../../metric.json").status_code == 404
 
 
+def test_empty_train_keeps_build_and_publisher_available(settings, tmp_path, monkeypatch):
+    import sys
+
+    settings.evaluation.dataset_path.write_text("")
+    settings.evaluation.metric_path.write_text(json.dumps({
+        "version": "command-v1", "kind": "command",
+        "command": {"argv": [sys.executable, "-c", "print('{\"score\": 1}')"]},
+    }))
+    staging = tmp_path / "staging"
+    (staging / "source").mkdir(parents=True)
+    (staging / "source" / "input.txt").write_text("source")
+    published = tmp_path / "published"
+    configured = replace(settings, evaluation=replace(
+        settings.evaluation, uses_model=False, model="", model_base_url="",
+        runner_image="sha256:" + "a" * 64, runner_supports_build=True,
+        build_dir=tmp_path / "builds", published_assets_dir=published,
+        input_assets_digest="b" * 64, asset_staging_dir=staging, asset_store_dir=published,
+    ))
+    builds = []
+
+    def build(self, candidate, task, *, parameters=None):
+        assert self.build_output_dir is not None
+        assert task == ""
+        builds.append(candidate)
+        (self.build_output_dir / "prepared.txt").write_text("prepared")
+        return SolveResult("build complete", empty_usage(), 1)
+
+    monkeypatch.setattr("evaluator.runner.DockerRunner.__call__", build)
+    monkeypatch.setattr("evaluator.train.acquire_slot", lambda *args: (
+        pytest.fail("empty train must not reserve an evaluation slot")
+    ))
+    monkeypatch.setattr("evaluator.train.ModelClient", lambda *args, **kwargs: (
+        pytest.fail("empty train must not construct a model client")
+    ))
+    client = TestClient(create_app(configured), headers={"Authorization": "Bearer test-token"})
+    assert client.get("/healthz").status_code == 200
+    asset = client.post("/v1/assets", json={"path": "source"})
+    assert asset.status_code == 200
+    assert (published / asset.json()["digest"] / "input.txt").read_text() == "source"
+    candidate = payload()["candidate"]
+    candidate["files"]["build.py"] = base64.b64encode(b"build recipe").decode()
+    response = client.post("/v1/builds", json={"candidate": candidate})
+    assert response.status_code == 202
+    receipt = client.get("/v1/builds/" + response.json()["candidate_digest"]).json()
+    assert receipt["status"] == "FINISHED"
+    assert receipt["resources"]["solver"]["usage"] == empty_usage()
+    assert len(builds) == 1
+    assert client.post("/v1/evaluations", json=payload()).status_code == 422
+    assert not list(configured.evaluation.state_dir.glob("evaluations/*"))
+    assert not list(configured.evaluation.state_dir.glob("answers/*"))
+    assert len(builds) == 1
+
+
 def test_configuration_frozen(settings):
     api(settings)
     settings.evaluation.dataset_path.write_text('{"id":"new","input":"new","reference":"new"}')
@@ -239,6 +292,29 @@ def test_submit_retries_transport_without_new_measurement(settings, tmp_path, mo
     with pytest.raises(ValueError, match="stopped"):
         main(arguments)
     assert len(requests) == 2
+
+
+def test_submit_empty_train_does_not_register_measurement(settings, tmp_path, monkeypatch):
+    from evaluator.search import Journal, Resources
+    from evaluator.train import main
+
+    journal_path = tmp_path / "journal.sqlite"
+    journal = Journal.create(journal_path, max_solutions=1)
+    candidate = tmp_path / "candidate"
+    candidate.mkdir()
+    (candidate / "prompt.md").write_text("prompt")
+    journal.propose("candidate", candidate, hypothesis="hypothesis", change="initial",
+                    resources=Resources(0, 0))
+    settings.evaluation.dataset_path.write_text("")
+    monkeypatch.setattr("evaluator.train.request", lambda *args, **kwargs: (
+        pytest.fail("empty train must not submit a measurement")
+    ))
+    with pytest.raises(ValueError, match="empty"):
+        main(["submit", "--candidate", "candidate", "--measurement", "measure",
+              "--dataset", "dataset", "--conditions", "fixed", "--url", "http://train",
+              "--token-file", str(tmp_path / "token"), "--journal", str(journal_path),
+              "--train-data", str(settings.evaluation.dataset_path)])
+    assert journal.export()["measurements"] == []
 
 
 def test_capacity_rejection_creates_no_evaluation(settings, tmp_path, monkeypatch):
@@ -423,18 +499,20 @@ def test_registered_ordinary_harness_preserves_adapter_parameters(settings, monk
         "command": {"argv": [str(executable), str(program)]},
     }))
     image = "sha256:" + "a" * 64
+    selected_image = "sha256:" + "c" * 64
     configured = replace(settings, evaluation=replace(
         settings.evaluation, runner_image=image, uses_model=False, model="", model_base_url="",
         runner_supports_build=True, runner_supports_asset_selection=True,
         build_dir=settings.evaluation.state_dir.parent / "builds",
         published_assets_dir=settings.evaluation.state_dir.parent / "published",
         input_assets_digest="b" * 64,
-        harnesses={"ordinary": {"image": image, "uses_model": False}},
+        harnesses={"ordinary": {"image": selected_image, "uses_model": False}},
     ))
     calls = []
 
     def solve(self, candidate, task, *, parameters=None):
         assert (candidate / "build.py").read_text() == "ordinary helper"
+        assert self.image == selected_image
         calls.append(parameters)
         return SolveResult("3", empty_usage(), 1)
 
@@ -459,6 +537,8 @@ def test_registered_ordinary_harness_preserves_adapter_parameters(settings, monk
     assert record["preparation"] is None
     assert record["metrics"]["score"] == 3
     assert record["metrics"]["solver_tokens"] == record["metrics"]["judge_tokens"] == 0
+    assert record["params"]["harness"] == "ordinary"
+    assert record["params"]["harness_version"] == selected_image
     assert calls == [{"asset_digests": "adapter-owned"}]
 
 

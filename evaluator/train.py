@@ -136,8 +136,8 @@ def create_app(
     examples = [Example.model_validate_json(line) for line in
                 settings.dataset_path.read_bytes().splitlines() if line.strip()]
     by_id = {example.id: example for example in examples}
-    if not examples or len(by_id) != len(examples) or any(not key.strip() for key in by_id):
-        raise ValueError("train dataset must be nonempty with unique IDs")
+    if len(by_id) != len(examples) or any(not key.strip() for key in by_id):
+        raise ValueError("train dataset must have unique nonblank IDs")
     metric = load_metric(settings.metric_path)
     package = metric_package_provenance(settings.metric_path)
     if metric.kind == "llm" and any(not example.reference for example in examples):
@@ -536,6 +536,8 @@ def create_app(
     @app.post("/v1/evaluations")
     def submit(submission: TrainSubmission, background: BackgroundTasks) -> JSONResponse:
         ids = submission.example_ids if submission.example_ids is not None else list(by_id)
+        if not ids:
+            raise HTTPException(422, "train dataset is empty")
         if len(ids) != len(set(ids)) or set(ids) - set(by_id):
             raise HTTPException(422, "invalid train subset")
         ids = [key for key in by_id if key in ids]
@@ -569,9 +571,11 @@ def create_app(
                 package_dir = Path(tempfile.mkdtemp(prefix="package-", dir=run_dir))
                 candidate_dir = package_dir / "candidate"
                 materialize_candidate(candidate, candidate_dir)
+                harness_version = settings.runner_image
                 try:
                     if isinstance(runner, HarnessRunner):
                         runner.validate_candidate(candidate_dir)
+                        harness_version = runner.selection(candidate_dir)[0].image
                         preparation = runner.preparation_receipt(candidate_dir, digest)
                     elif settings.runner_supports_build:
                         preparation = load_build_receipt(build_dir, candidate_dir, digest)
@@ -605,7 +609,7 @@ def create_app(
                         "model": settings.model, "model_parameters": settings.parameters,
                         "harness": selection.get("harness", "default"),
                         "parameters": selection.get("parameters", {}),
-                        "harness_version": settings.runner_image,
+                        "harness_version": harness_version,
                     },
                 }
                 persist(record, path)
@@ -665,6 +669,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         proposal = next(item for item in proposals if item["candidate_id"] == args.candidate)
         ids = [Example.model_validate_json(line).id for line in
                args.train_data.read_bytes().splitlines() if line.strip()]
+        if not ids:
+            raise ValueError("train dataset is empty")
         if args.example_id is not None:
             if len(args.example_id) != len(set(args.example_id)) or set(args.example_id) - set(ids):
                 raise ValueError("invalid train subset")

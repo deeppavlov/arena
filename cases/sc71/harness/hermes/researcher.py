@@ -164,6 +164,7 @@ def main() -> int:
     parser.add_argument("--private-url", required=True)
     parser.add_argument("--private-token-file", type=Path, required=True)
     parser.add_argument("--private-finalists", type=int, required=True)
+    parser.add_argument("--private-output-count", type=int, required=True)
     parser.add_argument("--private-release-id", required=True)
     args = parser.parse_args()
     try:
@@ -205,7 +206,8 @@ def main() -> int:
                     check_readiness=lambda maximum: search_readiness(
                         args.private_url, args.private_token_file, timeout=60,
                         require_campaign=True, max_solutions=maximum,
-                        finalists=args.private_finalists, release_id=args.private_release_id,
+                        finalists=args.private_finalists, output_count=args.private_output_count,
+                        release_id=args.private_release_id,
                     ),
                 )
         print(json.dumps({"answer": result["final_response"]}, ensure_ascii=False))

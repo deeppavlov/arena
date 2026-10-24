@@ -466,7 +466,8 @@ def test_search_readiness_blocks_agent_before_private_lookup(
         return {
             "mode": "campaign", "gate_enabled": failure != "disabled", "journal_ready": True,
             "max_solutions": 99 if failure == "budget" else 100,
-            "finalists": 10, "release_id": "synthetic-release",
+            "finalists": 10, "output_count": 4, "evaluation_enabled": True,
+            "release_id": "synthetic-release",
         }
 
     monkeypatch.setattr("evaluator.client.request", request)
@@ -492,7 +493,7 @@ def test_private_response_with_results_is_rejected(monkeypatch, tmp_path):
         researcher.private_status("http://private", tmp_path / "token")
 
 
-@pytest.mark.parametrize("mismatch", [None, "finalists", "release_id"])
+@pytest.mark.parametrize("mismatch", [None, "finalists", "output_count", "release_id", "empty"])
 def test_launcher_verifies_private_conditions_before_starting(
     monkeypatch, tmp_path, campaign, capsys, mismatch,
 ):
@@ -501,7 +502,8 @@ def test_launcher_verifies_private_conditions_before_starting(
     monkeypatch.setattr(sys, "argv", [
         "researcher", "--prompt-file", str(prompt), "--journal", str(tmp_path / "search.sqlite"),
         "--private-url", "http://private", "--private-token-file", str(tmp_path / "token"),
-        "--private-finalists", "10", "--private-release-id", "synthetic-release",
+        "--private-finalists", "10", "--private-output-count", "4",
+        "--private-release-id", "synthetic-release",
     ])
     monkeypatch.setattr(researcher.runtime, "credentials", lambda path: {
         "model_base_url": "http://gateway/runs/synthetic/secret/v1",
@@ -521,6 +523,8 @@ def test_launcher_verifies_private_conditions_before_starting(
         return {
             "mode": "campaign", "gate_enabled": True, "journal_ready": True, "max_solutions": 100,
             "finalists": 9 if mismatch == "finalists" else 10,
+            "output_count": 3 if mismatch == "output_count" else 4,
+            "evaluation_enabled": mismatch != "empty",
             "release_id": "other-release" if mismatch == "release_id" else "synthetic-release",
         }
 
@@ -552,13 +556,18 @@ def test_launcher_verifies_private_conditions_before_starting(
     }
 
 
-@pytest.mark.parametrize("missing", ["--private-finalists", "--private-release-id"])
+@pytest.mark.parametrize("missing", [
+    "--private-finalists", "--private-output-count", "--private-release-id",
+])
 def test_launcher_requires_expected_private_conditions(monkeypatch, tmp_path, capsys, missing):
     arguments = [
         "researcher", "--journal", str(tmp_path / "search.sqlite"),
         "--private-url", "http://private", "--private-token-file", str(tmp_path / "token"),
     ]
-    for flag, value in (("--private-finalists", "10"), ("--private-release-id", "synthetic")):
+    for flag, value in (
+        ("--private-finalists", "10"), ("--private-output-count", "4"),
+        ("--private-release-id", "synthetic"),
+    ):
         if flag != missing:
             arguments.extend([flag, value])
     monkeypatch.setattr(sys, "argv", arguments)

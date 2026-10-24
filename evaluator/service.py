@@ -401,8 +401,8 @@ def create_app(
     examples = [
         Example.model_validate_json(line) for line in dataset_bytes.splitlines() if line.strip()
     ]
-    if not examples or len({example.id for example in examples}) != len(examples):
-        raise ValueError("evaluation dataset must be nonempty with unique example IDs")
+    if len({example.id for example in examples}) != len(examples):
+        raise ValueError("evaluation dataset must have unique example IDs")
     metric = load_metric(settings.metric_path)
     metric_package = metric_package_provenance(settings.metric_path)
     command_uses_model = any(
@@ -989,7 +989,8 @@ def create_app(
             "mode": settings.search_mode, "gate_enabled": enabled,
             "journal_ready": True if campaign else None,
             "max_solutions": settings.search_max_solutions,
-            "finalists": settings.finalists, "release_id": settings.release_id,
+            "finalists": settings.finalists, "output_count": settings.output_count,
+            "evaluation_enabled": bool(examples), "release_id": settings.release_id,
         }
 
     @app.get("/v1/evaluations")
@@ -1014,6 +1015,8 @@ def create_app(
 
     @app.post("/v1/evaluations")
     def submit(submission: Submission, background: BackgroundTasks) -> JSONResponse:
+        if not examples:
+            raise HTTPException(422, "evaluation split is empty")
         required_count = settings.finalists if settings.split == "private" else 1
         if len(submission.candidates) != required_count:
             raise HTTPException(422, "invalid submission")

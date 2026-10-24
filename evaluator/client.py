@@ -152,29 +152,37 @@ def search_readiness(
     require_campaign: bool = False,
     max_solutions: int | None = None,
     finalists: int | None = None,
+    output_count: int | None = None,
     release_id: str | None = None,
 ) -> dict[str, object]:
+    if output_count is not None and (type(output_count) is not int or output_count < 1):
+        raise ClientError("search readiness expected output_count must be a positive integer")
     result = request("GET", base_url, token_file, timeout=timeout, resource="search-readiness")
     if (
         set(result) != {"mode", "gate_enabled", "journal_ready", "max_solutions",
-                        "finalists", "release_id"}
+                        "finalists", "output_count", "evaluation_enabled", "release_id"}
         or result["mode"] not in ("campaign", "standalone")
         or type(result["gate_enabled"]) is not bool
+        or type(result["evaluation_enabled"]) is not bool
         or (result["journal_ready"] is not None and type(result["journal_ready"]) is not bool)
         or (result["max_solutions"] is not None and (
             type(result["max_solutions"]) is not int or result["max_solutions"] <= 0
         ))
         or type(result["finalists"]) is not int or result["finalists"] <= 0
+        or type(result["output_count"]) is not int
+        or not 1 <= result["output_count"] <= result["finalists"]
         or not isinstance(result["release_id"], str)
     ):
         raise ClientError("invalid search readiness response")
     if require_campaign and (
         result["mode"] != "campaign" or result["gate_enabled"] is not True
         or result["journal_ready"] is not True or result["max_solutions"] is None
+        or result["evaluation_enabled"] is not True
     ):
-        raise ClientError("search readiness requires an enabled campaign admission gate")
+        raise ClientError("search readiness requires enabled campaign admission and evaluation")
     for name, expected in (
-        ("max_solutions", max_solutions), ("finalists", finalists), ("release_id", release_id),
+        ("max_solutions", max_solutions), ("finalists", finalists),
+        ("output_count", output_count), ("release_id", release_id),
     ):
         if expected is not None and result[name] != expected:
             raise ClientError(f"search readiness differs from expected {name}")
@@ -200,6 +208,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     readiness.add_argument("--require-campaign", action="store_true")
     readiness.add_argument("--max-solutions", type=int)
     readiness.add_argument("--finalists", type=int)
+    readiness.add_argument("--output-count", type=int)
     readiness.add_argument("--release-id")
     for command in (submit, status, readiness):
         command.add_argument("--url", required=True)
@@ -258,7 +267,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = search_readiness(
                 arguments.url, arguments.token_file, timeout=arguments.timeout,
                 require_campaign=arguments.require_campaign, max_solutions=arguments.max_solutions,
-                finalists=arguments.finalists, release_id=arguments.release_id,
+                finalists=arguments.finalists, output_count=arguments.output_count,
+                release_id=arguments.release_id,
             )
         else:
             result = request(

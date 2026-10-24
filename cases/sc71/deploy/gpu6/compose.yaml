@@ -125,6 +125,7 @@ services:
       ARENA_TRACKING_DIR: ${ARENA_ROOT}/operator/state/private/tracking
       ARENA_TOKEN_FILE: /run/secrets/private-token
       ARENA_FINALISTS: ${SC71_FINALISTS:?}
+      ARENA_OUTPUT_COUNT: ${SC71_OUTPUT_COUNT:?}
       ARENA_RELEASE_ID: ${SC71_PRIVATE_RELEASE_ID:?}
       ARENA_SEARCH_MODE: campaign
       ARENA_SEARCH_JOURNAL: /search/search.sqlite3
@@ -207,6 +208,8 @@ services:
       - /run/arena/private-token
       - --private-finalists
       - ${SC71_FINALISTS:?}
+      - --private-output-count
+      - ${SC71_OUTPUT_COUNT:?}
       - --private-release-id
       - ${SC71_PRIVATE_RELEASE_ID:?}
     mem_limit: 32g

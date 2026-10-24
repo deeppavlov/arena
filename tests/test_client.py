@@ -323,7 +323,8 @@ def test_non_http_client_error_has_no_response_code(tmp_path: Path) -> None:
 def campaign_readiness():
     return {
         "mode": "campaign", "gate_enabled": True, "journal_ready": True,
-        "max_solutions": 100, "finalists": 10, "release_id": "synthetic-release",
+        "max_solutions": 100, "finalists": 10, "output_count": 3,
+        "evaluation_enabled": True, "release_id": "synthetic-release",
     }
 
 
@@ -345,7 +346,7 @@ def test_search_readiness_cli_checks_published_campaign_conditions(
     assert main([
         "search-readiness", "--url", "http://evaluator", "--token-file", str(token),
         "--require-campaign", "--max-solutions", "100", "--finalists", "10",
-        "--release-id", "synthetic-release",
+        "--output-count", "3", "--release-id", "synthetic-release",
     ]) == 0
     assert str(received[0].url) == "http://evaluator/v1/search-readiness"
     assert received[0].method == "GET"
@@ -358,9 +359,11 @@ def test_search_readiness_cli_checks_published_campaign_conditions(
     {"gate_enabled": False},
     {"gate_enabled": 1},
     {"journal_ready": False},
+    {"evaluation_enabled": False},
     {"max_solutions": 99},
     {"max_solutions": True},
     {"finalists": 9},
+    {"output_count": 2},
     {"release_id": "another-release"},
     {"score": 4},
 ])
@@ -373,8 +376,65 @@ def test_search_readiness_rejects_disabled_or_mismatched_campaign(
     with pytest.raises(ClientError, match="search readiness"):
         search_readiness(
             "http://evaluator", tmp_path / "token", require_campaign=True,
-            max_solutions=100, finalists=10, release_id="synthetic-release",
+            max_solutions=100, finalists=10, output_count=3, release_id="synthetic-release",
         )
+
+
+@pytest.mark.parametrize("changed", [
+    {"output_count": 0}, {"output_count": -1}, {"output_count": 11},
+    {"output_count": True}, {"output_count": 3.0}, {"output_count": "3"},
+    {"output_count": None}, {"evaluation_enabled": 1}, {"evaluation_enabled": 0},
+    {"evaluation_enabled": "true"}, {"evaluation_enabled": None},
+])
+def test_search_readiness_validates_output_count_and_availability_without_expectations(
+    monkeypatch, tmp_path, campaign_readiness, changed,
+):
+    monkeypatch.setattr("evaluator.client.request", lambda *args, **kwargs: {
+        **campaign_readiness, **changed,
+    })
+    with pytest.raises(ClientError, match="invalid search readiness response"):
+        search_readiness("http://evaluator", tmp_path / "token")
+
+
+def test_search_readiness_rejects_legacy_response_without_output_count_and_availability(
+    monkeypatch, tmp_path, campaign_readiness,
+):
+    legacy = {key: value for key, value in campaign_readiness.items()
+              if key not in {"output_count", "evaluation_enabled"}}
+    monkeypatch.setattr("evaluator.client.request", lambda *args, **kwargs: legacy)
+    with pytest.raises(ClientError, match="invalid search readiness response"):
+        search_readiness("http://evaluator", tmp_path / "token", require_campaign=True)
+
+
+@pytest.mark.parametrize("output_count", [0, -1, True, 3.0, "3"])
+def test_search_readiness_rejects_invalid_expected_output_count(
+    monkeypatch, tmp_path, output_count,
+):
+    def request(*args, **kwargs):
+        raise AssertionError("invalid expected counts must not query the evaluator")
+
+    monkeypatch.setattr("evaluator.client.request", request)
+    with pytest.raises(ClientError, match="output_count"):
+        search_readiness("http://evaluator", tmp_path / "token", output_count=output_count)
+
+
+def test_search_readiness_can_inspect_disabled_evaluation_without_campaign_requirement(
+    monkeypatch, tmp_path, campaign_readiness,
+):
+    published = {**campaign_readiness, "evaluation_enabled": False}
+    monkeypatch.setattr("evaluator.client.request", lambda *args, **kwargs: published)
+    assert search_readiness("http://evaluator", tmp_path / "token") == published
+
+
+def test_search_readiness_cli_rejects_mismatched_output_count(
+    monkeypatch, tmp_path, campaign_readiness, capsys,
+):
+    monkeypatch.setattr("evaluator.client.request", lambda *args, **kwargs: campaign_readiness)
+    assert main([
+        "search-readiness", "--url", "http://evaluator", "--token-file", str(tmp_path / "token"),
+        "--require-campaign", "--output-count", "2",
+    ]) == 1
+    assert "differs from expected output_count" in capsys.readouterr().err
 
 
 def test_invalid_bundle_is_not_echoed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

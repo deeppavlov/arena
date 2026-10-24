@@ -40,7 +40,8 @@ def sc71_environment(tmp_path: Path) -> dict[str, str]:
         "ARENA_HERMES_IMAGE": "sha256:" + "2" * 64,
         "ARENA_INFRA_IMAGE": "sha256:" + "3" * 64,
         "SC71_INPUT_ASSETS_DIGEST": "4" * 64,
-        "SC71_FINALISTS": "10", "SC71_PRIVATE_RELEASE_ID": "synthetic-private-v1",
+        "SC71_FINALISTS": "10", "SC71_OUTPUT_COUNT": "4",
+        "SC71_PRIVATE_RELEASE_ID": "synthetic-private-v1",
     }
 
 
@@ -58,13 +59,16 @@ def test_sc71_compose_declares_private_campaign_guard(
     command = services["researcher"]["command"]
     for argument, variable, expected in (
         ("--private-finalists", "ARENA_FINALISTS", "10"),
+        ("--private-output-count", "ARENA_OUTPUT_COUNT", "4"),
         ("--private-release-id", "ARENA_RELEASE_ID", "synthetic-private-v1"),
     ):
         assert command[command.index(argument) + 1] == expected
         assert service["environment"][variable] == expected
 
 
-@pytest.mark.parametrize("missing", ["SC71_FINALISTS", "SC71_PRIVATE_RELEASE_ID"])
+@pytest.mark.parametrize("missing", [
+    "SC71_FINALISTS", "SC71_OUTPUT_COUNT", "SC71_PRIVATE_RELEASE_ID",
+])
 def test_sc71_compose_rejects_missing_private_conditions(
     tmp_path: Path, sc71_environment: dict[str, str], missing: str,
 ) -> None:

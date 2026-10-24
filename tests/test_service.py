@@ -16,7 +16,7 @@ from anyio.to_thread import current_default_thread_limiter
 from fastapi.testclient import TestClient
 
 from evaluator.candidates import materialize_candidate
-from evaluator.client import pack_candidate
+from evaluator.client import ClientError, pack_candidate, search_readiness
 from evaluator.contracts import Submission
 from evaluator.judge import ModelClient
 from evaluator.reliability import empty_usage
@@ -314,7 +314,8 @@ def test_search_readiness_is_authenticated_and_checks_the_journal(settings: Sett
     api = client(configured)
     assert api.get("/v1/search-readiness").json() == {
         "mode": "campaign", "gate_enabled": True, "journal_ready": True,
-        "max_solutions": 100, "finalists": 1, "release_id": "release-1",
+        "max_solutions": 100, "finalists": 1, "output_count": 1,
+        "evaluation_enabled": True, "release_id": "release-1",
     }
     assert TestClient(api.app).get("/v1/search-readiness").status_code == 401
     public = client(replace(configured, split="public")).get("/v1/search-readiness").json()
@@ -333,8 +334,36 @@ def test_search_readiness_is_authenticated_and_checks_the_journal(settings: Sett
 def test_standalone_readiness_does_not_claim_a_campaign_gate(settings: Settings):
     assert client(settings).get("/v1/search-readiness").json() == {
         "mode": "standalone", "gate_enabled": False, "journal_ready": None,
-        "max_solutions": None, "finalists": 1, "release_id": "release-1",
+        "max_solutions": None, "finalists": 1, "output_count": 1,
+        "evaluation_enabled": True, "release_id": "release-1",
     }
+
+
+@pytest.mark.parametrize("output_count", [1, 2])
+def test_search_readiness_publishes_configured_output_count(settings: Settings, output_count):
+    configured, _, _ = campaign_settings(settings, limit=100)
+    api = client(replace(configured, finalists=3, output_count=output_count))
+    response = api.get("/v1/search-readiness")
+    assert response.status_code == 200
+    assert response.json()["output_count"] == output_count
+
+
+@pytest.mark.parametrize("split", ["public", "private"])
+def test_search_readiness_reports_empty_split_without_admitting_campaign(
+    settings: Settings, split, monkeypatch,
+):
+    configured, _, _ = campaign_settings(settings, limit=100)
+    settings.dataset_path.write_text("")
+    api = client(replace(configured, split=split))
+    response = api.get("/v1/search-readiness")
+    assert response.status_code == 200
+    assert response.json()["evaluation_enabled"] is False
+    monkeypatch.setattr("evaluator.client.request", lambda *args, **kwargs: response.json())
+    with pytest.raises(ClientError, match="evaluation"):
+        search_readiness(
+            "http://evaluator", settings.state_dir / "token", require_campaign=True,
+            max_solutions=100, finalists=1, output_count=1, release_id="release-1",
+        )
 
 
 def test_no_evaluation_is_distinct_from_an_invalid_route(settings: Settings):
@@ -439,11 +468,10 @@ def test_concurrent_reservation_and_no_intermediate_scores(settings: Settings):
     assert len(calls) == 2
 
 
-def test_rejects_empty_or_duplicate_examples_and_missing_token(settings: Settings):
-    for contents in ["", '{"id":"x","input":"x","reference":"x"}\n' * 2]:
-        settings.dataset_path.write_text(contents)
-        with pytest.raises(ValueError):
-            client(settings)
+def test_rejects_duplicate_examples_and_missing_token(settings: Settings):
+    settings.dataset_path.write_text('{"id":"x","input":"x","reference":"x"}\n' * 2)
+    with pytest.raises(ValueError):
+        client(settings)
     with pytest.raises(ValueError):
         replace(settings, token="")
 
@@ -1343,10 +1371,38 @@ def test_public_interrupted_batch_fails_without_blocking_other_submissions(setti
     assert response.status_code == 202
 
 
-def test_empty_public_requires_no_evaluator_deployment(settings: Settings):
+@pytest.mark.parametrize("split", ["public", "private"])
+@pytest.mark.parametrize("metric_kind", ["llm", "command"])
+def test_empty_split_rejects_evaluation_without_side_effects(
+    settings: Settings, monkeypatch, split, metric_kind,
+):
+    import evaluator.service as service
+
+    if metric_kind == "command":
+        settings.metric_path.write_text(json.dumps({
+            "version": "empty-split", "kind": "command",
+            "command": {"argv": [sys.executable, "-c", "raise RuntimeError('must not run')"]},
+        }))
     settings.dataset_path.write_text("")
-    with pytest.raises(ValueError, match="nonempty"):
-        client(replace(settings, split="public"))
+    configured, journal, batch = campaign_settings(replace(settings, split=split))
+    journal.finalize(batch)
+    before = journal.export()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("empty splits must not admit or execute evaluations")
+
+    monkeypatch.setattr(Journal, "private_admission", forbidden)
+    for name in ("acquire_slot", "materialize_candidate", "evaluate_answer", "aggregate_results"):
+        monkeypatch.setattr(service, name, forbidden)
+    api = client(configured, solve=forbidden, complete=forbidden)
+    assert api.get("/healthz").json() == {"status": "ok"}
+    for _ in range(2):
+        response = api.post("/v1/evaluations", json=submission())
+        assert response.status_code == 422
+        assert response.json() == {"detail": "evaluation split is empty"}
+    assert journal.export() == before
+    assert not list(settings.state_dir.rglob("record.json"))
+    assert not (settings.state_dir / "candidates").exists()
 
 
 @pytest.fixture
