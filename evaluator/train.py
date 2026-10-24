@@ -269,15 +269,18 @@ def create_app(
 
             judge_usage = empty_usage()
             judge_complete = complete
+            judge_client = None
+            judge_calls: list[dict[str, Any]] = []
             if metric.kind == "llm":
                 if complete is None:
-                    client = ModelClient(
+                    judge_client = ModelClient(
                         settings.model_base_url, settings.model, settings.model_api_key,
                         settings.parameters, timeout=settings.model_timeout,
                         retries=MODEL_RETRIES, retry_delay=settings.retry_delay,
+                        on_attempt=judge_calls.append,
                     )
-                    judge_complete = client
-                    judge_usage = client.usage
+                    judge_complete = judge_client
+                    judge_usage = judge_client.usage
                 else:
                     callback = complete
 
@@ -346,9 +349,15 @@ def create_app(
                 if "score" in row or "statistics" in row:
                     collect_calls(record, row["resources"]["judge"].get("run_ids", []),
                                   "judge", example_id)
+                    record["calls"].extend(row.get("judge_calls", []))
+                    if row.get("judge_trace_errors"):
+                        record.setdefault("trace_errors", []).extend(row["judge_trace_errors"])
                     continue
                 before = judge_usage.copy()
                 before_runs = len(model_runs())
+                judge_calls.clear()
+                if judge_client is not None:
+                    judge_client.trace_errors.clear()
                 started = time.time_ns()
                 record["active_stage"] = {"role": "judge", "example_id": example_id,
                                           "start_time_ns": started}
@@ -366,6 +375,18 @@ def create_app(
                         row["diagnostics"] = error.diagnostics
                     raise
                 finally:
+                    if judge_client is not None:
+                        row["judge_calls"] = [{
+                            **call, "attributes": {
+                                **call["attributes"], "role": "judge", "example_id": example_id,
+                            },
+                        } for call in judge_calls]
+                        record["calls"].extend(row["judge_calls"])
+                        if judge_client.trace_errors:
+                            row["judge_trace_errors"] = [{
+                                **error, "role": "judge", "example_id": example_id,
+                            } for error in judge_client.trace_errors]
+                            record.setdefault("trace_errors", []).extend(row["judge_trace_errors"])
                     row["resources"]["judge"] = {
                         "usage": {key: judge_usage[key] - before[key] for key in before},
                         "wall_seconds": (time.time_ns() - started) / 1e9,

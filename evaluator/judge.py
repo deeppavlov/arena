@@ -18,6 +18,7 @@ from evaluator.reliability import (
     retry_delays,
     validate_timing,
 )
+from evaluator.tracking import redact
 
 
 class ModelClient:
@@ -31,6 +32,7 @@ class ModelClient:
         *,
         retries: int = MODEL_RETRIES,
         retry_delay: float = RETRY_DELAY,
+        on_attempt: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         parsed = urlsplit(base_url)
         if (
@@ -58,31 +60,46 @@ class ModelClient:
         self.retry_delay = retry_delay
         self.usage = empty_usage()
         self.elapsed_seconds = 0.0
+        self.on_attempt = on_attempt
+        self.trace_errors: list[dict[str, str]] = []
 
     def complete(
         self,
         messages: list[dict[str, str]],
         validator: Callable[[str], None] | None = None,
+        *,
+        attributes: dict[str, Any] | None = None,
     ) -> str:
         started = time.monotonic()
+        attempt = 0
+
+        def request() -> str:
+            nonlocal attempt
+            attempt += 1
+            return self._attempt(messages, validator, {**(attributes or {}), "attempt": attempt})
+
         try:
-            return retry_call(
-                lambda: self._attempt(messages, validator), self.retries, self.retry_delay
-            )
+            return retry_call(request, self.retries, self.retry_delay)
         finally:
             self.elapsed_seconds += time.monotonic() - started
 
     def _attempt(
-        self, messages: list[dict[str, str]], validator: Callable[[str], None] | None
+        self, messages: list[dict[str, str]], validator: Callable[[str], None] | None,
+        attributes: dict[str, Any],
     ) -> str:
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         payload = {**self.parameters, "model": self.model, "messages": messages, "stream": False}
         usage = None
+        started = time.time_ns()
+        output: Any = None
+        error_type = None
+        http_status = None
         try:
             with httpx.Client(
                 timeout=self.timeout, follow_redirects=False, trust_env=False
             ) as client:
                 with client.stream("POST", self.url, headers=headers, json=payload) as response:
+                    http_status = response.status_code
                     body = bytearray()
                     for chunk in response.iter_bytes(chunk_size=64 * 1024):
                         body.extend(chunk)
@@ -107,11 +124,28 @@ class ModelClient:
                 raise ValueError("invalid model response") from error
             if not isinstance(content, str) or not content.strip():
                 raise ValueError("model response must contain nonempty text")
+            output = data
             if validator is not None:
                 validator(content)
             return content
+        except Exception as error:
+            error_type = type(error).__name__
+            raise
         finally:
             add_usage(self.usage, usage)
+            if self.on_attempt is not None:
+                try:
+                    self.on_attempt(redact({
+                        "name": "judge_model", "span_type": "LLM", "inputs": payload,
+                        "outputs": output, "attributes": {
+                            **attributes, "model": self.model, "usage": usage,
+                            "http_status": http_status, "error_type": error_type,
+                        },
+                        "status": "ERROR" if error_type else "OK", "start_time_ns": started,
+                        "end_time_ns": time.time_ns(),
+                    }, secrets=(self.api_key,)))
+                except Exception as error:
+                    self.trace_errors.append({"error_type": type(error).__name__})
 
 
 def validate_vote(content: str) -> None:
@@ -125,12 +159,17 @@ def _judge_vote(
     messages: list[dict[str, str]],
     retries: int,
     retry_delay: float,
+    attributes: dict[str, Any],
 ) -> Vote:
     if isinstance(complete, ModelClient):
-        return Vote.model_validate_json(complete.complete(messages, validator=validate_vote))
+        return Vote.model_validate_json(complete.complete(
+            messages, validator=validate_vote, attributes=attributes,
+        ))
     owner = getattr(complete, "__self__", None)
     if isinstance(owner, ModelClient) and getattr(complete, "__name__", None) == "complete":
-        return Vote.model_validate_json(owner.complete(messages, validator=validate_vote))
+        return Vote.model_validate_json(owner.complete(
+            messages, validator=validate_vote, attributes=attributes,
+        ))
 
     def attempt() -> Vote:
         content = complete(messages)
@@ -171,7 +210,7 @@ def judge_answer(
     for criterion in metric.criteria:
         scores: list[int] = []
         reasons: list[str] = []
-        for _ in range(metric.votes):
+        for vote_index in range(1, metric.votes + 1):
             messages = [
                 {"role": "system", "content": system},
                 {
@@ -186,7 +225,9 @@ def judge_answer(
                     ),
                 },
             ]
-            vote = _judge_vote(complete, messages, retries, retry_delay)
+            vote = _judge_vote(complete, messages, retries, retry_delay, {
+                "criterion": criterion.id, "vote": vote_index,
+            })
             scores.append(vote.score)
             reasons.append(vote.reason)
         criteria[criterion.id] = {"scores": scores, "reasons": reasons}

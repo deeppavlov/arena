@@ -7,6 +7,8 @@ docker build -f cases/sc71/harness/hermes/Dockerfile -t arena-hermes:sc71 .
 docker image inspect arena-hermes:sc71 --format '{{.Id}}'
 ```
 
+Контекст этой сборки задаёт [Dockerfile.dockerignore](Dockerfile.dockerignore) рядом с Dockerfile: он включает зависимости арены, исходники адаптера и кеш Hermes. Корневой `.dockerignore` не включает файлы SC-71; другие кейсы задают собственные правила рядом со своим Dockerfile.
+
 `main.py` реализует [контракт runner](../../../../common/runner-contract.md). Стандартный вход содержит JSON задания, стандартный выход — единственный `{"answer":"..."}`. Модель строго `deepseek-ai/DeepSeek-V4-Flash-0731`, `reasoning_effort=max`. Промежуточные токены, вызовы инструментов, подготовка и субагенты проходят через gateway того же запуска. Gateway остаётся источником учёта токенов и трейсов, доверенный внешний runner измеряет полное время. Локальные сообщения Hermes не попадают в stdout и stderr контейнера; debug-dump запросов выключен.
 
 ## Формат кандидата

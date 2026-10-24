@@ -32,7 +32,7 @@ Arena — универсальный репозиторий для поиска 
 | --- | --- |
 | Форматы и валидация | [evaluator/contracts.py](evaluator/contracts.py) — метрика, пример, кандидат, отправка; [response_schema.py](evaluator/response_schema.py) — структурированный ответ; [numeric.py](evaluator/numeric.py) — допустимые числовые оценки |
 | Пакет метрики | [metric_package.py](evaluator/metric_package.py) — состав, исполняемость файлов, переносимость и загрузка; [prepare.py](evaluator/prepare.py) — CLI `freeze`/`verify` |
-| Вычисление оценки | [metrics.py](evaluator/metrics.py) — профили `command`/`llm`, оценка ответа и агрегация; [judge.py](evaluator/judge.py) — модельный клиент и голоса встроенного судьи; [ranking.py](evaluator/ranking.py) — выбор победителей с учётом направления и ресурсов |
+| Вычисление оценки | [metrics.py](evaluator/metrics.py) — профили `command`/`llm`, оценка ответа и агрегация; [judge.py](evaluator/judge.py) — модельный клиент, голоса встроенного судьи и запись его попыток для train-трейсов; [ranking.py](evaluator/ranking.py) — выбор победителей с учётом направления и ресурсов |
 | Закрытое оценивание | [service.py](evaluator/service.py) — public/private API, допуск, неизменяемые условия и состояние серии; [__main__.py](evaluator/__main__.py) — запуск через `python -m evaluator` |
 | Открытые замеры и отправка | [train.py](evaluator/train.py) — train API, поднаборы, ответы, трейсы и связь с журналом; [client.py](evaluator/client.py) — упаковка кандидатов, `search-readiness`, `submit` и `status` |
 | История поиска | [search.py](evaluator/search.py) — SQLite-журнал, лимит предложений, родословная, снимки, проверки, остановка, кривая и AUC; процессы не запускает |

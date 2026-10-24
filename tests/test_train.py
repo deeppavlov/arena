@@ -460,3 +460,98 @@ def test_registered_ordinary_harness_preserves_adapter_parameters(settings, monk
     assert record["metrics"]["score"] == 3
     assert record["metrics"]["solver_tokens"] == record["metrics"]["judge_tokens"] == 0
     assert calls == [{"asset_digests": "adapter-owned"}]
+
+
+def test_builtin_judge_traces_survive_subset_reuse_and_export(settings, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import httpx
+
+    from evaluator.tracking import _spans
+    from tests.test_judge import install_transport, response_payload
+
+    requests = install_transport(monkeypatch, lambda _: httpx.Response(
+        200, json=response_payload('{"score": 4, "reason": "api-secret"}'),
+    ))
+    exported = []
+
+    def export(path, **kwargs):
+        exported.append(json.loads(path.read_text()))
+        return {"shared": {"status": "exported", "run_id": "train-run"}}
+
+    monkeypatch.setattr("evaluator.tracking.export_configured", export)
+    configured = replace(settings, tracking=True, evaluation=replace(
+        settings.evaluation, model_api_key="api-secret",
+    ))
+    client = TestClient(create_app(configured, solve=lambda *args: SolveResult(
+        "answer", empty_usage(), 1.0,
+    )), headers={"Authorization": "Bearer test-token"})
+    full = result(client, payload())
+    subset = result(client, payload(["train-0"]))
+    assert full["status"] == subset["status"] == "FINISHED"
+    assert len(requests) == 2
+    full_calls = [call for call in full["calls"] if call.get("span_type") == "LLM"]
+    subset_calls = [call for call in subset["calls"] if call.get("span_type") == "LLM"]
+    assert len(full_calls) == 2
+    assert subset_calls == [full_calls[0]]
+    assert subset_calls[0]["attributes"] | {
+        "role": "judge", "example_id": "train-0", "criterion": "correct", "vote": 1,
+    } == subset_calls[0]["attributes"]
+    assert subset["examples"][0]["judge_calls"] == subset_calls
+    assert subset_calls[0] in exported[-1]["calls"]
+    assert "api-secret" not in json.dumps(subset_calls)
+    sdk = MagicMock()
+    _spans(sdk, exported[-1], "train-run")
+    model_span = next(call for call in sdk.start_span_no_context.call_args_list
+                      if call.kwargs.get("span_type") == "LLM")
+    assert model_span.kwargs["inputs"] == subset_calls[0]["inputs"]
+    assert model_span.kwargs["attributes"] == subset_calls[0]["attributes"]
+
+
+def test_builtin_judge_failed_vote_attempts_are_kept_in_train(settings, monkeypatch):
+    import httpx
+
+    from tests.test_judge import install_transport, response_payload
+
+    requests = install_transport(monkeypatch, lambda _: httpx.Response(
+        200, json=response_payload("invalid"),
+    ))
+    client = TestClient(create_app(settings, solve=lambda *args: SolveResult(
+        "answer", empty_usage(), 1.0,
+    )), headers={"Authorization": "Bearer test-token"})
+    record = result(client, payload(["train-0"]))
+    assert record["status"] == "FAILED"
+    calls = [call for call in record["calls"] if call.get("span_type") == "LLM"]
+    assert len(requests) == len(calls) == 6
+    assert all(call["status"] == "ERROR" for call in calls)
+    assert record["examples"][0]["judge_calls"] == calls
+
+
+def test_train_retains_trace_callback_error_without_repeating_judge(settings, monkeypatch):
+    import httpx
+
+    from evaluator.judge import ModelClient
+    from tests.test_judge import install_transport, response_payload
+
+    requests = install_transport(monkeypatch, lambda _: httpx.Response(
+        200, json=response_payload('{"score": 4, "reason": "ok"}'),
+    ))
+
+    def fail(call):
+        raise OSError("secret-diagnostic")
+
+    def model(*args, **kwargs):
+        return ModelClient(*args, **(kwargs | {"on_attempt": fail}))
+
+    monkeypatch.setattr("evaluator.train.ModelClient", model)
+    client = TestClient(create_app(settings, solve=lambda *args: SolveResult(
+        "answer", empty_usage(), 1.0,
+    )), headers={"Authorization": "Bearer test-token"})
+    full = result(client, payload())
+    subset = result(client, payload(["train-0"]))
+    assert full["status"] == subset["status"] == "FINISHED"
+    assert len(requests) == 2
+    assert subset["trace_errors"] == [{
+        "error_type": "OSError", "role": "judge", "example_id": "train-0",
+    }]
+    assert "secret-diagnostic" not in json.dumps(subset)

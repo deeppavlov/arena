@@ -480,3 +480,78 @@ def test_custom_validator_is_retried_with_measured_usage(monkeypatch: pytest.Mon
     assert client.complete([], validator=validator) == "ok"
     assert client.usage["attempts"] == 3
     assert client.usage["total_tokens"] == 45
+
+
+def test_judge_records_attempts_with_vote_context_and_redacts_secrets(
+    monkeypatch: pytest.MonkeyPatch, metric: Metric, example: Example,
+) -> None:
+    responses = iter(["invalid", *(['{"score": 4, "reason": "api-secret"}'] * 2),
+                      *(['{"score": 5, "reason": "ok"}'] * 2)])
+    install_transport(monkeypatch, lambda _: httpx.Response(
+        200, json=response_payload(next(responses)),
+    ))
+    calls = []
+    client = ModelClient("http://internal-model/v1", "fixed", "api-secret",
+                         on_attempt=calls.append)
+    configured = Metric.model_validate({**metric.model_dump(), "votes": 2})
+    assert judge_answer(configured, example, "api-secret", client)["score"] == 4.25
+    assert [call["status"] for call in calls] == ["ERROR", "OK", "OK", "OK", "OK"]
+    assert [call["attributes"]["attempt"] for call in calls] == [1, 2, 1, 1, 1]
+    assert [call["attributes"]["criterion"] for call in calls] == [
+        "correct", "correct", "correct", "complete", "complete",
+    ]
+    assert [call["attributes"]["vote"] for call in calls] == [1, 1, 2, 1, 2]
+    assert all(call["span_type"] == "LLM" for call in calls)
+    assert all(call["start_time_ns"] <= call["end_time_ns"] for call in calls)
+    assert calls[0]["inputs"] == calls[1]["inputs"]
+    assert calls[0]["outputs"]["choices"][0]["message"]["content"] == "invalid"
+    assert "api-secret" not in json.dumps(calls)
+    assert calls[0]["attributes"]["usage"]["total_tokens"] == 15
+
+
+def test_attempt_recorder_keeps_valid_answer_with_unknown_usage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = response_payload("first")
+    payload.pop("usage")
+    requests = install_transport(monkeypatch, lambda _: httpx.Response(200, json=payload))
+    calls = []
+    client = ModelClient("http://internal-model/v1", "fixed", on_attempt=calls.append)
+    assert client.complete([]) == "first"
+    assert len(requests) == len(calls) == 1
+    assert calls[0]["status"] == "OK"
+    assert calls[0]["attributes"]["usage"] is None
+    assert client.usage["unreported_attempts"] == 1
+
+
+def test_attempt_recorder_failure_does_not_repeat_valid_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests = install_transport(monkeypatch, lambda _: httpx.Response(
+        200, json=response_payload("first"),
+    ))
+
+    def fail(call):
+        raise OSError("api-secret")
+
+    client = ModelClient("http://internal-model/v1", "fixed", "api-secret", on_attempt=fail)
+    assert client.complete([]) == "first"
+    assert len(requests) == client.usage["attempts"] == 1
+    assert client.trace_errors == [{"error_type": "OSError"}]
+
+
+@pytest.mark.parametrize("status,body", [
+    (503, b'{"error":"internal diagnostics"}'),
+    (200, b"internal diagnostics"),
+    (200, b'{"error":"internal diagnostics"}'),
+])
+def test_attempt_trace_omits_transport_error_bodies(monkeypatch, status, body):
+    requests = install_transport(monkeypatch, lambda _: httpx.Response(status, content=body))
+    calls = []
+    client = ModelClient("http://internal-model/v1", "fixed", on_attempt=calls.append)
+    with pytest.raises((httpx.HTTPStatusError, ValueError)):
+        client.complete([])
+    assert len(requests) == len(calls) == client.usage["attempts"] == 6
+    assert client.usage["unreported_attempts"] == 6
+    assert all(call["status"] == "ERROR" and call["outputs"] is None for call in calls)
+    assert "internal diagnostics" not in json.dumps(calls)
