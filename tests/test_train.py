@@ -542,6 +542,92 @@ def test_registered_ordinary_harness_preserves_adapter_parameters(settings, monk
     assert calls == [{"asset_digests": "adapter-owned"}]
 
 
+@pytest.mark.parametrize("build", [False, True])
+@pytest.mark.parametrize("harness,default_model,solver_model", [
+    (None, False, False),
+    (None, True, True),
+    ("ordinary", True, False),
+    ("modelled", False, True),
+])
+def test_train_and_build_record_selected_solver_configuration(
+    settings, tmp_path, monkeypatch, harness, default_model, solver_model, build,
+):
+    default_image = "sha256:" + "a" * 64
+    selected_image = "sha256:" + "b" * 64
+    configured = replace(settings, evaluation=replace(
+        settings.evaluation, runner_image=default_image, uses_model=default_model,
+        parameters={"temperature": 0.25}, runner_supports_build=build,
+        build_dir=tmp_path / "builds" if build else None,
+        published_assets_dir=tmp_path / "published" if build else None,
+        input_assets_digest="c" * 64 if build else None,
+        harnesses={harness: {
+            "image": selected_image, "uses_model": solver_model, "supports_build": build,
+        }} if harness else {},
+    ))
+    expected_image = selected_image if harness else default_image
+    parameters = {"mode": "synthetic"} if harness else None
+    solver_calls = []
+
+    def solve(self, candidate, task, *, parameters=None):
+        assert self.image == expected_image
+        assert self.uses_model is solver_model
+        solver_calls.append(task)
+        usage = {**empty_usage(), "prompt_tokens": 2, "total_tokens": 2, "attempts": 1}
+        if self.build_output_dir is not None:
+            (self.build_output_dir / "program.bin").write_bytes(bytes(range(256)))
+        return SolveResult("answer", usage if solver_model else empty_usage(), 1)
+
+    monkeypatch.setattr("evaluator.runner.DockerRunner.__call__", solve)
+    judged = []
+    client = TestClient(create_app(configured, complete=lambda messages: (
+        judged.append(messages) or '{"score": 4, "reason": "good"}'
+    )), headers={"Authorization": "Bearer test-token"})
+    submission = payload(["train-0"])
+    if harness:
+        submission["candidate"]["files"]["solution.json"] = base64.b64encode(json.dumps({
+            "harness": harness, "parameters": parameters,
+        }).encode()).decode()
+    records = []
+    if build:
+        submission["candidate"]["files"]["build.py"] = base64.b64encode(b"recipe").decode()
+        response = client.post("/v1/builds", json={"candidate": submission["candidate"]})
+        assert response.status_code == 202
+        digest = response.json()["candidate_digest"]
+        path = configured.evaluation.state_dir / "build-records" / (digest + ".json")
+        records.append(json.loads(path.read_text()))
+    records.append(result(client, submission))
+    assert records[-1]["metrics"]["score"] == 4
+    assert len(judged) == 1
+    assert solver_calls == (["", "task-0"] if build else ["task-0"])
+    for record in records:
+        assert record["status"] == "FINISHED"
+        assert record["params"]["harness"] == (harness or "default")
+        assert record["params"]["harness_version"] == expected_image
+        assert record["params"]["parameters"] == (parameters or {})
+        if solver_model:
+            assert record["params"]["model"] == "internal"
+            assert record["params"]["model_parameters"] == {"temperature": 0.25}
+        else:
+            assert "model" not in record["params"]
+            assert "model_parameters" not in record["params"]
+            assert record["metrics"]["solver_tokens"] == 0
+    if build:
+        digest = records[0]["params"]["candidate_digest"]
+        receipt_path = tmp_path / "builds" / "receipts" / (digest + ".json")
+        receipt = json.loads(receipt_path.read_text())
+        receipt["status"] = "RUNNING"
+        receipt_path.write_text(json.dumps(receipt))
+        restarted = TestClient(create_app(configured))
+        assert restarted.get("/healthz", headers={
+            "Authorization": "Bearer test-token",
+        }).status_code == 200
+        record_path = configured.evaluation.state_dir / "build-records" / (digest + ".json")
+        recovered = json.loads(record_path.read_text())
+        assert recovered["status"] == "FAILED"
+        assert recovered["params"] == records[0]["params"]
+        assert solver_calls == ["", "task-0"]
+
+
 def test_builtin_judge_traces_survive_subset_reuse_and_export(settings, monkeypatch):
     from unittest.mock import MagicMock
 

@@ -386,7 +386,7 @@ class Journal:
                 raise ValueError("invalid registered candidate")
             if record.get("digest_version") != 2 or record.get("digest") != candidate.digest():
                 raise SearchError("finalist digest differs from registered snapshot")
-            if record.get("snapshot_error") or record.get("bundle_error"):
+            if record.get("snapshot_error"):
                 raise SearchError("finalist snapshot is unavailable")
 
     def finalize(self, submission: Submission, *, replace: bool = False) -> dict[str, Any]:

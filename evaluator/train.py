@@ -30,7 +30,7 @@ from evaluator.candidates import materialize_candidate
 from evaluator.capacity import CapacityError, acquire_slot
 from evaluator.client import pack_candidate, request
 from evaluator.contracts import Candidate, Example, StrictModel
-from evaluator.execution import collect_model_calls, make_runner
+from evaluator.execution import collect_model_calls, make_runner, solver_metadata
 from evaluator.judge import ModelClient
 from evaluator.metric_package import load_metric, metric_package_provenance
 from evaluator.metrics import (
@@ -481,6 +481,7 @@ def create_app(
 
         def export_build(receipt: dict[str, Any]) -> None:
             stage = receipt["own_resources"]["solver"]
+            candidate_dir = build_dir / "jobs" / receipt["candidate_digest"] / "candidate"
             record = {
                 "split": "train", "status": receipt["status"],
                 "start_time_ns": receipt["start_time_ns"], "end_time_ns": receipt["end_time_ns"],
@@ -488,7 +489,8 @@ def create_app(
                     "campaign_id": configuration.campaign_id, "case_id": configuration.case_id,
                     "candidate_id": receipt["candidate_id"],
                     "candidate_digest": receipt["candidate_digest"],
-                    "model": settings.model, "measurement_kind": "preparation",
+                    **solver_metadata(settings, runner, candidate_dir),
+                    "measurement_kind": "preparation",
                     "subset_id": "build", "conditions_id": configuration.conditions_id,
                     "input_assets_digest": receipt["input_assets_digest"],
                     "environment_fingerprint": receipt["environment_fingerprint"],
@@ -571,25 +573,20 @@ def create_app(
                 package_dir = Path(tempfile.mkdtemp(prefix="package-", dir=run_dir))
                 candidate_dir = package_dir / "candidate"
                 materialize_candidate(candidate, candidate_dir)
-                harness_version = settings.runner_image
                 try:
                     if isinstance(runner, HarnessRunner):
                         runner.validate_candidate(candidate_dir)
-                        harness_version = runner.selection(candidate_dir)[0].image
                         preparation = runner.preparation_receipt(candidate_dir, digest)
                     elif settings.runner_supports_build:
                         preparation = load_build_receipt(build_dir, candidate_dir, digest)
                     else:
                         preparation = None
+                    solver = solver_metadata(
+                        settings, runner if isinstance(runner, HarnessRunner) else None,
+                        candidate_dir,
+                    )
                 except (OSError, ValueError, RunnerError):
                     raise HTTPException(422, "candidate preparation is unavailable") from None
-                manifest = candidate_dir / "solution.json"
-                try:
-                    selection = json.loads(manifest.read_text()) if manifest.exists() else {}
-                except (ValueError, UnicodeError):
-                    selection = {}
-                if not isinstance(selection, dict):
-                    selection = {}
                 allowed = {"revision", "parent_ids", "proposal_index", "hypothesis", "change",
                            "proposed_at", "measurement_id", "decision"}
                 metadata = {key: value for key, value in submission.metadata.items()
@@ -606,10 +603,7 @@ def create_app(
                         "candidate_digest": digest, "dataset_id": configuration.dataset_id,
                         "subset_id": _digest(ids), "conditions_id": configuration.conditions_id,
                         "metric_version": metric.version, "direction": metric.direction,
-                        "model": settings.model, "model_parameters": settings.parameters,
-                        "harness": selection.get("harness", "default"),
-                        "parameters": selection.get("parameters", {}),
-                        "harness_version": harness_version,
+                        **solver,
                     },
                 }
                 persist(record, path)

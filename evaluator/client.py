@@ -16,7 +16,6 @@ from pydantic import ValidationError
 from evaluator.contracts import Candidate, Submission
 from evaluator.filesystem import candidate_paths
 
-MAX_CANDIDATE_BYTES = 10 * 1024 * 1024
 MAX_BUNDLE_BYTES = 72 * 1024 * 1024
 
 
@@ -32,7 +31,6 @@ class ClientError(Exception):
 def pack_candidate(identifier: str, directory: Path) -> Candidate:
     files: dict[str, str] = {}
     executable_files: list[str] = []
-    total = 0
     try:
         if directory.is_symlink():
             raise ClientError("candidate symlinks are forbidden")
@@ -54,15 +52,10 @@ def pack_candidate(identifier: str, directory: Path) -> Candidate:
                 mode = os.fstat(stream.fileno()).st_mode
                 if not stat.S_ISREG(mode):
                     raise ClientError("candidate must contain only regular files")
-                data = stream.read(MAX_CANDIDATE_BYTES - total + 1)
-            total += len(data)
-            if total > MAX_CANDIDATE_BYTES:
-                raise ClientError("candidate exceeds 10 MiB")
+                data = stream.read()
             files[relative.as_posix()] = base64.b64encode(data).decode("ascii")
             if mode & 0o111:
                 executable_files.append(relative.as_posix())
-            if len(files) > 1000:
-                raise ClientError("candidate exceeds 1000 files")
         return Candidate(id=identifier, files=files, executable_files=executable_files)
     except OSError as error:
         raise ClientError("cannot read candidate files") from error

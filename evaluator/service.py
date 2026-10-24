@@ -30,7 +30,7 @@ from evaluator.build_receipts import (
 from evaluator.candidates import materialize_candidate
 from evaluator.capacity import CapacityError, acquire_slot
 from evaluator.contracts import Example, Submission
-from evaluator.execution import collect_model_calls, make_runner
+from evaluator.execution import collect_model_calls, make_runner, solver_metadata
 from evaluator.judge import ModelClient
 from evaluator.metric_package import load_metric, metric_package_provenance
 from evaluator.metrics import (
@@ -889,7 +889,8 @@ def create_app(
                 "params": {
                     "campaign_id": settings.release_id, "case_id": settings.case_id,
                     "candidate_id": candidate["id"], "candidate_digest": candidate["digest"],
-                    "model": settings.model, "metric_version": metric.version,
+                    **solver_metadata(settings, harness_runner, Path(candidate["path"])),
+                    "metric_version": metric.version,
                     "direction": metric.direction,
                 },
                 "metrics": metrics, "calls": calls,

@@ -84,13 +84,12 @@ class Example(StrictModel):
 
 class Candidate(StrictModel):
     id: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
-    files: dict[str, str] = Field(min_length=1, max_length=1000)
-    executable_files: list[str] = Field(default_factory=list, max_length=1000)
+    files: dict[str, str] = Field(min_length=1)
+    executable_files: list[str] = Field(default_factory=list)
 
     @field_validator("files")
     @classmethod
     def safe_files(cls, files: dict[str, str]) -> dict[str, str]:
-        total = 0
         for name, value in files.items():
             validate_candidate_path(name)
             if len(name) > 240 or any(
@@ -98,12 +97,9 @@ class Candidate(StrictModel):
             ):
                 raise ValueError("invalid candidate path")
             try:
-                data = base64.b64decode(value, validate=True)
+                base64.b64decode(value, validate=True)
             except ValueError as error:
                 raise ValueError("candidate files must be base64") from error
-            total += len(data)
-            if total > 10 * 1024 * 1024:
-                raise ValueError("candidate exceeds 10 MiB")
         paths = set(files)
         if any(str(parent) in paths for name in paths for parent in PurePosixPath(name).parents):
             raise ValueError("candidate file conflicts with directory")

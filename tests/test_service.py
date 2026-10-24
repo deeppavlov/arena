@@ -751,6 +751,59 @@ def test_closed_solver_and_judge_traces_are_exported_to_operator_only(
     assert exports[0][1].name == "queue"
 
 
+@pytest.mark.parametrize("split", ["private", "public"])
+@pytest.mark.parametrize("harness", ["default", "ordinary", "modeled"])
+def test_tracking_records_selected_solver_model(command_settings, monkeypatch, split, harness):
+    configured = replace(
+        command_settings, split=split, model="registered-model",
+        model_base_url="http://internal/v1", parameters={"temperature": 0.2},
+        uses_model=harness == "ordinary",
+        tracking_dir=command_settings.state_dir / "tracking", case_id="synthetic-case",
+        harnesses={
+            "ordinary": {"image": "ordinary-image", "uses_model": False},
+            "modeled": {"image": "modeled-image", "uses_model": True},
+        },
+    )
+    exports = []
+    invocations = []
+
+    def run(self, candidate, task, *, parameters=None):
+        invocations.append((self.image, self.uses_model, parameters))
+        return SolveResult("1", empty_usage(), 0.1)
+
+    def export(path, queue):
+        exports.append(json.loads(path.read_text()))
+        return {}
+
+    monkeypatch.setattr("evaluator.execution.DockerRunner.__call__", run)
+    monkeypatch.setattr("evaluator.service.export_configured", export)
+    data = {"candidates": [{"id": "candidate", "files": {"solve.py": "YQ=="}}]}
+    if harness != "default":
+        data["candidates"][0]["files"]["solution.json"] = base64.b64encode(json.dumps({
+            "harness": harness, "parameters": {"depth": 4},
+        }).encode()).decode()
+    api = TestClient(create_app(configured), headers={"Authorization": "Bearer test-token"})
+    accepted = api.post("/v1/evaluations", json=data)
+    assert accepted.status_code == 202
+    identifier = accepted.json().get("evaluation_id")
+    endpoint = f"/v1/evaluations/{identifier}" if identifier else "/v1/evaluations"
+    assert api.get(endpoint).json()["status"] == "complete"
+    assert len(exports) == 1
+    params = exports[0]["params"]
+    if harness == "modeled":
+        assert params["model"] == configured.model
+        assert params["model_parameters"] == configured.parameters
+    else:
+        assert "model" not in params
+        assert "model_parameters" not in params
+    assert params["harness"] == harness
+    image = configured.runner_image if harness == "default" else f"{harness}-image"
+    parameters = None if harness == "default" else {"depth": 4}
+    assert params["harness_version"] == image
+    assert params["parameters"] == (parameters or {})
+    assert invocations == [(image, harness == "modeled", parameters)]
+
+
 @pytest.mark.parametrize("field", ["trace_dir", "tracking_dir", "tracking_queue_dir"])
 def test_candidate_assets_never_expose_tracking_storage(settings, field):
     assets = settings.state_dir.parent / "assets"

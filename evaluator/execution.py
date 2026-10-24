@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -34,6 +35,33 @@ def make_runner(settings: "Settings", usage_dir: Path) -> HarnessRunner:
     return HarnessRunner(create({}, default=True), {
         name: create(config) for name, config in settings.harnesses.items()
     })
+
+
+def solver_metadata(
+    settings: "Settings", runner: HarnessRunner | None, candidate_dir: Path,
+) -> dict[str, Any]:
+    if not candidate_dir.is_dir():
+        raise ValueError("candidate metadata is unavailable")
+    manifest = candidate_dir / "solution.json"
+    try:
+        selection = json.loads(manifest.read_text()) if manifest.exists() else {}
+    except (ValueError, UnicodeError):
+        selection = {}
+    if not isinstance(selection, dict):
+        selection = {}
+    metadata = {
+        "harness": selection.get("harness", "default"),
+        "harness_version": settings.runner_image,
+        "parameters": selection.get("parameters", {}),
+    }
+    uses_model, model = settings.uses_model, settings.model
+    if runner is not None:
+        selected, parameters = runner.selection(candidate_dir)
+        metadata.update(harness_version=selected.image, parameters=parameters or {})
+        uses_model, model = selected.uses_model, selected.model
+    if uses_model:
+        metadata.update(model=model, model_parameters=settings.parameters)
+    return metadata
 
 
 def collect_model_calls(

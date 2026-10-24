@@ -95,11 +95,24 @@ def test_pack_handles_deep_empty_directories(tmp_path: Path) -> None:
             directory.rmdir()
 
 
-def test_pack_rejects_oversized_content(tmp_path: Path) -> None:
+def test_pack_preserves_content_above_former_size_limit(tmp_path: Path) -> None:
+    size = 10 * 1024 * 1024 + 1
     with (tmp_path / "large").open("wb") as stream:
-        stream.truncate(10 * 1024 * 1024 + 1)
-    with pytest.raises(ClientError, match="10 MiB"):
-        pack_candidate("idea", tmp_path)
+        stream.truncate(size)
+    candidate = pack_candidate("idea", tmp_path)
+    assert base64.b64decode(candidate.files["large"]) == b"\x00" * size
+
+
+@pytest.mark.parametrize("executable", [False, True])
+def test_pack_preserves_more_than_one_thousand_files(tmp_path: Path, executable: bool) -> None:
+    files = {f"file-{i}": str(i).encode() for i in range(1001)}
+    for name, content in files.items():
+        path = tmp_path / name
+        path.write_bytes(content)
+        path.chmod(0o700 if executable else 0o600)
+    candidate = pack_candidate("idea", tmp_path)
+    assert {name: base64.b64decode(value) for name, value in candidate.files.items()} == files
+    assert candidate.executable_files == (sorted(files) if executable else [])
 
 
 def test_pack_freezes_bundle_and_refuses_overwrite(tmp_path: Path) -> None:

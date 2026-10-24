@@ -51,15 +51,22 @@ def test_candidate_rejects_invalid_base64(value: str) -> None:
 
 
 @pytest.mark.parametrize("file_count", [1, 2])
-def test_candidate_size_limit_covers_all_decoded_files(file_count: int) -> None:
+def test_candidate_accepts_content_above_former_size_limit(file_count: int) -> None:
     encoded = base64.b64encode(b"x" * (10 * 1024 * 1024 // file_count + 1)).decode()
-    with pytest.raises(ValidationError, match="10 MiB"):
-        Candidate(id="candidate", files={f"file-{i}": encoded for i in range(file_count)})
+    files = {f"file-{i}": encoded for i in range(file_count)}
+    candidate = Candidate(id="candidate", files=files)
+    assert candidate.files == files
+    assert Candidate.model_validate_json(candidate.model_dump_json()) == candidate
 
 
-def test_candidate_accepts_exact_decoded_size_limit() -> None:
-    encoded = base64.b64encode(b"x" * (10 * 1024 * 1024)).decode()
-    assert Candidate(id="candidate", files={"data.bin": encoded}).files["data.bin"] == encoded
+@pytest.mark.parametrize("executable", [False, True])
+def test_candidate_accepts_more_than_one_thousand_files(executable: bool) -> None:
+    files = {f"file-{i}": "YQ==" for i in range(1001)}
+    executable_files = list(files) if executable else []
+    candidate = Candidate(id="candidate", files=files, executable_files=executable_files)
+    assert candidate.files == files
+    assert candidate.executable_files == sorted(executable_files)
+    assert Candidate.model_validate_json(candidate.model_dump_json()) == candidate
 
 
 def test_candidate_digest_identifies_decoded_content_independent_of_order_and_name() -> None:

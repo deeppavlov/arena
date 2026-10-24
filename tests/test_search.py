@@ -592,7 +592,7 @@ def test_legacy_restore_preserves_empty_directories_and_access_modes(
     assert restored.stat().st_mode & 0o777 == 0o755
 
 
-def test_oversized_snapshot_is_counted_and_restorable(
+def test_large_snapshot_is_counted_restorable_and_finalizable(
     journal: Journal, source: Path, tmp_path: Path,
 ):
     with (source / "large.bin").open("wb") as stream:
@@ -603,7 +603,7 @@ def test_oversized_snapshot_is_counted_and_restorable(
     )
     assert journal.status()["proposed"] == 1
     assert record["snapshot_error"] is None
-    assert record["bundle_error"]
+    assert record["bundle_error"] is None
     assert record["resources"] == {"total_tokens": 123, "seconds": 45, "tokens_complete": True}
     assert record["digest"]
     (source / "large.bin").unlink()
@@ -616,20 +616,62 @@ def test_oversized_snapshot_is_counted_and_restorable(
     assert child["parents"] == ["too-large"]
     assert child["proposal"] == 2
     assert child["bundle_error"] is None
+    journal.stop("human requested selection")
+    batch = Submission(candidates=[pack_candidate("too-large", restored)])
+    assert journal.finalize(batch)["batch_digest"] == batch.digest()
 
 
-def test_transport_file_count_does_not_cap_research_snapshot(
+def test_file_count_does_not_cap_research_snapshot_or_finalization(
     journal: Journal, source: Path, tmp_path: Path,
 ):
     for index in range(1000):
         (source / f"input-{index}.txt").write_text(str(index), encoding="utf-8")
     record = propose(journal, source, "many-files")
     assert record["snapshot_error"] is None
-    assert record["bundle_error"]
+    assert record["bundle_error"] is None
     assert journal.status()["proposed"] == 1
     restored = tmp_path / "many-files"
     journal.restore("many-files", restored)
     assert len(list(restored.iterdir())) == 1001
+    journal.stop("human requested selection")
+    batch = Submission(candidates=[pack_candidate("many-files", restored)])
+    assert journal.finalize(batch)["batch_digest"] == batch.digest()
+
+
+@pytest.mark.parametrize("kind", ["large", "many-files"])
+def test_finalization_revalidates_legacy_bundle_error_without_rewriting_history(
+    tmp_path: Path, source: Path, kind: str,
+):
+    import sqlite3
+
+    if kind == "large":
+        with (source / "large.bin").open("wb") as stream:
+            stream.truncate(11 * 1024 * 1024)
+    else:
+        for index in range(1000):
+            (source / f"input-{index}.txt").write_text(str(index), encoding="utf-8")
+    journal = Journal.create(tmp_path / "search.sqlite", max_solutions=1)
+    record = propose(journal, source, "legacy")
+    record["bundle_error"] = "snapshot does not satisfy the candidate bundle contract"
+    original_record = json.dumps(record)
+    with sqlite3.connect(journal.path) as connection:
+        connection.execute(
+            "UPDATE candidates SET record = ? WHERE id = 'legacy'", (original_record,),
+        )
+        original_snapshot = connection.execute(
+            "SELECT snapshot FROM candidates WHERE id = 'legacy'",
+        ).fetchone()[0]
+    restored = tmp_path / "restored"
+    journal.restore("legacy", restored)
+    batch = Submission(candidates=[pack_candidate("legacy", restored)])
+    assert journal.finalize(batch)["batch_digest"] == batch.digest()
+    with journal.private_admission(batch, max_solutions=1) as admission:
+        assert admission["remaining_proposals"] == 0
+    with sqlite3.connect(journal.path) as connection:
+        stored = connection.execute(
+            "SELECT record, snapshot FROM candidates WHERE id = 'legacy'",
+        ).fetchone()
+    assert stored == (original_record, original_snapshot)
 
 
 def test_missing_snapshot_counts_without_claiming_restorability(
