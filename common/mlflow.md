@@ -14,7 +14,7 @@
 | `candidate_digest`, `revision`, `parent_ids` | Неизменяемый пакет, ревизия кода и все родители, включая неудачные решения |
 | `proposal_index`, `hypothesis`, `change` | Номер предложенного решения, гипотеза и смысл изменения |
 | `model`, `harness`, `harness_version`, `parameters` | Реальная конфигурация кандидата; модель отсутствует у немодельного решателя |
-| `metric_version`, `metric_package_digest`, `direction` | Версия и digest замороженного пакета метрики, направление `maximize` или `minimize` |
+| `metric_version`, `direction` | Версия замороженного пакета метрики, направление `maximize` или `minimize` |
 | `split`, `dataset_id`, `dataset_version`, `subset_id`, `conditions_id` | Части данных и условия сопоставимости; train и public не смешиваются |
 | `proposed_at`, `started_at`, `completed_at` | Моменты предложения, начала и завершения для восстановления параллельного поиска |
 | `status`, `error` | Результат проверки или явный сбой; ошибка не превращается в выдуманную оценку |

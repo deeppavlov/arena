@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import fcntl
-import hashlib
 import json
 import os
 import subprocess
@@ -557,15 +556,6 @@ def test_dataset_format_order_and_example_ids_cannot_reset_seal(settings: Settin
     settings.dataset_path.write_text(
         "\n".join(json.dumps(item, separators=(",", ":")) for item in reordered) + "\n\n"
     )
-    with pytest.raises(ValueError, match="frozen"):
-        client(replace(settings, release_id="relabeled"))
-    reformatted = [
-        {"reference": item["reference"], "input": item["input"], "id": item["id"]}
-        for item in examples
-    ]
-    settings.dataset_path.write_text(
-        "\n".join(json.dumps(item, separators=(",", ":")) for item in reformatted) + "\n\n"
-    )
     restarted = client(replace(settings, release_id="relabeled"))
     assert restarted.get("/v1/evaluations").json() == result
     assert restarted.post("/v1/evaluations", json=submission("b")).status_code == 409
@@ -633,6 +623,7 @@ def test_persists_resource_measurements_and_freezes_ranking_policy(settings: Set
     assert example["resources"]["judge"]["wall_seconds"] >= 0
     record = json.loads(next(settings.state_dir.glob("*/record.json")).read_text())
     assert record["provenance"]["ranking_policy"]
+    assert "dataset_records_digest" not in record["provenance"]
     record["provenance"]["ranking_policy"] = "changed-policy"
     next(settings.state_dir.glob("*/record.json")).write_text(json.dumps(record))
     with pytest.raises(ValueError, match="frozen"):
@@ -1371,10 +1362,6 @@ def command_settings(settings: Settings):
         "version": "command-v1", "kind": "command", "direction": "minimize",
         "command": {
             "argv": [str(executable), str(program)],
-            "source_sha256": {
-                str(path): hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in (executable, program)
-            },
         },
     }))
     settings.dataset_path.write_text('{"id":"input","input":"task"}\n')
@@ -1503,10 +1490,6 @@ def test_dataset_aggregation_is_configured_and_measured(command_settings: Settin
     metric = json.loads(command_settings.metric_path.read_text())
     metric["aggregation"] = {
         "argv": [str(executable), str(aggregator)],
-        "source_sha256": {
-            str(path): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (executable, aggregator)
-        },
     }
     command_settings.metric_path.write_text(json.dumps(metric))
     api = client(command_settings, solve=lambda candidate, task: solved("2"))
@@ -1645,7 +1628,7 @@ def test_public_failed_content_cannot_repeat_a_successful_partial_answer(setting
     assert calls == ["task-0", "task-1"]
 
 
-def test_public_dataset_ids_are_frozen_for_content_cache(command_settings: Settings):
+def test_public_metric_receives_dataset_ids(command_settings: Settings):
     configured = replace(command_settings, split="public")
     metric = json.loads(configured.metric_path.read_text())
     program = Path(metric["command"]["argv"][1])
@@ -1654,8 +1637,6 @@ def test_public_dataset_ids_are_frozen_for_content_cache(command_settings: Setti
         "payload = json.load(sys.stdin)\n"
         "print(json.dumps({'score': int(payload['example']['id'])}))\n"
     )
-    digest = hashlib.sha256(program.read_bytes()).hexdigest()
-    metric["command"]["source_sha256"][str(program)] = digest
     configured.metric_path.write_text(json.dumps(metric))
     configured.dataset_path.write_text('{"id":"1","input":"task"}\n')
     api = client(configured, solve=lambda candidate, task: solved("2"))
@@ -1663,13 +1644,10 @@ def test_public_dataset_ids_are_frozen_for_content_cache(command_settings: Setti
     assert api.get(f"/v1/evaluations/{identifier}").json()["scores"] == [
         {"candidate_id": "candidate", "score": 1.0},
     ]
-    configured.dataset_path.write_text('{"id":"2","input":"task"}\n')
-    with pytest.raises(ValueError, match="frozen"):
-        client(configured, solve=lambda candidate, task: solved("2"))
 
 
 @pytest.mark.parametrize("split", ["private", "public"])
-def test_dataset_order_is_frozen_for_task_aggregation(command_settings: Settings, split):
+def test_task_aggregation_preserves_dataset_order(command_settings: Settings, split):
     configured = replace(command_settings, split=split)
     metric = json.loads(configured.metric_path.read_text())
     executable = Path(sys.executable).resolve()
@@ -1681,10 +1659,6 @@ def test_dataset_order_is_frozen_for_task_aggregation(command_settings: Settings
     )
     metric["aggregation"] = {
         "argv": [str(executable), str(aggregator)],
-        "source_sha256": {
-            str(path): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (executable, aggregator)
-        },
     }
     configured.metric_path.write_text(json.dumps(metric))
     records = ['{"id":"1","input":"first"}', '{"id":"2","input":"second"}']
@@ -1692,9 +1666,6 @@ def test_dataset_order_is_frozen_for_task_aggregation(command_settings: Settings
     api = client(configured, solve=lambda candidate, task: solved("2"))
     response = api.post("/v1/evaluations", json=submission()).json()
     assert operator_record(configured, response.get("evaluation_id"))["scores"][0]["score"] == 1.0
-    configured.dataset_path.write_text("\n".join(reversed(records)) + "\n")
-    with pytest.raises(ValueError, match="frozen"):
-        client(configured, solve=lambda candidate, task: solved("2"))
 
 
 @pytest.mark.parametrize("text", ["", " \t"])
@@ -1855,10 +1826,6 @@ def test_metric_diagnostics_are_saved_only_in_closed_logs(command_settings, stag
     metric = json.loads(configured.metric_path.read_text())
     metric[stage] = {
         "argv": [str(executable), str(script)],
-        "source_sha256": {
-            str(path): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (executable, script)
-        },
     }
     configured.metric_path.write_text(json.dumps(metric))
     api = client(configured, solve=lambda *args: solved("2"))
@@ -2080,25 +2047,93 @@ def test_legacy_default_metric_provenance_survives_restart(command_settings, spl
         client(configured)
 
 
-def test_changed_command_rejected_before_private_admission(command_settings):
+@pytest.mark.parametrize("split", ["private", "public"])
+@pytest.mark.parametrize("kind", ["llm", "command", "package"])
+def test_legacy_checksum_metadata_preserves_completed_evaluation(
+    command_settings, tmp_path, split, kind,
+):
+    configured = command_settings
+    if kind == "llm":
+        configured.metric_path.write_text(json.dumps({
+            "version": "preset", "instruction": "Judge quality",
+            "criteria": [{"id": "quality", "question": "Quality?", "weight": 1}],
+        }))
+        configured.dataset_path.write_text(
+            '{"id":"input","input":"task","reference":"reference"}\n',
+        )
+    elif kind == "package":
+        from evaluator.metric_package import freeze_metric
+
+        draft = tmp_path / "draft"
+        draft.mkdir()
+        (draft / "score.py").write_text("print('{\"score\":2}')\n")
+        (draft / "metric.json").write_text(json.dumps({
+            "version": "prepared", "kind": "command", "command": {"argv": ["python", "score.py"]},
+        }))
+        package = tmp_path / "frozen"
+        freeze_metric(draft, package)
+        configured = replace(configured, metric_path=package)
+    configured = replace(
+        configured, split=split, model="internal-model", model_base_url="http://internal/v1",
+    )
+    api = client(configured, solve=lambda *args: solved("2"))
+    accepted = api.post("/v1/evaluations", json=submission())
+    identifier = accepted.json().get("evaluation_id")
+    for path in configured.state_dir.rglob("*.json"):
+        if path.name not in {"record.json", "config.json"}:
+            continue
+        document = json.loads(path.read_text())
+        provenance = document["provenance"] if path.name == "record.json" else document
+        provenance["dataset_records_digest"] = "legacy"
+        for section in (provenance["metric"], provenance["metric_command"] or {}):
+            for name in ("command", "aggregation"):
+                if section.get(name):
+                    section[name]["source_sha256"] = {"/old/source.py": "legacy"}
+        package_metadata = provenance.get("metric_package")
+        if package_metadata:
+            package_metadata["sha256"] = "legacy"
+            for entry in package_metadata["files"].values():
+                entry["sha256"] = "legacy"
+        path.write_text(json.dumps(document))
+
+    def repeated_solve(*args):
+        pytest.fail("completed evaluation must not run again")
+
+    restarted = client(configured, solve=repeated_solve)
+    endpoint = f"/v1/evaluations/{identifier}" if identifier else "/v1/evaluations"
+    assert restarted.get(endpoint).json()["status"] == "complete"
+    assert restarted.post("/v1/evaluations", json=submission()).json()["status"] == "complete"
+    if split == "private":
+        assert restarted.post("/v1/evaluations", json=submission("changed")).status_code == 409
+
+
+def test_command_runs_without_source_checksums(command_settings):
     calls = []
     api = client(command_settings, solve=lambda *args: (calls.append(args), solved("2"))[1])
     metric = json.loads(command_settings.metric_path.read_text())
     script = Path(metric["command"]["argv"][1])
-    original = script.read_bytes()
-    script.write_bytes(original + b"\nprint('changed')\n")
-    assert api.post("/v1/evaluations", json=submission()).status_code == 503
-    assert not calls
-    assert not list(command_settings.state_dir.rglob("record.json"))
-    script.write_bytes(original)
+    script.write_text(script.read_text() + "\n")
     assert api.post("/v1/evaluations", json=submission()).status_code == 202
     assert api.get("/v1/evaluations").json() == {"status": "complete"}
+    assert calls
+
+
+def test_metric_implementation_stays_outside_candidate_directories(command_settings):
+    root = command_settings.state_dir / "candidates"
+    root.mkdir(parents=True)
+    script = root / "score.py"
+    script.write_text("print('{\"score\":2}')\n")
+    metric = json.loads(command_settings.metric_path.read_text())
+    metric["command"]["argv"][1] = str(script)
+    command_settings.metric_path.write_text(json.dumps(metric))
+    with pytest.raises(ValueError, match="implementation must be outside"):
+        client(command_settings)
 
 
 @pytest.mark.parametrize("kind", ["llm", "command"])
 @pytest.mark.parametrize("change", ["content", "inventory", "refreeze"])
-def test_metric_package_verified_before_private_admission(settings, tmp_path, kind, change):
-    from evaluator.metric_package import freeze_metric, metric_package_provenance
+def test_metric_package_is_loaded_once_before_private_admission(settings, tmp_path, kind, change):
+    from evaluator.metric_package import freeze_metric
 
     draft = tmp_path / "draft"
     draft.mkdir()
@@ -2111,7 +2146,7 @@ def test_metric_package_verified_before_private_admission(settings, tmp_path, ki
         }
     (draft / "metric.json").write_text(json.dumps(config))
     package = tmp_path / "frozen"
-    freeze_metric(draft, package)
+    provenance = freeze_metric(draft, package)
     configured = replace(settings, metric_path=package)
     calls = []
     api = client(configured, solve=lambda *args: (calls.append(args), solved())[1])
@@ -2126,21 +2161,10 @@ def test_metric_package_verified_before_private_admission(settings, tmp_path, ki
         freeze_metric(draft, changed)
         package.rename(tmp_path / "original")
         changed.rename(package)
-    assert api.post("/v1/evaluations", json=submission()).status_code == 503
-    assert not calls
-    assert not list(configured.state_dir.rglob("record.json"))
-    if change == "content":
-        (package / "metric.json").write_bytes(original)
-    elif change == "inventory":
-        (package / "added.txt").unlink()
-    else:
-        package.rename(tmp_path / "changed")
-        (tmp_path / "original").rename(package)
     assert api.post("/v1/evaluations", json=submission()).status_code == 202
     assert api.get("/v1/evaluations").json() == {"status": "complete"}
-    assert operator_record(configured)["provenance"]["metric_package"] == (
-        metric_package_provenance(package)
-    )
+    assert calls
+    assert operator_record(configured)["provenance"]["metric_package"] == provenance
     (package / "added.txt").write_text("later mutation")
     assert api.post("/v1/evaluations", json=submission()).json() == {"status": "complete"}
 

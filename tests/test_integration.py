@@ -1,5 +1,4 @@
 import base64
-import hashlib
 import json
 import sys
 import threading
@@ -68,10 +67,6 @@ def test_custom_model_commands_and_aggregation_use_sealed_gateway_usage(tmp_path
         executable = Path(sys.executable).resolve()
         command = {
             "argv": [str(executable), str(script)], "uses_model": True,
-            "source_sha256": {
-                str(path): hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in (executable, script)
-            },
         }
         metric = tmp_path / "metric.json"
         metric.write_text(json.dumps({

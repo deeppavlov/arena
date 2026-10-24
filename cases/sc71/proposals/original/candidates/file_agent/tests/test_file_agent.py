@@ -210,7 +210,7 @@ def test_page_separator_is_not_a_source_line_boundary(api, tmp_path):
     assert source_lines(text) == ["Первая\fстраница\r\n", "Вторая строка\n"]
 
 
-def test_changed_instruction_and_empty_corpus_are_rejected(api, corpus, tmp_path, monkeypatch):
+def test_current_instruction_is_used(api, corpus, tmp_path, monkeypatch):
     kb, _ = corpus
     package = tmp_path / "package"
     package.mkdir()
@@ -219,8 +219,21 @@ def test_changed_instruction_and_empty_corpus_are_rejected(api, corpus, tmp_path
     monkeypatch.setattr(api, "PACKAGE", package)
     api.build(kb, tmp_path / "index", api.defaults())
     instruction.write_text("changed", encoding="utf-8")
-    with pytest.raises(ValueError, match="instruction changed"):
-        api.retrieve(tmp_path / "index", "Кто согласует закупку?")
+    calls = []
+
+    def model(url, payload, key, timeout):
+        calls.append(payload)
+        return {"choices": [{"message": {"content": '{"tool": "finish", "args": {}}'}}]}
+
+    monkeypatch.setenv("SC71_CHAT_URL", "http://127.0.0.1/v1/chat/completions")
+    monkeypatch.setenv("SC71_CHAT_MODEL", "synthetic")
+    monkeypatch.setattr(api.base, "post_json", model)
+    result = api.retrieve(tmp_path / "index", "Кто согласует закупку?")
+    assert calls[0]["messages"][0]["content"] == "changed"
+    assert result["agent"]["stop_reason"] == "finish"
+
+
+def test_empty_corpus_is_rejected(api, tmp_path):
     empty = tmp_path / "empty"
     empty.mkdir()
     with pytest.raises(ValueError, match="corpus"):

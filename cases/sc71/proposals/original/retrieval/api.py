@@ -30,7 +30,6 @@ from .search import terms as terms
 from .search import validate_answer as validate_answer
 from .storage import build_index as build_index
 from .storage import digest as digest
-from .storage import file_digest as file_digest
 from .storage import write_json as write_json
 
 

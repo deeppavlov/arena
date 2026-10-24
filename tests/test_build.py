@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from evaluator.build import BuildStore, install_build_routes
+from evaluator.build_receipts import bound_build_receipt
 from evaluator.capacity import acquire_slot
 from evaluator.contracts import Candidate
 from evaluator.reliability import empty_usage
@@ -64,6 +65,35 @@ def test_build_runs_once_and_publishes_immutable_output(tmp_path):
     assert output.stat().st_mode & 0o222 == 0
     assert build_once(builder, item) == receipt
     assert len(calls) == 1
+
+
+def test_republishing_legacy_build_output_preserves_receipt_binding(tmp_path):
+    builder = store(tmp_path)
+    receipt = build_once(builder, candidate())
+    legacy_id = "aa86f60b4495c5b3b6c5c30615b734b50b08a3b58e130d83296be92a3a52274e"
+    original_id = receipt["output_digest"]
+    (tmp_path / "assets" / original_id).rename(tmp_path / "assets" / legacy_id)
+    (builder.root / "bindings" / f"{original_id}.json").rename(
+        builder.root / "bindings" / f"{legacy_id}.json",
+    )
+    receipt["output_digest"] = legacy_id
+    (builder.root / "receipts" / f"{receipt['candidate_digest']}.json").write_text(
+        json.dumps(receipt),
+    )
+    source = builder.publisher.staging_root / "reimport"
+    source.mkdir()
+    (source / "index.txt").write_text("one")
+
+    published = builder.publisher.publish("reimport")
+
+    assert published["digest"] == legacy_id
+    assert bound_build_receipt(builder.root, str(published["digest"])) == receipt
+    dependent = build_once(builder, candidate("two", [published["digest"]]))
+    assert dependent["dependency_receipts"] == [receipt["candidate_digest"]]
+    assert dependent["resources"]["solver"]["wall_seconds"] == pytest.approx(
+        receipt["own_resources"]["solver"]["wall_seconds"]
+        + dependent["own_resources"]["solver"]["wall_seconds"],
+    )
 
 
 def test_failed_build_preserves_usage_without_retry(tmp_path):

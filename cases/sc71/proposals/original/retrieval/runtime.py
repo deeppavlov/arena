@@ -28,7 +28,6 @@ def diagnostic(result):
             {k: v for k, v in step.items() if k != "action"}
             | {
                 "tool": step["action"].get("tool"),
-                "action_sha256": base.digest(json.dumps(step["action"], sort_keys=True).encode()),
             }
             for step in agent["steps"]
         ]

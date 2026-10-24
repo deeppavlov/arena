@@ -59,12 +59,14 @@ def build_record(state, scenario, model_calls):
                 **{key: metadata[key] for key in ("criterion", "vote") if key in metadata},
             },
         })
+    configuration = dict(state["settings"])
+    configuration.pop("metric_lock_sha256", None)
     return sanitize_record({
         "split": "train", "status": status,
         "params": {
             "case_id": "sc71-preparation-acceptance", "campaign_id": "sc71-first-20261019",
             "candidate_id": "sc71-synthetic-acceptance", "scenario": scenario,
-            "configuration_sha256": state["configuration_sha256"],
+            "configuration": configuration,
             "model": "deepseek-ai/DeepSeek-V4-Flash-0731", "harness": "hermes",
             "harness_version": state["settings"]["runner"]["image"],
             "parameters": {"reasoning_effort": "max"}, "dataset_id": "synthetic-acceptance",
@@ -97,7 +99,7 @@ def verify_export(result, record, operator):
 
 def main():
     from evaluator.trace_store import read_calls
-    from evaluator.tracking import _save, export_record
+    from evaluator.tracking import _environment_secrets, _save, export_record, redact
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--state", type=Path, required=True)
@@ -106,12 +108,19 @@ def main():
     parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
     state = json.loads(args.state.read_text())
+    state["settings"].pop("metric_lock_sha256", None)
     if state.get("synthetic_only") is not True:
         raise ValueError("Only synthetic acceptance records may be exported")
     path = args.output / "records" / f"{args.scenario}.json"
     if path.exists():
         record = json.loads(path.read_text())
-        if record["params"]["configuration_sha256"] != state["configuration_sha256"]:
+        configuration = redact(state["settings"], secrets=_environment_secrets())
+        params = record["params"]
+        if "configuration" in params:
+            if params["configuration"] != configuration:
+                raise ValueError("Acceptance export belongs to another fixed configuration")
+        elif (params.get("scenario") != args.scenario
+              or params.get("harness_version") != state["settings"]["runner"]["image"]):
             raise ValueError("Acceptance export belongs to another fixed configuration")
     else:
         saved = state["scenarios"][args.scenario]

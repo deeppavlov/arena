@@ -37,20 +37,14 @@ def validate_settings(value: dict[str, Any], candidate: str) -> None:
 
 
 def seal_build(output: Path, manifest: dict[str, Any], value: dict[str, Any], package: Path):
-    from .storage import implementation
-
     manifest.update(
         candidate=value["candidate"],
         candidate_settings=value,
-        candidate_settings_sha256=base.digest(json.dumps(value, sort_keys=True).encode()),
-        implementation={p.name: base.file_digest(p) for p in sorted(package.glob("*.py"))},
-        shared_implementation=implementation(),
+        implementation=[p.name for p in sorted(package.glob("*.py"))],
     )
-    manifest["files"] = {
-        p.name: base.file_digest(p)
-        for p in output.iterdir()
-        if p.is_file() and p.name != "build.json"
-    }
+    manifest["files"] = sorted(
+        p.name for p in output.iterdir() if p.is_file() and p.name != "build.json"
+    )
     base.write_json(output / "build.json", manifest)
     return manifest
 
@@ -62,13 +56,6 @@ def load_build(output: Path, candidate: str):
     validate_settings(manifest["candidate_settings"], candidate)
     if manifest["config"] != manifest["candidate_settings"]["lexical"]:
         raise ValueError("lexical configuration differs from the frozen candidate settings")
-    actual = base.digest(json.dumps(manifest["candidate_settings"], sort_keys=True).encode())
-    if actual != manifest.get("candidate_settings_sha256"):
-        raise ValueError("candidate settings fingerprint mismatch")
-    if os.environ.get("SC71_VERIFY_BUILD") == "1":
-        for name, expected in manifest["files"].items():
-            if Path(name).name != name or base.file_digest(output / name) != expected:
-                raise ValueError("build artifact hash mismatch")
     return manifest
 
 
@@ -77,14 +64,9 @@ def open_index(output: Path):
 
 
 def provenance(output: Path, package: Path):
-    from .storage import implementation
-
     return {
-        "build_manifest_sha256": base.file_digest(output / "build.json"),
-        "implementation_sha256": {
-            p.name: base.file_digest(p) for p in sorted(package.glob("*.py"))
-        },
-        "shared_implementation_sha256": implementation(),
+        "build_manifest": "build.json",
+        "implementation": [p.name for p in sorted(package.glob("*.py"))],
     }
 
 

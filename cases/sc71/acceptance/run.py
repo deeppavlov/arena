@@ -27,27 +27,16 @@ def save_json(path, value):
     temporary.replace(path)
 
 
-def fixture_digest():
-    digest = hashlib.sha256()
-    for path in sorted(PACKAGE.rglob("*")):
-        if path.is_file() and "__pycache__" not in path.parts:
-            digest.update(str(path.relative_to(PACKAGE)).encode())
-            digest.update(b"\0")
-            digest.update(path.read_bytes())
-    return digest.hexdigest()
-
-
-def load_state(path, settings, fixture_hash):
-    fingerprint = hashlib.sha256(json.dumps({
-        "settings": settings, "fixture_sha256": fixture_hash,
-    }, sort_keys=True).encode()).hexdigest()
+def load_state(path, settings):
     if path.exists():
         state = json.loads(path.read_text())
-        if state["configuration_sha256"] != fingerprint:
+        state["settings"].pop("metric_lock_sha256", None)
+        state.pop("configuration_sha256", None)
+        state.pop("fixture_sha256", None)
+        if state["settings"] != settings:
             raise ValueError("acceptance configuration changed; saved answers must be preserved")
         return state
     return {
-        "configuration_sha256": fingerprint, "fixture_sha256": fixture_hash,
         "created_at_unix": time.time(), "synthetic_only": True,
         "solution_configurations": 1, "scenario_count": 3,
         "settings": settings, "scenarios": {},
@@ -340,13 +329,10 @@ def main():
     settings = json.loads(args.config.read_text())
     metric_path = Path(settings["metric_package"])
     load_metric(metric_path)
-    settings["metric_lock_sha256"] = hashlib.sha256(
-        (metric_path / "metric.lock.json").read_bytes(),
-    ).hexdigest()
     args.state.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     with args.state.with_suffix(".lock").open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        state = load_state(args.state, settings, fixture_digest())
+        state = load_state(args.state, settings)
         save_json(args.state, state)
         for name in (args.scenario,) if args.scenario else SCENARIOS:
             if args.verify_only:

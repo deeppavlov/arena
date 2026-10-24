@@ -82,7 +82,6 @@ def prepare(tmp_path, name, url):
         SC71_CHAT_URL=url,
         SC71_CHAT_MODEL="synthetic-test",
         SC71_CHAT_KEY="synthetic-key",
-        SC71_VERIFY_BUILD="1",
     )
     index = tmp_path / "index"
     build = subprocess.run(

@@ -1,4 +1,4 @@
-"""Preparation artifacts, checksums, and the unchanged lexical index builder."""
+"""Preparation artifacts and lexical index building."""
 
 from __future__ import annotations
 
@@ -30,22 +30,13 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def file_digest(path: Path) -> str:
-    hashed = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            hashed.update(block)
-    return hashed.hexdigest()
-
-
 def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def implementation():
-    """Portable source fingerprint: never includes credentials or absolute paths."""
     root = Path(__file__).parent
-    return {p.name: file_digest(p) for p in sorted(root.glob("*.py"))}
+    return fingerprint({p.name: p.read_text(encoding="utf-8") for p in sorted(root.glob("*.py"))})
 
 
 def fingerprint(value):
@@ -56,14 +47,14 @@ def verify_artifacts(output, filename="build.json"):
     output = Path(output)
     manifest = json.loads((output / filename).read_text(encoding="utf-8"))
     files = manifest.get("files")
-    if not isinstance(files, dict) or not files:
-        raise ValueError("artifact manifest has no checksums")
-    for name, expected in files.items():
+    if not isinstance(files, list) or not files:
+        raise ValueError("artifact manifest has no file inventory")
+    for name in files:
         if not isinstance(name, str) or Path(name).name != name or "/" in name or "\\" in name:
             raise ValueError("unsafe artifact path")
         path = output / name
-        if path.is_symlink() or not path.is_file() or file_digest(path) != expected:
-            raise ValueError("build artifact hash mismatch")
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("artifact file is missing or not regular")
     if "vectors.f32" in files:
         dimension, chunks = manifest.get("dimension"), manifest.get("chunks")
         if type(dimension) is not int or dimension <= 0 or type(chunks) is not int:
@@ -94,7 +85,7 @@ def preparation_lock(target):
 
 
 def publish_artifact(target, builder):
-    """Only a fully built, checksummed sibling is promoted to a ready directory."""
+    """Promote a completed sibling to a ready directory."""
     stage = target.with_name(".incomplete-" + target.name + "-" + uuid.uuid4().hex)
     builder(stage)
     verify_artifacts(stage)
@@ -118,11 +109,6 @@ def load_candidate(name):
     if name not in allowed:
         raise ValueError("unknown candidate")
     return importlib.import_module("candidates." + name + ".candidate")
-
-
-# The exact single-GPU encoder copied to gpu6 before this upgrade (2048 tokens).
-# An unknown old implementation must not silently certify a raw headerless matrix.
-LEGACY_ENCODER_SHA256 = "a991c53d891ec89c0d6fca64b1b4a18ed275065e7b623df29e630801db5e554d"
 
 
 def _legacy_writer_state(pid, root):
@@ -153,7 +139,7 @@ def _legacy_writer_state(pid, root):
 
 
 def inspect_legacy_run(run):
-    """Identify the legacy index and matrix by their original content-derived keys."""
+    """Locate a unique legacy index and matrix with matching settings."""
     run = Path(run).resolve()
     config = json.loads((run / "configs/hybrid_bge.local.json").read_text(encoding="utf-8"))
     validate_config(config)
@@ -161,36 +147,24 @@ def inspect_legacy_run(run):
         raise ValueError("legacy capture supports the original local hybrid_bge run")
     if config["embedding_model"] != "BAAI/bge-m3":
         raise ValueError("legacy capture requires BGE-M3 with dimension 1024")
-    old_code = {p.name: file_digest(p) for p in sorted((run / "retrieval").glob("*.py"))}
-    if old_code.get("embeddings.py") != LEGACY_ENCODER_SHA256:
-        raise ValueError("unknown legacy encoder: keep original source files unchanged")
     identity = embeddings.model_identity(config)
     candidates = []
     for build in (run / "cache/corpus").glob("*/build.json"):
         meta = json.loads(build.read_text(encoding="utf-8"))
-        key = fingerprint({
-            "corpus": meta["corpus_sha256"], "mode": "sections",
-            "chunk_chars": config["chunk_chars"], "overlap_lines": config["overlap_lines"],
-            "implementation": old_code,
-        })
-        if build.parent.name == key:
-            candidates.append((build.parent, meta, key))
+        settings = meta.get("config", {})
+        if all(settings.get(key) == config[key] for key in ("chunk_chars", "overlap_lines")):
+            candidates.append((build.parent, meta))
     if len(candidates) != 1:
         raise ValueError("cannot uniquely identify the original completed lexical index")
-    index, meta, lexical_key = candidates[0]
-    matrix_key = fingerprint({
-        "lexical_key": lexical_key, "index": meta["files"]["index.sqlite3"],
-        "encoder": identity, "batch": config["embedding_batch"],
-    })
+    index, meta = candidates[0]
     parent = run / "cache/embeddings"
-    completed = parent / matrix_key / "vectors.f32"
-    if completed.is_file():
-        vectors = completed
-    else:
-        matches = list(parent.glob(".incomplete-" + matrix_key + "-*/vectors.f32"))
-        if len(matches) != 1:
-            raise ValueError("cannot uniquely identify the original partial matrix")
-        vectors = matches[0]
+    matches = list(parent.glob("*/vectors.f32"))
+    if len(matches) != 1:
+        raise ValueError("cannot uniquely identify the original matrix")
+    vectors = matches[0]
+    matrix_key = vectors.parent.name
+    if matrix_key.startswith(".incomplete-"):
+        matrix_key = matrix_key.removeprefix(".incomplete-").rsplit("-", 1)[0]
     lock = parent / (matrix_key + ".lock")
     pid = json.loads(lock.read_text())["pid"] if lock.exists() else None
     state = _legacy_writer_state(pid, run) if pid else "not_running"
@@ -204,7 +178,6 @@ def inspect_legacy_run(run):
         "completed_rows": rows, "chunks": meta["chunks"],
         "omitted_tail_bytes": size % (1024 * 4),
         "config": config, "embedding_identity": identity,
-        "source_implementation": old_code,
     }
 
 
@@ -225,7 +198,6 @@ def capture_legacy_prefix(run, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     stage = output.with_name(".incomplete-capture-" + uuid.uuid4().hex)
     stage.mkdir()
-    hashed = hashlib.sha256()
     remaining = details["completed_rows"]
     with source.open("rb") as reader, (stage / "vectors.f32").open("wb") as writer:
         while remaining:
@@ -239,7 +211,6 @@ def capture_legacy_prefix(run, output):
             ):
                 raise ValueError("legacy matrix contains invalid/non-normalized vectors")
             writer.write(raw)
-            hashed.update(raw)
             remaining -= rows
         writer.flush()
         os.fsync(writer.fileno())
@@ -251,12 +222,11 @@ def capture_legacy_prefix(run, output):
     ) not in {"T", "t", "not_running"}:
         raise ValueError("legacy writer resumed during capture")
     metadata = embeddings.prefix_metadata(
-        index, details["config"], details["completed_rows"], 1024, hashed.hexdigest()
+        index, details["config"], details["completed_rows"], 1024
     )
     if metadata["embedding_identity"] != details["embedding_identity"]:
         raise ValueError("model changed during capture")
     metadata["legacy_import"] = {
-        "source_implementation": details["source_implementation"],
         "omitted_tail_bytes": details["omitted_tail_bytes"],
         "writer_pid": details["writer_pid"],
     }
@@ -286,7 +256,7 @@ def prepare(
     started = time.monotonic()
     if progress:
         print(json.dumps({"phase": "corpus", "status": "checking"}), file=sys.stderr, flush=True)
-    kb, sources, corpus_hash = documents.snapshot(kb)
+    kb, _, corpus_key = documents.snapshot(kb)
     output = Path(output).resolve()
     cache = Path(cache_dir).resolve() if cache_dir else output.parent / ".prepared"
     for target in (output, cache):
@@ -337,14 +307,14 @@ def prepare(
     package_code = (
         {}
         if old_style
-        else {p.name: file_digest(p) for p in sorted(candidate.PACKAGE.glob("*.py"))}
+        else {p.name: p.read_text(encoding="utf-8") for p in sorted(candidate.PACKAGE.glob("*.py"))}
     )
     if (candidate.PACKAGE / "AGENT.md").exists():
-        package_code["AGENT.md"] = file_digest(candidate.PACKAGE / "AGENT.md")
+        package_code["AGENT.md"] = (candidate.PACKAGE / "AGENT.md").read_text(encoding="utf-8")
     preparation_key = fingerprint(
         {
             "schema": 1,
-            "corpus": corpus_hash,
+            "corpus": corpus_key,
             "settings": value,
             "encoder": identity,
             "metadata": source_info,
@@ -362,7 +332,7 @@ def prepare(
             raise ValueError("incomplete/nonempty output; inspect it and choose a new --build-dir")
         lexical_key = fingerprint(
             {
-                "corpus": corpus_hash,
+                "corpus": corpus_key,
                 "mode": "structure" if structured else "sections",
                 "chunk_chars": config["chunk_chars"],
                 "overlap_lines": config["overlap_lines"],
@@ -392,8 +362,6 @@ def prepare(
                         )
                     else:
                         build_index(kb, stage, dict(config, method="bm25_sections", rerank=False))
-                    if documents.snapshot(kb)[2] != corpus_hash:
-                        raise ValueError("corpus changed during preparation")
 
                 publish_artifact(lexical, build_lexical)
                 base_manifest = verify_artifacts(lexical)
@@ -407,7 +375,6 @@ def prepare(
             matrix_key = fingerprint(
                 {
                     "lexical_key": lexical_key,
-                    "index": base_manifest["files"]["index.sqlite3"],
                     "encoder": identity,
                     "batch": config["embedding_batch"],
                 }
@@ -423,14 +390,9 @@ def prepare(
                             lexical, stage, config, resume_from=resume_from,
                             devices=devices, progress=progress,
                         )
-                        if embeddings.model_identity(config, embedding_revision) != identity:
-                            raise ValueError("embedding weights changed during preparation")
                         info.update(
                             embedding_identity=identity,
-                            files={
-                                "vectors.f32": file_digest(stage / "vectors.f32"),
-                                "checkpoint.json": file_digest(stage / "checkpoint.json"),
-                            },
+                            files=["checkpoint.json", "vectors.f32"],
                         )
                         write_json(stage / "build.json", info)
 
@@ -445,7 +407,6 @@ def prepare(
                 for key in (
                     "candidate",
                     "candidate_settings",
-                    "candidate_settings_sha256",
                     "implementation",
                     "shared_implementation",
                 ):
@@ -481,8 +442,6 @@ def prepare(
                 manifest = candidate.finish_preparation(kb, stage, manifest, value, source_manifest)
             else:
                 manifest = common.seal_build(stage, manifest, value, candidate.PACKAGE)
-            if documents.snapshot(kb)[2] != corpus_hash:
-                raise ValueError("corpus changed during preparation")
             if (
                 source_info is not None
                 and documents.source_metadata(kb, source_manifest)[1] != source_info
@@ -490,7 +449,6 @@ def prepare(
                 raise ValueError("source metadata changed during preparation")
             manifest.update(
                 build_seconds=time.monotonic() - started,
-                shared_implementation=code,
                 preparation={
                     "schema_version": 1,
                     "key": preparation_key,
@@ -499,11 +457,9 @@ def prepare(
                     "embeddings_reused": matrix_reused,
                 },
             )
-            manifest["files"] = {
-                p.name: file_digest(p)
-                for p in stage.iterdir()
-                if p.is_file() and p.name != "build.json"
-            }
+            manifest["files"] = sorted(
+                p.name for p in stage.iterdir() if p.is_file() and p.name != "build.json"
+            )
             write_json(stage / "build.json", manifest)
 
         publish_artifact(output, assemble)
@@ -534,7 +490,7 @@ def build_index(kb: Path, output: Path, config: dict[str, Any]) -> dict[str, Any
     db = sqlite3.connect(output / "index.sqlite3")
     try:
         db.executescript("""
-        CREATE TABLE documents(origin TEXT PRIMARY KEY, sha256 TEXT, body TEXT);
+        CREATE TABLE documents(origin TEXT PRIMARY KEY, body TEXT);
         CREATE TABLE chunks(id INTEGER PRIMARY KEY, origin TEXT, seq INTEGER, section TEXT,
           start INTEGER, end INTEGER, line_start INTEGER, line_end INTEGER,
           body TEXT, length INTEGER);
@@ -545,15 +501,15 @@ def build_index(kb: Path, output: Path, config: dict[str, Any]) -> dict[str, Any
         CREATE INDEX edge_source ON edges(source);
         CREATE INDEX edge_target ON edges(target);
         """)
-        source_hashes = []
+        sources = []
         chunk_id = 0
         for path in paths:
             raw = path.read_bytes()
             body = raw.decode("utf-8-sig")
             if "\x00" in body:
                 raise ValueError(f"NUL bytes in document {path.name}")
-            source_hashes.append((path.stem, digest(raw)))
-            db.execute("INSERT INTO documents VALUES (?, ?, ?)", (path.stem, digest(raw), body))
+            sources.append(path.stem)
+            db.execute("INSERT INTO documents VALUES (?, ?)", (path.stem, body))
             for seq, chunk in enumerate(
                 split_document(body, config["chunk_chars"], config["overlap_lines"])
             ):
@@ -624,15 +580,14 @@ def build_index(kb: Path, output: Path, config: dict[str, Any]) -> dict[str, Any
         "config": config,
         "documents": len(paths),
         "chunks": chunk_id,
-        "corpus_sha256": digest(json.dumps(source_hashes).encode()),
-        "sources": source_hashes,
+        "sources": sources,
         "dimension": dimension,
         "mean_length": mean_length,
         "edges": edge_count,
         "link_diagnostics": link_stats,
         "build_seconds": time.monotonic() - started,
         "python": sys.version.split()[0],
-        "files": {p.name: file_digest(p) for p in output.iterdir() if p.is_file()},
+        "files": sorted(p.name for p in output.iterdir() if p.is_file()),
     }
     write_json(output / "build.json", manifest)
     return manifest

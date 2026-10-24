@@ -185,7 +185,6 @@ def test_command_metric_has_no_required_llm_criteria() -> None:
         "version": "distance-v1", "kind": "command", "direction": "minimize",
         "command": {
             "argv": ["/opt/scorer"],
-            "source_sha256": {"/opt/scorer": "a" * 64},
         },
     })
     assert metric.kind == "command"
@@ -194,14 +193,23 @@ def test_command_metric_has_no_required_llm_criteria() -> None:
 
 
 def test_command_metric_defaults_to_no_model_access() -> None:
-    command = CommandMetric(argv=["/opt/scorer"], source_sha256={"/opt/scorer": "a" * 64})
+    command = CommandMetric(argv=["/opt/scorer"])
     assert command.uses_model is False
+
+
+@pytest.mark.parametrize("legacy_sources", [None, "invalid", {"relative": "invalid"}])
+def test_command_metric_ignores_obsolete_source_checksums(legacy_sources: object) -> None:
+    command = CommandMetric.model_validate({
+        "argv": ["/opt/scorer"], "source_sha256": legacy_sources,
+    })
+    assert command == CommandMetric(argv=["/opt/scorer"])
+    assert "source_sha256" not in command.model_dump()
 
 
 @pytest.mark.parametrize("field", ["command", "aggregation"])
 @pytest.mark.parametrize("uses_model", [False, True])
 def test_command_model_access_can_be_configured(field: str, uses_model: bool) -> None:
-    command = {"argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "a" * 64}}
+    command = {"argv": ["/opt/scorer"]}
     metric = Metric.model_validate({
         "version": "v1", "kind": "command", "command": command,
         field: {**command, "uses_model": uses_model},
@@ -216,7 +224,7 @@ def test_command_model_access_can_be_configured(field: str, uses_model: bool) ->
 def test_command_model_access_requires_boolean(uses_model: object) -> None:
     with pytest.raises(ValidationError):
         CommandMetric.model_validate({
-            "argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "a" * 64},
+            "argv": ["/opt/scorer"],
             "uses_model": uses_model,
         })
 
@@ -226,7 +234,7 @@ def test_command_metric_rejects_builtin_vote_configuration() -> None:
         Metric.model_validate({
             "version": "v1", "kind": "command", "votes": 7,
             "command": {
-                "argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "a" * 64},
+                "argv": ["/opt/scorer"],
             },
         })
 
@@ -249,17 +257,13 @@ def test_command_example_may_omit_reference() -> None:
 
 
 @pytest.mark.parametrize("command", [
-    {"argv": [], "source_sha256": {"/opt/scorer": "a" * 64}},
-    {"argv": ["scorer"], "source_sha256": {"/opt/scorer": "a" * 64}},
-    {"argv": ["/opt/scorer"], "source_sha256": {}},
-    {"argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "bad"}},
-    {"argv": ["/opt/scorer"], "source_sha256": {"scorer": "a" * 64}},
-    {"argv": ["/opt/scorer"], "source_sha256": {"/opt/other": "a" * 64}},
-    {"argv": ["/opt/scorer\x00"], "source_sha256": {"/opt/scorer": "a" * 64}},
-    {"argv": ["/opt/scorer"], "source_sha256": {"/opt/scorer": "a" * 64},
+    {"argv": []},
+    {"argv": ["scorer"]},
+    {"argv": ["/opt/scorer\x00"]},
+    {"argv": ["/opt/scorer"],
      "timeout_seconds": float("inf")},
 ])
-def test_command_requires_pinned_absolute_executable(command: dict[str, object]) -> None:
+def test_command_requires_safe_absolute_executable(command: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         Metric.model_validate({"version": "v1", "kind": "command", "command": command})
 

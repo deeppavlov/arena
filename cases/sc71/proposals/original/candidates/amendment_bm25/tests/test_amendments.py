@@ -100,6 +100,22 @@ def test_ambiguity_and_missing_targets_are_not_resolved(api, tmp_path):
     assert missing["resolution"] == "missing" and missing["relation_type"] == "repeals"
 
 
+def test_relations_use_catalog_identities(api, tmp_path):
+    kb, _ = make_corpus(tmp_path)
+    out = tmp_path / "catalog"
+    out.mkdir()
+    rows = [
+        {
+            "origin_id": "a" * 64,
+            "identity": {"kind": "order", "date": "01.01.2024", "number": "10-1"},
+        },
+        {"origin_id": "b" * 64, "identity": None},
+    ]
+    result = api.relations.build_relations(rows, kb, out)
+    assert result["relations"] > 0
+    assert result["resolutions"]["unique"] > 0
+
+
 def test_retrieval_reserves_change_bundle_and_ablation(api, tmp_path, monkeypatch):
     kb, texts = make_corpus(tmp_path)
     index = tmp_path / "index"

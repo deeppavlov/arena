@@ -16,7 +16,7 @@ from uuid import uuid4
 _PUBLIC_PARAMS = {
     "campaign_id", "case_id", "candidate_id", "candidate_digest", "revision", "parent_ids",
     "proposal_index", "hypothesis", "change", "model", "harness", "harness_version", "parameters",
-    "metric_version", "metric_package_digest", "direction", "dataset_id", "dataset_version",
+    "metric_version", "direction", "dataset_id", "dataset_version",
     "conditions_id",
 }
 _SECRET_KEY = re.compile(

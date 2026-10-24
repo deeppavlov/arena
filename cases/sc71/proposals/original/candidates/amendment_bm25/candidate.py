@@ -68,8 +68,6 @@ def finish_preparation(kb, output, manifest, value, manifest_path=None):
     """Attach this strategy metadata to an already prepared structural index."""
     try:
         summary, rows, _, _ = catalog.add_catalog(kb, output, manifest_path)
-        if summary["corpus_sha256"] != manifest["corpus_sha256"]:
-            raise ValueError("corpus changed during index construction")
         db = sqlite3.connect(output / "index.sqlite3")
         try:
             summary["relations"] = relations.build_relations(rows, kb, output, db)

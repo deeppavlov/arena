@@ -27,7 +27,7 @@ def main() -> None:
     except (OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
     print(json.dumps({
-        "action": arguments.action, "sha256": provenance["sha256"],
+        "action": arguments.action,
         "files": len(provenance["files"]), "semantic_tests_run": False,
     }, sort_keys=True))
 

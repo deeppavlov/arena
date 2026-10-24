@@ -94,9 +94,9 @@ class DockerRunner:
 
     def __post_init__(self) -> None:
         if not re.fullmatch(
-            r"(?:[A-Za-z0-9][A-Za-z0-9._:/-]*@)?sha256:[a-fA-F0-9]{64}", self.image
+            r"[A-Za-z0-9][A-Za-z0-9._:@-]*(?:/[A-Za-z0-9][A-Za-z0-9._:@-]*)*", self.image
         ):
-            raise ValueError("runner image must be pinned by sha256")
+            raise ValueError("invalid runner image")
         if self.network == "host" or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", self.network):
             raise ValueError("invalid runner network")
         if type(self.supports_build) is not bool or type(self.supports_asset_selection) is not bool:

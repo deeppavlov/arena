@@ -199,11 +199,54 @@ def test_crashed_or_failed_scenario_cannot_silently_start_again(acceptance, tmp_
     assert "capability" not in path.read_text()
 
 
-def test_configuration_fingerprint_rejects_mutation(acceptance, tmp_path):
-    settings = {"runner": {"image": "sha256:first"}}
+def test_saved_configuration_rejects_changed_settings(acceptance, tmp_path):
+    settings = {"runner": {"image": "hermes:first"}}
     path = tmp_path / "state.json"
-    initial = acceptance.load_state(path, settings, "fixture-digest")
+    initial = acceptance.load_state(path, settings)
     acceptance.save_json(path, initial)
-    assert acceptance.load_state(path, settings, "fixture-digest") == initial
+    assert acceptance.load_state(path, settings) == initial
+    assert initial["settings"] == settings
     with pytest.raises(ValueError, match="configuration"):
-        acceptance.load_state(path, settings, "changed-fixture")
+        acceptance.load_state(path, {"runner": {"image": "hermes:changed"}})
+
+
+def test_legacy_state_discards_checksums_and_preserves_answer(acceptance, tmp_path):
+    settings = {"runner": {"image": "hermes:first"}}
+    initial = {
+        "settings": {**settings, "metric_lock_sha256": "unusable"},
+        "configuration_sha256": "unusable", "fixture_sha256": "unusable",
+        "scenarios": {"retrieval": {"status": "accepted", "result": {"answer": "saved"}}},
+    }
+    path = tmp_path / "state.json"
+    acceptance.save_json(path, initial)
+    loaded = acceptance.load_state(path, settings)
+    assert loaded == {"settings": settings, "scenarios": initial["scenarios"]}
+    operation = Mock()
+    acceptance.run_scenario("retrieval", path, loaded, operation, Mock())
+    operation.assert_not_called()
+    with pytest.raises(ValueError, match="configuration"):
+        acceptance.load_state(path, {"runner": {"image": "hermes:changed"}})
+
+
+def test_acceptance_verification_does_not_require_metric_lock(acceptance, tmp_path, monkeypatch):
+    from evaluator import metric_package
+
+    settings = {"metric_package": str(tmp_path / "metric")}
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps(settings))
+    state = tmp_path / "state.json"
+    state.write_text(json.dumps({
+        "settings": settings,
+        "scenarios": {"retrieval": {"status": "accepted", "result": {}}},
+    }))
+    load_metric = Mock()
+    verify_result = Mock()
+    monkeypatch.setattr(metric_package, "load_metric", load_metric)
+    monkeypatch.setitem(acceptance.main.__globals__, "verify_result", verify_result)
+    monkeypatch.setattr(acceptance.sys, "argv", [
+        "run.py", "--config", str(config), "--state", str(state),
+        "--scenario", "retrieval", "--verify-only",
+    ])
+    assert acceptance.main() == 0
+    load_metric.assert_called_once_with(tmp_path / "metric")
+    verify_result.assert_called_once_with(settings, "retrieval", {})

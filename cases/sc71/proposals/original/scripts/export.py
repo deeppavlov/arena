@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.dont_write_bytecode = True
 
-from retrieval.storage import file_digest, load_candidate
+from retrieval.storage import load_candidate
 
 
 def export(name, output, index=None, embedding_model=None):
@@ -39,11 +39,11 @@ def export(name, output, index=None, embedding_model=None):
     (output / "selection.json").write_text(json.dumps(selection, indent=2), encoding="utf-8")
     manifest = {
         "arena_contract_commit": "4858f0bf02c3766b84d8dd4bce7810390b9028bc",
-        "files": {
-            p.relative_to(output).as_posix(): file_digest(p)
+        "files": [
+            p.relative_to(output).as_posix()
             for p in sorted(output.rglob("*"))
             if p.is_file()
-        },
+        ],
     }
     (output / "export.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest

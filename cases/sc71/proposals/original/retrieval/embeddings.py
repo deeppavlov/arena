@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import ipaddress
 import json
 import math
@@ -149,7 +148,7 @@ class Encoder:
 
 
 def model_identity(config, revision=None):
-    """Identify weights, not their machine-specific local directory or an API key."""
+    """Identify the configured local model or remote revision."""
     identity = {
         "backend": config["embedding_backend"],
         "model": config["embedding_model"],
@@ -160,19 +159,15 @@ def model_identity(config, revision=None):
         "prefix": "header400-newline-body-v1",
     }
     if identity["backend"] == "local":
-        from .storage import digest, file_digest
-
         root = Path(os.environ.get("SC71_LOCAL_EMBED_MODEL", ""))
         if not os.environ.get("SC71_LOCAL_EMBED_MODEL") or not root.is_dir():
             raise ValueError("SC71_LOCAL_EMBED_MODEL must name preloaded weights")
-        files = [
-            (p.relative_to(root).as_posix(), file_digest(p))
-            for p in sorted(root.rglob("*"))
-            if p.is_file() and ".cache" not in p.relative_to(root).parts
-        ]
-        if not files:
+        if not any(
+            p.is_file() and ".cache" not in p.relative_to(root).parts
+            for p in root.rglob("*")
+        ):
             raise ValueError("embedding weights directory is empty")
-        identity["weights_sha256"] = digest(json.dumps(files).encode())
+        identity["model_path"] = str(root.resolve())
     else:
         revision = revision or os.environ.get("SC71_EMBED_REVISION")
         if not revision:
@@ -193,32 +188,28 @@ def validate_devices(config, devices):
     return list(devices)
 
 
-def prefix_metadata(index, config, completed, dimension, sha256):
-    """Bind a contiguous prefix to exact source rows, inputs and encoder weights."""
-    from .storage import file_digest
-
+def prefix_metadata(index, config, completed, dimension):
+    """Describe a contiguous prefix with its sources and encoder settings."""
     index = Path(index)
     manifest = json.loads((index / "build.json").read_text(encoding="utf-8"))
     return {
         "schema": "sc71-embedding-prefix-v1",
         "chunks": manifest["chunks"],
-        "corpus_sha256": manifest["corpus_sha256"],
-        "index_sha256": file_digest(index / "index.sqlite3"),
+        "sources": manifest["sources"],
         "embedding_identity": model_identity(config),
         "completed_rows": completed,
         "dimension": dimension,
-        "prefix_sha256": sha256,
         "batch_per_device": config["embedding_batch"],
     }
 
 
 def read_prefix(source, expected):
-    """Verify only committed bytes; never edit the source or trust a partial tail."""
+    """Read complete rows, checking dimensions and normalized vector values."""
     import numpy as np
 
     source = Path(source)
     metadata = json.loads((source / "checkpoint.json").read_text(encoding="utf-8"))
-    for key in ("schema", "chunks", "corpus_sha256", "index_sha256", "embedding_identity"):
+    for key in ("schema", "chunks", "sources", "embedding_identity"):
         if metadata.get(key) != expected[key]:
             raise ValueError(f"checkpoint {key} differs from the current inputs")
     count, dimension = metadata.get("completed_rows"), metadata.get("dimension")
@@ -229,21 +220,17 @@ def read_prefix(source, expected):
     path = source / "vectors.f32"
     if path.is_symlink() or not path.is_file() or path.stat().st_size < count * dimension * 4:
         raise ValueError("checkpoint vectors are missing or truncated")
-    hashed = hashlib.sha256()
     with path.open("rb") as stream:
         remaining = count
         while remaining:
             rows = min(remaining, 4096)
             raw = stream.read(rows * dimension * 4)
-            hashed.update(raw)
             vectors = np.frombuffer(raw, dtype="<f4").reshape(rows, dimension)
             if not np.isfinite(vectors).all() or not np.allclose(
                 np.linalg.norm(vectors, axis=1), 1, atol=1e-4
             ):
                 raise ValueError("checkpoint contains invalid/non-normalized vectors")
             remaining -= rows
-    if hashed.hexdigest() != metadata.get("prefix_sha256"):
-        raise ValueError("checkpoint prefix hash mismatch")
     return metadata
 
 
@@ -263,20 +250,19 @@ def _encode_worker(texts):
 
 
 def prepare_matrix(index, output, config, *, resume_from=None, devices=None, progress=False):
-    """Stream ordered batches; retain verified prefix bytes and checkpoint every block."""
+    """Stream ordered batches; retain completed rows and checkpoint every block."""
     import numpy as np
 
     devices = validate_devices(config, devices)
     output = Path(output)
     if resume_from is not None and Path(resume_from).resolve() == output.resolve():
         raise ValueError("checkpoint source and destination must be different")
-    expected = prefix_metadata(index, config, 0, 1, hashlib.sha256(b"").hexdigest())
+    expected = prefix_metadata(index, config, 0, 1)
     prefix = read_prefix(resume_from, expected) if resume_from else None
     count = prefix["completed_rows"] if prefix else 0
     dimension = prefix["dimension"] if prefix else None
     resumed = count
     started = time.monotonic()
-    hashed = hashlib.sha256()
     executor = device_queue = None
     db = sqlite3.connect((index / "index.sqlite3").resolve().as_uri() + "?mode=ro", uri=True)
     try:
@@ -295,10 +281,7 @@ def prepare_matrix(index, output, config, *, resume_from=None, devices=None, pro
                         if not raw:
                             raise ValueError("source checkpoint changed while copying")
                         stream.write(raw)
-                        hashed.update(raw)
                         remaining -= len(raw)
-                if hashed.hexdigest() != prefix["prefix_sha256"]:
-                    raise ValueError("source checkpoint changed while copying")
 
             def commit():
                 from .storage import write_json
@@ -309,7 +292,6 @@ def prepare_matrix(index, output, config, *, resume_from=None, devices=None, pro
                     expected,
                     completed_rows=count,
                     dimension=dimension,
-                    prefix_sha256=hashed.hexdigest(),
                 )
                 temporary = output / ".checkpoint.next"
                 write_json(temporary, metadata)
@@ -377,7 +359,6 @@ def prepare_matrix(index, output, config, *, resume_from=None, devices=None, pro
                             raise ValueError("embedding dimension changed within build")
                         raw = np.asarray(vectors, dtype="<f4").tobytes()
                         stream.write(raw)
-                        hashed.update(raw)
                         count += len(vectors)
                     commit()
     finally:
@@ -393,7 +374,6 @@ def prepare_matrix(index, output, config, *, resume_from=None, devices=None, pro
             "devices": devices or [os.environ.get("SC71_DEVICE", "cpu")],
             "batch_per_device": config["embedding_batch"],
             "resumed_rows": resumed,
-            "resumed_prefix_sha256": prefix["prefix_sha256"] if prefix else None,
             "source_provenance": prefix.get("legacy_import") if prefix else None,
             "seconds": time.monotonic() - started,
         },

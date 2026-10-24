@@ -72,10 +72,7 @@ def finish_preparation(kb, output, manifest, value, manifest_path=None):
     """Attach this strategy metadata to an already prepared structural index."""
     try:
         summary, _, _, _ = catalog.add_catalog(kb, output, manifest_path)
-        if summary["corpus_sha256"] != manifest["corpus_sha256"]:
-            raise ValueError("corpus changed during index construction")
         manifest["catalog"] = summary
-        manifest["agent_instruction_sha256"] = base.file_digest(PACKAGE / "AGENT.md")
         return common.seal_build(output, manifest, value, PACKAGE)
     except Exception:
         (output / "build.json").unlink(missing_ok=True)
@@ -375,8 +372,6 @@ def retrieve(output, question, *, no_agent=False):
     if len(question) > value["agent"]["max_input_chars"]:
         raise ValueError("question exceeds agent input budget")
     instruction = (PACKAGE / "AGENT.md").read_text(encoding="utf-8")
-    if base.digest(instruction.encode()) != manifest["agent_instruction_sha256"]:
-        raise ValueError("agent instruction changed after this build")
     url, model = os.environ.get("SC71_CHAT_URL", ""), os.environ.get("SC71_CHAT_MODEL", "")
     if not url or not model:
         raise ValueError("file agent requires SC71_CHAT_URL and SC71_CHAT_MODEL")
@@ -419,7 +414,6 @@ def retrieve(output, question, *, no_agent=False):
                 action = json.loads(raw)
                 if not isinstance(action, dict) or set(action) != {"tool", "args"}:
                     raise ValueError("agent reply must be an action object")
-                call["response_sha256"] = base.digest(raw.encode())
                 call["finish_reason"] = data["choices"][0].get("finish_reason")
             except (ValueError, KeyError, IndexError, TypeError, OSError):
                 raise AgentError(
@@ -440,9 +434,6 @@ def retrieve(output, question, *, no_agent=False):
                     "step": index + 1,
                     "action": action,
                     "status": observation["status"],
-                    "observation_sha256": base.digest(
-                        json.dumps(observation, sort_keys=True).encode()
-                    ),
                 }
             )
             messages.extend(
@@ -463,15 +454,12 @@ def retrieve(output, question, *, no_agent=False):
         "status": "retrieved" if hits else "no_candidates",
         "hits": hits,
         "links": [],
-        "corpus_sha256": manifest["corpus_sha256"],
-        "query_sha256": base.digest(question.encode()),
         "agent": {
             "enabled": True,
             "stop_reason": stop,
             "steps": steps,
             "calls": calls,
             "observation_chars": observation_chars,
-            "instruction_sha256": manifest["agent_instruction_sha256"],
         },
         "model_calls_retrieval": len(calls),
         "context_chars_used": used,

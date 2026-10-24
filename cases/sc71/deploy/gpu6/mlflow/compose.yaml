@@ -1,7 +1,7 @@
 name: sc71-mlflow
 services:
   shared-tracking:
-    image: ${SC71_MLFLOW_IMAGE:-sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18}
+    image: ${SC71_MLFLOW_IMAGE:?}
     command:
       - mlflow
       - server
@@ -42,7 +42,7 @@ services:
     cpus: 2
     restart: unless-stopped
   operator-tracking:
-    image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
+    image: nginx:1.28-alpine
     entrypoint: [nginx, -g, 'daemon off;']
     user: '10001:10001'
     volumes:

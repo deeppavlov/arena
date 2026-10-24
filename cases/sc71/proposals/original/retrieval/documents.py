@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
@@ -112,14 +113,20 @@ def corpus_paths(kb):
 def snapshot(kb):
     """Read source bytes only; paths in metadata are never opened."""
     kb, paths = corpus_paths(kb)
-    sources = [(p.stem, base.file_digest(p)) for p in paths]
-    return kb, sources, base.digest(json.dumps(sources).encode())
+    sources = [p.stem for p in paths]
+    cache_key = hashlib.sha256()
+    for path in paths:
+        cache_key.update(f"{path.stem}:{path.stat().st_size}:".encode())
+        with path.open("rb") as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                cache_key.update(block)
+    return kb, sources, cache_key.hexdigest()
 
 
 def source_metadata(kb, manifest_path=None):
     source = Path(manifest_path) if manifest_path else kb.parent / "manifest.json"
     if not source.exists() and manifest_path is None:
-        return {}, {"source_manifest_sha256": None, "corpus_version": None, "snapshot_tag": None}
+        return {}, {"source_manifest": None, "corpus_version": None, "snapshot_tag": None}
     data = json.loads(source.read_text(encoding="utf-8-sig"))
     mapping = {}
     for item in data.get("objects", []):
@@ -132,7 +139,7 @@ def source_metadata(kb, manifest_path=None):
             raise ValueError("original path must be text")
         mapping[origin] = relative  # Display metadata only; never open this path.
     return mapping, {
-        "source_manifest_sha256": base.file_digest(source),
+        "source_manifest": source.name,
         "corpus_version": data.get("corpus_version"),
         "snapshot_tag": data.get("snapshot_tag"),
     }
@@ -157,7 +164,6 @@ def records(kb, manifest_path=None):
             "origin_id": path.stem,
             "source_relpath": path.name,
             "original_path": mapping.get(path.stem),
-            "sha256": base.digest(raw),
             "characters": len(text),
             "lines": len(source_lines(text)),
             "title": meta["title"],
@@ -174,13 +180,11 @@ def records(kb, manifest_path=None):
 
 def write_catalog(kb, output, manifest_path=None, db=None):
     output = Path(output)
-    rows, hashes, kinds = [], [], Counter()
+    rows, kinds = [], Counter()
     source = {}
     for record, _text, _parsed, current_source in records(kb, manifest_path):
         source = current_source
         rows.append(record)
-        origin = record["origin_id"]
-        hashes.append((origin, record["sha256"]))
         kinds[record["doc_type"]] += 1
     with (output / "catalog.jsonl").open("w", encoding="utf-8", newline="\n") as stream:
         for record in rows:
@@ -191,7 +195,6 @@ def write_catalog(kb, output, manifest_path=None, db=None):
         "documents": len(rows),
         "identified": sum(x["identity"] is not None for x in rows),
         "with_original_path": sum(x["original_path"] is not None for x in rows),
-        "corpus_sha256": base.digest(json.dumps(hashes).encode()),
         "profiles": dict(kinds),
         "model_calls": 0,
         **source,

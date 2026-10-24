@@ -3,7 +3,7 @@ import hashlib
 import json
 import math
 from pathlib import PurePosixPath
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -29,23 +29,22 @@ class Criterion(StrictModel):
 
 class CommandMetric(StrictModel):
     argv: list[str] = Field(min_length=1)
-    source_sha256: dict[str, str] = Field(min_length=1)
     timeout_seconds: float = Field(default=21600, gt=0, allow_inf_nan=False)
     uses_model: bool = Field(default=False, strict=True)
 
+    @model_validator(mode="before")
+    @classmethod
+    def discard_legacy_sources(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {name: item for name, item in value.items() if name != "source_sha256"}
+        return value
+
     @model_validator(mode="after")
-    def pinned_executable(self) -> "CommandMetric":
+    def safe_executable(self) -> "CommandMetric":
         if any("\x00" in argument for argument in self.argv):
             raise ValueError("command arguments must not contain null bytes")
         if not PurePosixPath(self.argv[0]).is_absolute():
             raise ValueError("command executable must be an absolute path")
-        for name, digest in self.source_sha256.items():
-            if not PurePosixPath(name).is_absolute() or "\x00" in name:
-                raise ValueError("command source paths must be absolute")
-            if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
-                raise ValueError("command sources require lowercase SHA-256 hashes")
-        if self.argv[0] not in self.source_sha256:
-            raise ValueError("command executable must be pinned in source_sha256")
         return self
 
 

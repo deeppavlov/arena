@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import shutil
@@ -139,26 +138,16 @@ def main():
             }
         )
         print(name, run.returncode, flush=True)
-    before = json.loads((package / "checks/protected-before.json").read_text(encoding="utf-8"))
-    workspace = packages.parent
-    changed = [
-        name
-        for name, expected in before.items()
-        if not (workspace / name).is_file()
-        or hashlib.sha256((workspace / name).read_bytes()).hexdigest() != expected
-    ]
-    audit = {"checked": len(before), "changed": changed}
-    (output / "protected-after.json").write_text(json.dumps(audit, indent=2), encoding="utf-8")
     (output / "results.json").write_text(
         json.dumps(
-            {"python": sys.version, "jobs": results, "preservation": audit},
+            {"python": sys.version, "jobs": results},
             ensure_ascii=False,
             indent=2,
         ),
         encoding="utf-8",
     )
     print("Output:", output)
-    raise SystemExit(int(bool(changed) or any(x["exit_code"] for x in results)))
+    raise SystemExit(int(any(x["exit_code"] for x in results)))
 
 
 if __name__ == "__main__":

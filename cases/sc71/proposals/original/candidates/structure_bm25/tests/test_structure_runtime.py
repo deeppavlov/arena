@@ -65,7 +65,9 @@ def prepare(tmp_path, name, url):
     sys.path.insert(0, str(PACKAGES.parent))
     from scripts.export import export
     bundle = tmp_path / "portable"
-    export(name, bundle)
+    manifest = export(name, bundle)
+    assert isinstance(manifest["files"], list)
+    assert all((bundle / name).is_file() for name in manifest["files"])
     package = bundle / "candidates" / name
     kb = tmp_path / "norm"
     kb.mkdir()
@@ -82,7 +84,6 @@ def prepare(tmp_path, name, url):
         SC71_CHAT_URL=url,
         SC71_CHAT_MODEL="synthetic-test",
         SC71_CHAT_KEY="synthetic-key",
-        SC71_VERIFY_BUILD="1",
     )
     index = tmp_path / "index"
     build = subprocess.run(

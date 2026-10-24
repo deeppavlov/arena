@@ -1,4 +1,3 @@
-import hashlib
 import json
 import sys
 import time
@@ -26,10 +25,6 @@ def command_metric(tmp_path: Path, code: str) -> Metric:
         "version": "test-v1", "kind": "command", "direction": "minimize",
         "command": {
             "argv": [executable, str(source)],
-            "source_sha256": {
-                name: hashlib.sha256(Path(name).read_bytes()).hexdigest()
-                for name in (executable, str(source))
-            },
         },
     })
 
@@ -99,7 +94,7 @@ time.sleep(10)
     assert attempts.read_text() == "attempt\n"
 
 
-def test_command_provenance_contains_configuration_and_sources(tmp_path: Path) -> None:
+def test_command_provenance_contains_configuration(tmp_path: Path) -> None:
     metric = command_metric(tmp_path, 'print(\'{"score": 0}\')\n')
     assert metric.command is not None
     assert command_provenance(metric) == {
@@ -108,21 +103,11 @@ def test_command_provenance_contains_configuration_and_sources(tmp_path: Path) -
     assert command_provenance(llm_metric()) is None
 
 
-def test_changed_implementation_fails_before_execution(tmp_path: Path) -> None:
-    metric = command_metric(tmp_path, 'print(\'{"score": 0}\')\n')
+def test_command_runs_updated_implementation_without_checksum_verification(tmp_path: Path) -> None:
+    metric = command_metric(tmp_path, "print('{\"score\": 0}')\n")
     assert command_provenance(metric)
-    (tmp_path / "metric.py").write_text('print(\'{"score": 100}\')\n')
-    with pytest.raises(ValueError, match="hash"):
-        evaluate_answer(metric, Example(id="x", input="source"), "answer")
-
-
-def test_unpinned_source_argument_is_rejected(tmp_path: Path) -> None:
-    metric = command_metric(tmp_path, 'print(\'{"score": 0}\')\n')
-    data = metric.model_dump()
-    del data["command"]["source_sha256"][str(tmp_path / "metric.py")]
-    unpinned = Metric.model_validate(data)
-    with pytest.raises(ValueError, match="pin"):
-        command_provenance(unpinned)
+    (tmp_path / "metric.py").write_text("print('{\"score\": 100}')\n")
+    assert evaluate_answer(metric, Example(id="x", input="source"), "answer")["score"] == 100
 
 
 def test_llm_metric_keeps_three_independent_votes() -> None:
@@ -193,9 +178,8 @@ print(json.dumps({"score": correct / (correct + incorrect)}))
     assert command_provenance(metric) == {
         "command": metric.command.model_dump(), "aggregation": metric.aggregation.model_dump(),
     }
-    (tmp_path / "aggregate" / "metric.py").write_text('print("changed")')
-    with pytest.raises(ValueError, match="hash"):
-        aggregate_results(metric, [result, other])
+    (tmp_path / "aggregate" / "metric.py").write_text("print('{\"score\": 0.75}')")
+    assert aggregate_results(metric, [result, other]) == 0.75
 
 
 def test_llm_aggregation_can_transform_quality_to_a_minimized_loss(tmp_path: Path) -> None:
@@ -216,16 +200,12 @@ def test_command_statistics_must_be_finite_json(tmp_path: Path) -> None:
         evaluate_answer(metric, Example(id="x", input="source"), "answer")
 
 
-def test_relative_source_cannot_bypass_implementation_pinning(tmp_path: Path) -> None:
-    metric = command_metric(tmp_path, 'print(\'{"score": 0}\')\n')
+def test_command_resolves_relative_source_from_root(tmp_path: Path) -> None:
+    metric = command_metric(tmp_path, "print('{\"score\": 0}')\n")
     data = metric.model_dump()
     data["command"]["argv"][1] = str((tmp_path / "metric.py").relative_to("/"))
-    pinned = Metric.model_validate(data)
-    assert evaluate_answer(pinned, Example(id="x", input="source"), "answer")["score"] == 0
-    del data["command"]["source_sha256"][str(tmp_path / "metric.py")]
-    unpinned = Metric.model_validate(data)
-    with pytest.raises(ValueError, match="pin"):
-        evaluate_answer(unpinned, Example(id="x", input="source"), "answer")
+    relative = Metric.model_validate(data)
+    assert evaluate_answer(relative, Example(id="x", input="source"), "answer")["score"] == 0
 
 
 def test_command_metric_can_match_empty_target_and_empty_input(tmp_path: Path) -> None:
@@ -399,42 +379,8 @@ def test_deeply_nested_invalid_json_retains_command_diagnostics(tmp_path: Path) 
     assert raised.value.diagnostics["stdout"].startswith("[[[")
 
 
-@pytest.mark.parametrize("change", ["added_file", "executable_mode"])
-@pytest.mark.parametrize("operation", ["evaluate", "aggregate", "provenance"])
-def test_loaded_metric_rechecks_complete_package_before_each_command(
-    tmp_path: Path, change: str, operation: str,
-) -> None:
-    from evaluator.metric_package import freeze_metric, load_metric
-
-    source = tmp_path / "source"
-    source.mkdir()
-    marker = tmp_path / "executed"
-    (source / "score.py").write_text(
-        f"import pathlib\npathlib.Path({str(marker)!r}).touch()\nprint('{{\"score\": 1}}')\n",
-    )
-    command = {"argv": ["python", "score.py"]}
-    (source / "metric.json").write_text(json.dumps({
-        "version": "package-v1", "kind": "command", "command": command, "aggregation": command,
-    }))
-    frozen = tmp_path / "frozen"
-    freeze_metric(source, frozen)
-    metric = load_metric(frozen)
-    if change == "added_file":
-        (frozen / "unexpected.py").write_text("VALUE = 1\n")
-    else:
-        (frozen / "score.py").chmod(0o755)
-    with pytest.raises(ValueError, match="lock"):
-        if operation == "evaluate":
-            evaluate_answer(metric, Example(id="x", input=""), "")
-        elif operation == "aggregate":
-            aggregate_results(metric, [{"score": 1}])
-        else:
-            command_provenance(metric)
-    assert not marker.exists()
-
-
 @pytest.mark.parametrize("replacement", ["lock", "root"])
-def test_loaded_metric_rejects_replaced_package_symlink_before_execution(
+def test_metric_load_rejects_replaced_package_symlink(
     tmp_path: Path, replacement: str,
 ) -> None:
     from evaluator.metric_package import freeze_metric, load_metric
@@ -465,4 +411,4 @@ def test_loaded_metric_rejects_replaced_package_symlink_before_execution(
         frozen.rename(relocated)
         frozen.symlink_to(relocated, target_is_directory=True)
     with pytest.raises(ValueError, match="symlink"):
-        evaluate_answer(metric, Example(id="x", input=""), "")
+        load_metric(frozen)

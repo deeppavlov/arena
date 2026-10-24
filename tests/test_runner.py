@@ -33,9 +33,21 @@ def fake_docker(monkeypatch, script):
     return commands, cleanup
 
 
-@pytest.mark.parametrize("image", ["python:3.12", "image:latest", "sha256:abc", "--help"])
-def test_requires_pinned_operator_image(image):
-    with pytest.raises(ValueError, match="pinned"):
+@pytest.mark.parametrize("image", [
+    "python", "python:3.12", "image:latest", "registry.example:5000/team/runner:v1",
+    IMAGE, "registry.example/team/runner@" + IMAGE,
+])
+def test_accepts_operator_image_references(image):
+    assert DockerRunner(image).image == image
+
+
+@pytest.mark.parametrize("image", [
+    "", "--help", "image --privileged", "image\n--privileged", " image", "image ",
+    "/image", "./image", "../image", "registry/../image", "registry//image",
+    "image;command", "$(command)", "image\\other",
+])
+def test_rejects_unsafe_operator_image_references(image):
+    with pytest.raises(ValueError, match="image"):
         DockerRunner(image)
 
 

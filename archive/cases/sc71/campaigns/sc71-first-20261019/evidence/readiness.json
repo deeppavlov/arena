@@ -79,26 +79,19 @@
       "llm_calls": 0,
       "passed": true,
       "query": "BM25 retrieval evaluation",
-      "results": 3,
-      "source_image": "sha256:82d71ed44a77a780b3caeb29bce0cdaf709b2ec506f05ddc3099f8546ed4407b"
+      "results": 3
     },
     "synthetic_build": {
       "model_calls": 0,
       "production_store_used": false,
       "readonly_prepared": true,
-      "source_images": {
-        "evaluator": "sha256:ba01c4008398f4193a8e84538bfb884a2f0ec63a8d4351b32d2d8ded88109909",
-        "hermes": "sha256:cbcb04607e26f799d68dc18394ce2dc97b4b392d67166bf8720f38ac65a6fdc4"
-      },
       "status": "passed",
       "total_tokens": 0,
       "wall_seconds": 7.799933507107198
     }
   },
   "dataset": {
-    "kb_digest": "583c1de943acc3b45e463f2de95b4c41dd3d7e42e69babd137059fb009b144b5",
     "kb_md_files": 4454,
-    "metric_digest": "e60f2fb93a0dd6d8703ed7d40ed44c54db943287ae687891fe87697b12396e29",
     "per_topic": {
       "private": 12,
       "public": 6,
@@ -134,11 +127,6 @@
     "max_spawn_depth": 3,
     "oneshot_max_children": 30,
     "scope": "native per-batch concurrency and per-parent one-shot total"
-  },
-  "images": {
-    "evaluator": "sha256:ba01c4008398f4193a8e84538bfb884a2f0ec63a8d4351b32d2d8ded88109909",
-    "hermes": "sha256:a3f7696d01f77aa4d2789ac26b3c7e3414707b4e697c0e1b3913c6a99442a07d",
-    "infra": "sha256:2610755290920a44ef16a534dfbe7b8ee07c9c6b221e7ae9e0b6462f0ea7f96a"
   },
   "isolation": {
     "networks": {

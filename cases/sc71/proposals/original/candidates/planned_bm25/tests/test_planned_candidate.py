@@ -85,6 +85,8 @@ def test_live_planner_gets_question_only_once_and_not_gold(api, monkeypatch):
     assert plan["queries"] == ["Согласование закупки"]
     assert json.loads(calls[0]["messages"][1]["content"]) == {"question": "Кто одобряет покупку?"}
     assert plan["model"] == "synthetic" and plan["usage"]["completion_tokens"] == 7
+    assert plan["question"] == "Кто одобряет покупку?"
+    assert plan["prompt"] == api.PLANNER_PROMPT
 
 
 def test_malformed_planner_reply_is_not_silently_replaced_or_retried(api, monkeypatch):
@@ -137,6 +139,29 @@ def test_cached_plan_is_bound_to_question(api, tmp_path):
     plan = api.cached_plan("Один вопрос?", ["Согласование приобретения"])
     with pytest.raises(ValueError, match="question"):
         api.retrieve(output, "Другой вопрос?", plan=plan)
+
+
+def test_cached_plan_is_bound_to_prompt(api, tmp_path):
+    kb, _ = make_corpus(tmp_path)
+    output = tmp_path / "index"
+    api.build(kb, output, api.defaults())
+    question = "Кто оформляет заявку на оборудование?"
+    plan = api.cached_plan(question, ["Согласование приобретения"])
+    plan["prompt"] = "Другой промпт"
+    with pytest.raises(ValueError, match="prompt"):
+        api.retrieve(output, question, plan=plan)
+
+
+def test_synthetic_plan_fixture_matches_question_and_prompt(api, tmp_path):
+    output = tmp_path / "index"
+    api.build(PACKAGE / "examples" / "norm", output, api.defaults())
+    question = (PACKAGE / "examples" / "question.txt").read_text().strip()
+    plan = json.loads((PACKAGE / "examples" / "synthetic-plan.json").read_text())
+    assert plan["question"] == question
+    assert plan["prompt"] == api.PLANNER_PROMPT
+    result = api.retrieve(output, question, plan=plan)
+    assert result["plan"]["source"] == "cached"
+    assert result["queries"] == [question, *plan["queries"]]
 
 
 def test_answer_prompt_is_shared_and_plan_never_becomes_evidence(api, monkeypatch):

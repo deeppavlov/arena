@@ -143,7 +143,7 @@ def check_command_metric(root: Path) -> None:
     metric = root / "command-metric-frozen"
     package = freeze_metric(draft, metric)
     assert metric_package_provenance(metric) == package
-    assert package["sha256"]
+    assert set(package["files"]) == {"metric.json", "metric.py"}
     prepared_metric = load_metric(metric)
     train_results = [
         evaluate_answer(

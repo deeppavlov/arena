@@ -15,10 +15,10 @@ def publish_asset(store: Path, content: str) -> str:
     encoded_content = content.encode()
     manifest = {"version": 1, "entries": [{
         "path": "index.txt", "type": "file", "size": len(encoded_content),
-        "sha256": hashlib.sha256(encoded_content).hexdigest(), "executable": False,
+        "executable": False,
     }]}
     encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
-    digest = hashlib.sha256(encoded).hexdigest()
+    digest = hashlib.sha256(encoded + encoded_content).hexdigest()
     directory = store / digest
     directory.mkdir(parents=True)
     (directory / "index.txt").write_bytes(encoded_content)

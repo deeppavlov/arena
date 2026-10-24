@@ -108,10 +108,10 @@ class StructuralBackend:
             raise ValueError("corpus must contain regular 64-hex named Markdown documents")
         output.mkdir(parents=True, exist_ok=True)
         db = sqlite3.connect(output / "index.sqlite3")
-        source_hashes, profiles, count = [], Counter(), 0
+        sources, profiles, count = [], Counter(), 0
         try:
             db.executescript("""
-            CREATE TABLE documents(origin TEXT PRIMARY KEY, sha256 TEXT, body TEXT);
+            CREATE TABLE documents(origin TEXT PRIMARY KEY, body TEXT);
             CREATE TABLE chunks(id INTEGER PRIMARY KEY, origin TEXT, seq INTEGER, section TEXT,
               start INTEGER, end INTEGER, line_start INTEGER, line_end INTEGER,
               body TEXT, length INTEGER);
@@ -127,10 +127,10 @@ class StructuralBackend:
                 raw = path.read_bytes()
                 text = raw.decode("utf-8-sig")
                 parsed = parse_document(text, value["lexical"]["chunk_chars"])
-                origin, hashed = path.stem, base.digest(raw)
-                source_hashes.append((origin, hashed))
+                origin = path.stem
+                sources.append(origin)
                 profiles[parsed["metadata"]["doc_type"]] += 1
-                db.execute("INSERT INTO documents VALUES (?,?,?)", (origin, hashed, text))
+                db.execute("INSERT INTO documents VALUES (?,?)", (origin, text))
                 db.execute(
                     "INSERT INTO document_meta VALUES (?,?)",
                     (origin, json.dumps(parsed["metadata"], ensure_ascii=False)),
@@ -190,8 +190,7 @@ class StructuralBackend:
             "config": value["lexical"],
             "documents": len(paths),
             "chunks": count,
-            "corpus_sha256": base.digest(json.dumps(source_hashes).encode()),
-            "sources": source_hashes,
+            "sources": sources,
             "dimension": None,
             "mean_length": average,
             "edges": 0,
@@ -239,11 +238,9 @@ class StructuralBackend:
             db.close()
         return {
             "method": self.name,
-            "corpus_sha256": manifest["corpus_sha256"],
             "status": "retrieved" if hits else "no_candidates",
             "hits": hits,
             "links": [],
-            "query_sha256": base.digest(question.encode()),
             "lexical_candidates": len(ranked),
             "dense_candidates": 0,
             "rerank": False,

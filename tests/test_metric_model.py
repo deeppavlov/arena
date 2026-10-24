@@ -1,4 +1,3 @@
-import hashlib
 import json
 import sys
 from collections.abc import Iterator
@@ -30,10 +29,6 @@ def metric_command(tmp_path: Path, code: str, *, uses_model: bool = True) -> Met
         "version": "custom-v1", "kind": "command",
         "command": {
             "argv": [executable, str(source)],
-            "source_sha256": {
-                name: hashlib.sha256(Path(name).read_bytes()).hexdigest()
-                for name in (executable, str(source))
-            },
             "uses_model": uses_model,
         },
     })

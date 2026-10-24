@@ -23,7 +23,7 @@ from .config import (
     validate_config,
 )
 from .embeddings import rerank
-from .storage import digest, file_digest
+from .storage import digest
 
 
 def terms(text: str) -> list[str]:
@@ -163,10 +163,6 @@ def retrieve(output: Path, query: str) -> dict[str, Any]:
     manifest = json.loads((output / "build.json").read_text(encoding="utf-8"))
     config = manifest["config"]
     validate_config(config)
-    if os.environ.get("SC71_VERIFY_BUILD") == "1":
-        for name, expected in manifest["files"].items():
-            if file_digest(output / name) != expected:
-                raise ValueError("build artifact hash mismatch")
     db = sqlite3.connect((output / "index.sqlite3").resolve().as_uri() + "?mode=ro", uri=True)
     try:
         lexical = bm25(db, query, manifest, config["pool_k"])
@@ -231,11 +227,9 @@ def retrieve(output: Path, query: str) -> dict[str, Any]:
         db.close()
     return {
         "method": config["method"],
-        "corpus_sha256": manifest["corpus_sha256"],
         "status": "retrieved" if hits else "no_candidates",
         "hits": hits,
         "links": edges,
-        "query_sha256": digest(query.encode("utf-8")),
         "lexical_candidates": len(lexical),
         "dense_candidates": len(semantic),
         "rerank": config["rerank"],

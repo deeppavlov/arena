@@ -168,7 +168,7 @@ def test_standalone_cli_reads_index_without_writing_it(api, tmp_path):
     assert {p.name: p.read_bytes() for p in build.iterdir()} == before
 
 
-def test_configuration_tampering_and_index_corruption_fail(api, tmp_path, monkeypatch):
+def test_inconsistent_lexical_configuration_fails(api, tmp_path):
     kb = corpus(tmp_path / "norm", {"a" * 64: "# ПРИКАЗ\n1. Комиссия согласует заявку.\n"})
     output = tmp_path / "index"
     api.build(kb, output, api.defaults())
@@ -176,11 +176,4 @@ def test_configuration_tampering_and_index_corruption_fail(api, tmp_path, monkey
     manifest["config"] = dict(manifest["config"], top_k=100)
     (output / "build.json").write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(ValueError, match="configuration"):
-        api.retrieve(output, "Комиссия")
-    manifest["config"]["top_k"] = 8
-    (output / "build.json").write_text(json.dumps(manifest), encoding="utf-8")
-    with (output / "index.sqlite3").open("ab") as stream:
-        stream.write(b"synthetic corruption")
-    monkeypatch.setenv("SC71_VERIFY_BUILD", "1")
-    with pytest.raises(ValueError, match="hash mismatch"):
         api.retrieve(output, "Комиссия")

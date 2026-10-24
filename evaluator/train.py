@@ -42,7 +42,14 @@ from evaluator.metrics import (
 from evaluator.reliability import MODEL_RETRIES, add_usage, empty_usage, validate_timing
 from evaluator.runner import HarnessRunner, RunnerError, SolveResult
 from evaluator.search import Journal, Resources
-from evaluator.service import MAX_BODY_BYTES, RequestBoundary, Settings, _usage, _write_json
+from evaluator.service import (
+    MAX_BODY_BYTES,
+    RequestBoundary,
+    Settings,
+    _normalized_provenance,
+    _usage,
+    _write_json,
+)
 
 
 @dataclass(frozen=True)
@@ -211,7 +218,10 @@ def create_app(
     with (root / "reservation.lock").open("a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         config_path = root / "configuration.json"
-        if config_path.exists() and json.loads(config_path.read_text()) != frozen:
+        if config_path.exists() and (
+            _normalized_provenance(json.loads(config_path.read_text()))
+            != _normalized_provenance(frozen)
+        ):
             raise ValueError("train configuration is frozen")
         if not config_path.exists():
             _save(config_path, frozen)
@@ -571,7 +581,6 @@ def create_app(
                         "candidate_digest": digest, "dataset_id": configuration.dataset_id,
                         "subset_id": _digest(ids), "conditions_id": configuration.conditions_id,
                         "metric_version": metric.version, "direction": metric.direction,
-                        "metric_package_digest": package.get("sha256") if package else None,
                         "model": settings.model, "model_parameters": settings.parameters,
                         "harness": selection.get("harness", "default"),
                         "parameters": selection.get("parameters", {}),

@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import shutil
@@ -8,7 +7,7 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from evaluator.contracts import Metric, StrictModel
 from evaluator.filesystem import candidate_paths
@@ -17,8 +16,14 @@ LOCK_NAME = "metric.lock.json"
 
 
 class PackageFile(StrictModel):
-    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     executable: bool = Field(strict=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_legacy_checksum(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {name: item for name, item in value.items() if name != "sha256"}
+        return value
 
 
 class PackageLock(StrictModel):
@@ -75,10 +80,7 @@ def _inventory(directory: Path) -> PackageLock:
             raise ValueError("metric package must contain only regular files")
         if name == LOCK_NAME:
             continue
-        data, mode = _read_file(path)
-        files[name] = PackageFile(
-            sha256=hashlib.sha256(data).hexdigest(), executable=bool(mode & 0o111),
-        )
+        files[name] = PackageFile(executable=bool(mode & 0o111))
     return PackageLock(files=files)
 
 
@@ -91,17 +93,11 @@ def metric_package_provenance(path: Path) -> dict[str, Any] | None:
         raise ValueError("metric package requires metric.lock.json; freeze it before use")
     expected = PackageLock.model_validate_json(_read_file(lock_path)[0])
     if actual != expected:
-        raise ValueError("metric package contents differ from lock")
-    manifest = expected.model_dump()
-    encoded = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
-    return {**manifest, "sha256": hashlib.sha256(encoded).hexdigest()}
+        raise ValueError("metric package inventory differs from lock")
+    return expected.model_dump()
 
 
-def _expand_command(
-    command: dict[str, Any], directory: Path, sources: dict[str, str],
-) -> dict[str, Any]:
-    if "source_sha256" in command:
-        raise ValueError("metric package generates source_sha256 from its lock")
+def _expand_command(command: dict[str, Any], directory: Path) -> dict[str, Any]:
     argv = command.get("argv")
     if not isinstance(argv, list) or not argv or not all(isinstance(arg, str) for arg in argv):
         raise ValueError("metric command requires a nonempty string argv")
@@ -124,30 +120,20 @@ def _expand_command(
         raise ValueError("metric command executable is not available")
     executable = str(Path(executable).absolute())
     expanded[0] = executable
-    executable_hash = hashlib.sha256(Path(executable).read_bytes()).hexdigest()
-    return {
-        **command, "argv": expanded,
-        "source_sha256": {**sources, executable: executable_hash},
-    }
+    return {**command, "argv": expanded}
 
 
-def _load_package(directory: Path, inventory: PackageLock) -> Metric:
+def _load_package(directory: Path) -> Metric:
     directory = directory.absolute()
     configuration = json.loads(_read_file(directory / "metric.json")[0])
     if not isinstance(configuration, dict):
         raise ValueError("metric.json must contain an object")
-    sources = {
-        str(directory / name): item.sha256 for name, item in inventory.files.items()
-    }
-    lock = directory / LOCK_NAME
-    if lock.exists():
-        sources[str(lock)] = hashlib.sha256(_read_file(lock)[0]).hexdigest()
     for name in ("command", "aggregation"):
         command = configuration.get(name)
         if command is not None:
             if not isinstance(command, dict):
                 raise ValueError("metric command must be an object")
-            configuration[name] = _expand_command(command, directory, sources)
+            configuration[name] = _expand_command(command, directory)
     return Metric.model_validate(configuration)
 
 
@@ -157,10 +143,7 @@ def load_metric(path: Path) -> Metric:
     provenance = metric_package_provenance(path)
     if provenance is None:
         raise ValueError("metric package must be a directory")
-    inventory = PackageLock.model_validate({
-        "format_version": provenance["format_version"], "files": provenance["files"],
-    })
-    return _load_package(path, inventory)
+    return _load_package(path)
 
 
 def freeze_metric(source: Path, output: Path) -> dict[str, Any]:
@@ -173,7 +156,7 @@ def freeze_metric(source: Path, output: Path) -> dict[str, Any]:
     if output.exists() or output.is_symlink():
         raise FileExistsError(f"metric output already exists: {output}")
     inventory = _inventory(source)
-    _load_package(source, inventory)
+    _load_package(source)
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".metric-", dir=output.parent) as temporary:
         staged = Path(temporary) / "package"

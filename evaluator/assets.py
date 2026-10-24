@@ -79,8 +79,6 @@ def read_asset_manifest(directory: Path, expected_digest: str) -> dict[str, Any]
     if len(encoded) > MAX_MANIFEST_BYTES + 1 or not encoded.endswith(b"\n"):
         raise AssetError("invalid asset manifest encoding")
     encoded = encoded[:-1]
-    if hashlib.sha256(encoded).hexdigest() != expected_digest:
-        raise AssetError("asset manifest digest does not match")
     try:
         result = json.loads(encoded)
     except (UnicodeError, ValueError, RecursionError) as error:
@@ -104,15 +102,15 @@ def read_asset_manifest(directory: Path, expected_digest: str) -> dict[str, Any]
         if path <= previous or parent not in directories or path == MANIFEST_NAME:
             raise AssetError("invalid asset manifest paths")
         previous = path
+        if entry.get("type") == "file":
+            entry.pop("sha256", None)
         if entry.get("type") == "directory" and set(entry) == {"path", "type"}:
             directories.add(path)
         elif (
             entry.get("type") == "file"
-            and set(entry) == {"path", "type", "size", "sha256", "executable"}
+            and set(entry) == {"path", "type", "size", "executable"}
             and type(entry["size"]) is int and entry["size"] >= 0
             and type(entry["executable"]) is bool
-            and isinstance(entry["sha256"], str)
-            and re.fullmatch(r"[0-9a-f]{64}", entry["sha256"])
         ):
             continue
         else:
@@ -157,12 +155,16 @@ class AssetPublisher:
                 totals = {"size": 0, "files": 0, "entries": 0}
                 self._copy_tree(source, temporary, "", 0, entries, totals)
                 manifest = {"version": 1, "entries": sorted(entries, key=lambda row: row["path"])}
+                digest = hashlib.sha256(json.dumps(
+                    manifest, ensure_ascii=True, sort_keys=True, separators=(",", ":"),
+                ).encode()).hexdigest()
+                for entry in entries:
+                    entry.pop("sha256", None)
                 encoded = json.dumps(
                     manifest, ensure_ascii=True, sort_keys=True, separators=(",", ":"),
                 ).encode()
                 if len(encoded) > MAX_MANIFEST_BYTES:
                     raise AssetLimitError("asset manifest size exceeds limit")
-                digest = hashlib.sha256(encoded).hexdigest()
                 with (temporary / MANIFEST_NAME).open("xb") as stream:
                     stream.write(encoded + b"\n")
                     stream.flush()
@@ -244,7 +246,7 @@ class AssetPublisher:
         self, source: int, destination: Path, relative: str,
         before: os.stat_result, totals: dict[str, int],
     ) -> dict[str, Any]:
-        digest = hashlib.sha256()
+        content_id = hashlib.sha256()
         size = 0
         executable = bool(before.st_mode & 0o111)
         with destination.open("xb") as stream:
@@ -254,7 +256,7 @@ class AssetPublisher:
                 if totals["size"] > self.max_bytes:
                     raise AssetLimitError("asset size exceeds limit")
                 stream.write(data)
-                digest.update(data)
+                content_id.update(data)
             stream.flush()
             os.fchmod(stream.fileno(), 0o555 if executable else 0o444)
             os.fsync(stream.fileno())
@@ -263,7 +265,7 @@ class AssetPublisher:
         totals["files"] += 1
         return {
             "path": relative, "type": "file", "size": size,
-            "sha256": digest.hexdigest(), "executable": executable,
+            "sha256": content_id.hexdigest(), "executable": executable,
         }
 
 class AssetRequest(BaseModel):

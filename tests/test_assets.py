@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -49,6 +48,7 @@ def test_publish_freezes_bytes_paths_empty_directories_and_executable_mode(
     manifest = json.loads((destination / ".arena-asset.json").read_text())
     assert read_asset_manifest(destination, str(result["digest"])) == manifest
     assert manifest["version"] == 1
+    assert all("sha256" not in entry for entry in manifest["entries"])
     assert [entry["path"] for entry in manifest["entries"]] == ["empty", "search", "weight.bin"]
     assert publisher.publish("method") == result
     (source / "weight.bin").write_bytes(b"modified weights")
@@ -250,15 +250,15 @@ def test_renamed_source_directory_cannot_follow_replacement_symlink(
     assert not list(publisher.store_root.glob(".asset-*/"))
 
 
-@pytest.mark.parametrize("kind", ["digest", "schema", "symlink", "fifo"])
-def test_read_manifest_rejects_corruption(tmp_path: Path, kind: str) -> None:
+@pytest.mark.parametrize("kind", ["schema", "symlink", "fifo"])
+def test_read_manifest_rejects_invalid_schema_and_unsafe_files(tmp_path: Path, kind: str) -> None:
     directory = tmp_path / "asset"
     directory.mkdir()
     payload = {"version": 1, "entries": []}
     if kind == "schema":
         payload["version"] = True
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    digest = hashlib.sha256(encoded).hexdigest()
+    digest = "a" * 64
     manifest = directory / ".arena-asset.json"
     if kind == "symlink":
         external = tmp_path / "manifest"
@@ -268,7 +268,44 @@ def test_read_manifest_rejects_corruption(tmp_path: Path, kind: str) -> None:
         os.mkfifo(manifest)
     else:
         manifest.write_bytes(encoded + b"\n")
-    if kind == "digest":
-        digest = "a" * 64
     with pytest.raises(AssetError):
         read_asset_manifest(directory, digest)
+
+
+def test_manifest_reads_metadata_without_content_checksums(tmp_path: Path) -> None:
+    directory = tmp_path / "asset"
+    directory.mkdir()
+    payload = {"version": 1, "entries": [{
+        "path": "index.txt", "type": "file", "size": 4, "executable": False,
+    }]}
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    (directory / ".arena-asset.json").write_bytes(encoded + b"\n")
+
+    assert read_asset_manifest(directory, "a" * 64) == payload
+
+
+def test_publication_identity_includes_content_and_ignores_creation_order(
+    publisher: AssetPublisher,
+) -> None:
+    for name, names in (("a", ("one", "two")), ("b", ("two", "one"))):
+        source = publisher.staging_root / name
+        source.mkdir()
+        for filename in names:
+            (source / filename).write_text(filename)
+    first = publisher.publish("a")["digest"]
+
+    assert publisher.publish("b")["digest"] == first
+    (publisher.staging_root / "b" / "one").write_text("new")
+    assert publisher.publish("b")["digest"] != first
+
+
+@pytest.mark.parametrize("legacy_value", ["not-a-checksum", None, {"unused": True}])
+def test_legacy_manifest_checksum_is_ignored(tmp_path: Path, legacy_value: object) -> None:
+    directory = tmp_path / "asset"
+    directory.mkdir()
+    entry = {"path": "index.txt", "type": "file", "size": 3, "executable": False}
+    payload = {"version": 1, "entries": [{**entry, "sha256": legacy_value}]}
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    (directory / ".arena-asset.json").write_bytes(encoded + b"\n")
+
+    assert read_asset_manifest(directory, "a" * 64) == {"version": 1, "entries": [entry]}

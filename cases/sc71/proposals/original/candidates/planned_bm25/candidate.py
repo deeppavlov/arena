@@ -111,8 +111,8 @@ def cached_plan(question, queries) -> dict[str, Any]:
     """Explicit externally supplied plan, including synthetic plans used by tests."""
     return {
         "schema_version": 1,
-        "question_sha256": base.digest(question.encode()),
-        "prompt_sha256": base.digest(PLANNER_PROMPT.encode()),
+        "question": question,
+        "prompt": PLANNER_PROMPT,
         "queries": queries,
         "model": None,
         "model_calls": 0,
@@ -165,7 +165,6 @@ def create_plan(question, config):
                 "model": model,
                 "usage": data.get("usage"),
                 "seconds": time.monotonic() - started,
-                "response_sha256": base.digest(raw.encode()) if isinstance(raw, str) else None,
             },
         ) from None
     result = cached_plan(question, queries)
@@ -176,7 +175,6 @@ def create_plan(question, config):
         source="live",
         seconds=time.monotonic() - started,
         finish_reason=data["choices"][0].get("finish_reason"),
-        response_sha256=base.digest(raw.encode()),
         request_parameters={k: v for k, v in payload.items() if k != "messages"},
     )
     return result
@@ -199,11 +197,9 @@ def retrieve(output: Path, question: str, *, no_plan=False, plan: dict[str, Any]
     if no_plan:
         plan = dict(cached_plan(question, []), source="disabled")
     elif plan is not None:
-        if plan.get("schema_version") != 1 or plan.get("question_sha256") != base.digest(
-            question.encode()
-        ):
+        if plan.get("schema_version") != 1 or plan.get("question") != question:
             raise ValueError("cached plan belongs to a different question or schema")
-        if plan.get("prompt_sha256") != base.digest(PLANNER_PROMPT.encode()):
+        if plan.get("prompt") != PLANNER_PROMPT:
             raise ValueError("cached plan prompt version mismatch")
         queries = validate_plan(
             {"subqueries": plan["queries"]},
@@ -231,11 +227,9 @@ def retrieve(output: Path, question: str, *, no_plan=False, plan: dict[str, Any]
         db.close()
     return {
         "method": NAME,
-        "corpus_sha256": manifest["corpus_sha256"],
         "status": "retrieved" if hits else "no_candidates",
         "hits": hits,
         "links": [],
-        "query_sha256": base.digest(question.encode()),
         "queries": queries,
         "plan": plan,
         "planning_enabled": not no_plan,

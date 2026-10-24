@@ -1,6 +1,5 @@
 import argparse
 import base64
-import hashlib
 import io
 import json
 import math
@@ -232,9 +231,6 @@ class Journal:
                 "resources": asdict(resources),
                 "digest": digest,
                 "digest_version": 2,
-                "snapshot_digest": (
-                    hashlib.sha256(snapshot).hexdigest() if snapshot_error is None else None
-                ),
                 "snapshot_error": snapshot_error,
                 "bundle_error": bundle_error,
             }
@@ -488,14 +484,7 @@ class Journal:
             record = json.loads(row["record"])
             if record.get("snapshot_error"):
                 raise SearchError("snapshot is unavailable")
-            if hashlib.sha256(snapshot).hexdigest() != record["snapshot_digest"]:
-                raise SearchError("snapshot digest mismatch")
-            files, executable_files = _snapshot_files(snapshot)
             legacy = record.get("digest_version", 1) < 2
-            if candidate_digest(
-                files, () if legacy else executable_files
-            ) != record["digest"]:
-                raise SearchError("snapshot digest mismatch")
         if directory.exists() or directory.is_symlink():
             raise SearchError("restore directory already exists")
         with zipfile.ZipFile(io.BytesIO(snapshot)) as archive:

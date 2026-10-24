@@ -8,31 +8,28 @@
   "dataset_version": "1",
   "format": "sc71-prepared-dataset-v1",
   "kb": {
-    "archive_members_sha256": "04e35a1136b3ed4d6365d25f684ba3f0b869c6a37bb0e0c218e9ec97776c27f3",
+    "archive_members": "_kb/archive_members.jsonl",
     "corpus_version": "v1.1-raw",
     "file_count": 4454,
-    "index_sha256": "d5cb34178d90b55ebfdd48eb8ffc22e1a31efde6b174aab27fee972369c10011",
-    "manifest_sha256": "ff3817b7bc354290ed5d0f8015cb773d2db1b31862bff3b3db40df2a46ef8be6",
-    "norm_sha256": "583c1de943acc3b45e463f2de95b4c41dd3d7e42e69babd137059fb009b144b5",
+    "index": "index.tsv",
+    "manifest": "manifest.json",
+    "norm": "norm",
     "snapshot_tag": "snapshot-2026-09-08-full"
   },
   "seed": "sc71-first-20261019",
-  "source_manifest_sha256": "852529ff5859a458f21b267d653928e3ff9d829025d022e3a2a9e546edf63530",
+  "source_manifest": "manifest.json",
   "splits": {
     "private": {
-      "dataset_digest": "a0f98a7daa141635f381b6a5fdc64de5998bab61873397ba9928aabe28c46db9",
-      "dataset_sha256": "db438d24c8993211b15d473b739ed1f981de3a49952cc78e38505437c3039c73",
-      "manifest_sha256": "7a942f7f4d566101c450e1edcb6ec7d8e749077e31aea8736d544f74d9e79451"
+      "dataset": "dataset.jsonl",
+      "manifest": "manifest.json"
     },
     "public": {
-      "dataset_digest": "190aecdc822d185a0eb2775aa636d81fec01d72e5271a55b03a15f9717ef2cc2",
-      "dataset_sha256": "c349f65c35d317f78b349f636fe864d89c9bb4485a45785c04d3ec181cb63ce1",
-      "manifest_sha256": "94c1fa956f88091f98e497dca675401a84122c147746c031962632eb1c6ccc02"
+      "dataset": "dataset.jsonl",
+      "manifest": "manifest.json"
     },
     "train": {
-      "dataset_digest": "87dbcd0a62e49f6f9a4314a0622c1107964c6da6a763114a001c7956f29e0c6d",
-      "dataset_sha256": "0b72f292a1f5456632fe13bd5e07e2a844482904bb56a69d1895c88410929a97",
-      "manifest_sha256": "2e9b05bd25a5f1fedadc143b5ee76e1362ba76b26b99dd864dc5c4fbbe42cdb9"
+      "dataset": "dataset.jsonl",
+      "manifest": "manifest.json"
     }
   },
   "topic_counts": {

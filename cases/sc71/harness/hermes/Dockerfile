@@ -7,7 +7,6 @@ RUN pip install --no-cache-dir uv==${UV_VERSION}
 COPY cases/sc71/harness/hermes/source-cache/ /opt/hermes-source-cache/
 RUN mkdir /opt/hermes && if [ -f /opt/hermes-source-cache/source.tar ]; then \
       test "${HERMES_REVISION}" = "86fa9e6ca1de7ee71132d2be0103f3e37d1fa872" && \
-      echo "1ca6c5bb31f35069a13218a1401320ebd10f96bcdd80567e28e934a48642c630  /opt/hermes-source-cache/source.tar" | sha256sum -c - && \
       tar -xf /opt/hermes-source-cache/source.tar -C /opt/hermes; \
     else \
       git -C /opt/hermes init && \

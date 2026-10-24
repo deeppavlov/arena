@@ -54,7 +54,7 @@ def parse_json(data: bytes) -> Any:
         raise PreparationError("invalid UTF-8 JSON document") from from_error
 
 
-def read_file(root: Path, name: str) -> bytes:
+def source_file(root: Path, name: str) -> Path:
     relative = PurePosixPath(name)
     require(
         bool(name) and not relative.is_absolute() and relative.as_posix() == name
@@ -67,6 +67,11 @@ def read_file(root: Path, name: str) -> bytes:
         path /= part
         require(not path.is_symlink(), "source symlink is forbidden")
     require(path.is_file(), "required source file is missing")
+    return path
+
+
+def read_file(root: Path, name: str) -> bytes:
+    path = source_file(root, name)
     try:
         return path.read_bytes()
     except OSError as error:
@@ -93,20 +98,18 @@ def load_corpus(kb_root: Path, expected_files: int) -> tuple[dict[str, Any], dic
         "KB version is not the approved Paddle snapshot",
     )
     paths: dict[str, str] = {}
-    hashes: dict[str, str] = {}
     for line in text(index_bytes).splitlines():
         fields = line.split("\t")
-        require(len(fields) == 4, "KB index must have four columns")
-        identifier, size, original, digest = fields
+        require(len(fields) in {3, 4}, "KB index must have three source columns")
+        identifier, size, original = fields[:3]
         require(
             ORIGIN.fullmatch(identifier) is not None and identifier not in paths
-            and size.isdigit() and bool(original) and ORIGIN.fullmatch(digest) is not None,
+            and size.isdigit() and bool(original),
             "invalid KB index entry",
         )
         require(identifier == sha256(original.encode("utf-8")), "KB origin identity mismatch")
         paths[identifier] = original
-        hashes[identifier] = sha256(read_file(kb_root, f"norm/{identifier}.md"))
-        require(hashes[identifier] == digest, "KB Markdown checksum mismatch")
+        source_file(kb_root, f"norm/{identifier}.md")
     norm_files = {path.name for path in (kb_root / "norm").iterdir()}
     require(
         len(paths) == expected_files
@@ -129,14 +132,12 @@ def load_corpus(kb_root: Path, expected_files: int) -> tuple[dict[str, Any], dic
     provenance = {
         "corpus_version": manifest["corpus_version"],
         "snapshot_tag": manifest["snapshot_tag"], "file_count": len(paths),
-        "index_sha256": sha256(index_bytes), "manifest_sha256": sha256(manifest_bytes),
-        "norm_sha256": sha256(encoded(hashes)),
+        "index": "index.tsv", "manifest": "manifest.json", "norm": "norm",
     }
     archive = kb_root / "_kb/archive_members.jsonl"
     if archive.exists():
-        provenance["archive_members_sha256"] = sha256(read_file(
-            kb_root, "_kb/archive_members.jsonl",
-        ))
+        source_file(kb_root, "_kb/archive_members.jsonl")
+        provenance["archive_members"] = "_kb/archive_members.jsonl"
     return provenance, paths
 
 
@@ -289,7 +290,7 @@ def prepare_dataset(
         "format": "sc71-prepared-dataset-v1", "seed": seed,
         "algorithm": "sha256(seed + NUL + example_id), 2/6/12 per topic",
         "dataset_version": manifest.get("dataset_version"),
-        "source_manifest_sha256": sha256(manifest_bytes), "kb": corpus,
+        "source_manifest": "manifest.json", "kb": corpus,
         "counts": {split: len(identifiers) for split, identifiers in membership.items()},
         "topic_counts": {
             split: {topic: count for topic in TOPICS} for split, count in SPLITS.items()
@@ -300,11 +301,9 @@ def prepare_dataset(
         output = train_output if split == "train" else closed_output / split
         selected = [examples[identifier] for identifier in sorted(identifiers)]
         dataset_bytes = b"".join(encoded(example) + b"\n" for example in selected)
-        pairs = sorted((example["input"], example["reference"]) for example in selected)
         split_manifest = {
             "format": "sc71-split-v1", "split": split, "seed": seed,
-            "dataset_sha256": sha256(dataset_bytes), "dataset_digest": sha256(encoded(pairs)),
-            "source_files": {"task.md": sha256(task_bytes)},
+            "dataset": "dataset.jsonl", "source_files": ["task.md"],
             "examples": sorted(identifiers), "kb": corpus,
         }
         write_file(output / "dataset.jsonl", dataset_bytes)
@@ -312,13 +311,11 @@ def prepare_dataset(
         for identifier in sorted(identifiers):
             for name, data in original_files[identifier].items():
                 write_file(output / "source" / name, data)
-                split_manifest["source_files"][name] = sha256(data)
+                split_manifest["source_files"].append(name)
         split_manifest_bytes = encoded(split_manifest) + b"\n"
         write_file(output / "manifest.json", split_manifest_bytes)
         report["splits"][split] = {
-            "dataset_sha256": split_manifest["dataset_sha256"],
-            "dataset_digest": split_manifest["dataset_digest"],
-            "manifest_sha256": sha256(split_manifest_bytes),
+            "dataset": "dataset.jsonl", "manifest": "manifest.json",
         }
     write_file(closed_output / "source-manifest.json", manifest_bytes)
     write_file(closed_output / "manifest.json", encoded(full_manifest) + b"\n")

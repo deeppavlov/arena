@@ -157,8 +157,6 @@ def build_relations(rows, kb, output, db=None):
         for row in rows:
             origin = row["origin_id"]
             text = (kb / (origin + ".md")).read_bytes().decode("utf-8-sig")
-            if base.file_digest(kb / (origin + ".md")) != row["sha256"]:
-                raise ValueError("corpus changed during relation extraction")
             parsed = parse_document(text)
             for relation in extract_for_document(origin, text, parsed, identities):
                 relations.append(relation)

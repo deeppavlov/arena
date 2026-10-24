@@ -53,7 +53,7 @@ class BuildStore:
     ) -> None:
         if any(not re.fullmatch(r"[0-9a-f]{64}", value)
                for value in (input_assets_digest, environment_fingerprint)):
-            raise ValueError("build input assets and environment require SHA-256 digests")
+            raise ValueError("build input assets and environment require valid identifiers")
         self.root = root
         self.build = build
         self.slot_dir = slot_dir

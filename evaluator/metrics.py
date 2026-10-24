@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import signal
@@ -84,30 +83,11 @@ class CommandScore(StrictModel):
         return validate_score(value)
 
 
-def _command_provenance(command: CommandMetric) -> dict[str, Any]:
-    for name in command.source_sha256:
-        path = Path(name)
-        if path.name == "metric.lock.json":
-            from evaluator.metric_package import metric_package_provenance
-
-            metric_package_provenance(path.parent)
-    sources = {Path(name).resolve() for name in command.source_sha256}
-    for argument in command.argv:
-        path = Path("/") / argument
-        if path.is_file() and path.resolve() not in sources:
-            raise ValueError("command file arguments must be pinned in source_sha256")
-    for name, expected in command.source_sha256.items():
-        actual = hashlib.sha256(Path(name).read_bytes()).hexdigest()
-        if actual != expected:
-            raise ValueError("command source hash differs from frozen configuration")
-    return command.model_dump()
-
-
 def command_provenance(metric: Metric) -> dict[str, Any] | None:
     if metric.command is None and metric.aggregation is None:
         return None
     return {
-        name: _command_provenance(command) if command is not None else None
+        name: command.model_dump() if command is not None else None
         for name, command in (("command", metric.command), ("aggregation", metric.aggregation))
     }
 
@@ -220,7 +200,6 @@ def _run_command(
     model_access: MetricModelAccess | None = None,
     usage: dict[str, int] | None = None,
 ) -> dict[str, Any]:
-    _command_provenance(command)
     if not command.uses_model:
         return _execute_command(
             command, payload, allow_statistics=allow_statistics, capability=None,

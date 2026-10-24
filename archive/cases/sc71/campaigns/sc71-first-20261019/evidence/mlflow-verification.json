@@ -1,7 +1,6 @@
 {
   "date": "2026-10-19",
   "mlflow_version": "3.16.0",
-  "mlflow_image": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
   "shared_port": "127.0.0.1:5052",
   "operator_port": "127.0.0.1:5050",
   "shared_synthetic_run_id": "fac1a3bc324d4dea8b8d6f0140184297",

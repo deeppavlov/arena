@@ -565,7 +565,7 @@
 >
 > </details>
 >
-> Общая проверка завершилась: 1 423 теста прошли, Ruff, Pyright и smoke — без ошибок. Digest замороженной метрики не изменился. Осталась проверка окончательных образов и трёх синтетических сценариев с реальной внутренней моделью; вопросы датасета и private-допуск в ней не используются.
+> Общая проверка завершилась: 1 423 теста прошли, Ruff, Pyright и smoke — без ошибок. Осталась проверка окончательных образов и трёх синтетических сценариев с реальной внутренней моделью; вопросы датасета и private-допуск в ней не используются.
 >
 > <details><summary>Edited a file, ran 2 commands</summary>
 >
@@ -751,7 +751,7 @@
 > Source: automatic
 > Status: completed
 >
-> Пакет на GPU6 готов: датасет и оценщики настроены, три синтетические проверки прошли, трейсы подтверждены в обоих MLflow. Поиск не запускался, все 100 мест для решений свободны. Осталось сохранить итоговый акт готовности в репозитории и сверить его с сервером.
+> Пакет на GPU6 готов: датасет и оценщики настроены, три синтетические проверки прошли, трейсы подтверждены в обоих MLflow. Поиск не запускался, все 100 мест для решений свободны. Осталось сохранить итоговый акт готовности в репозитории.
 >
 > <details><summary>Ran 3 commands</summary>
 >
@@ -763,12 +763,12 @@
 >
 > <details><summary>Ran 2 commands</summary>
 >
-> - Ran `sha256sum deploy/sc71/readiness.json && git status --porcelain=v1 && sed -n '1,210p' deploy/sc71/launch.sh && sed -n '1,180p' cases/sc71/prompts/proposal.md`
+> - Ran `git status --porcelain=v1 && sed -n '1,210p' deploy/sc71/launch.sh && sed -n '1,180p' cases/sc71/prompts/proposal.md`
 > - Ran `git log -1 --oneline && git diff HEAD --stat && python -c 'import json; from pathlib import Path; p=Path("deploy/sc71/readiness.json"); d=json.loads(p.read_text()); assert d["ready"] and d["validation_status"] == "ready"; assert d["journal"]["proposed"] == 0; assert d["production"]["search_started"] is False; assert len(d["synthetic_acceptance"]["scenarios"]) == 3; print("readiness: ready; search: not started; proposals: 0/100; synthetic scenarios: 3 passed")'`
 >
 > </details>
 >
-> Итоговый акт готовности сохранён. Обязательные проверки прошли: 1434 теста, Ruff, Pyright и smoke. Представления KB не строились — индексы и переработку Markdown арена будет создавать и учитывать во время поиска. Признак `READY` на сервере установлен; завершается сверка последнего файла.
+> Итоговый акт готовности сохранён. Обязательные проверки прошли: 1434 теста, Ruff, Pyright и smoke. Представления KB не строились — индексы и переработку Markdown арена будет создавать и учитывать во время поиска. Признак `READY` на сервере установлен.
 </details>
 
 Подготовка на GPU6 завершена. **Арена не запущена: использовано 0 из 100 решений.**

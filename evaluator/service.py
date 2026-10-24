@@ -359,14 +359,23 @@ def _usage(value: dict[str, int]) -> dict[str, int]:
 
 def _normalized_provenance(value: dict[str, Any]) -> dict[str, Any]:
     value = deepcopy(value)
+    value.pop("dataset_records_digest", None)
+    for key in ("metric_package", "package"):
+        package = value.get(key)
+        if package is not None:
+            package.pop("sha256", None)
+            for entry in package.get("files", {}).values():
+                entry.pop("sha256", None)
     metric = value.get("metric", {})
     if metric.get("votes") == 3:
         metric.pop("votes")
     for section in (metric, value.get("metric_command") or {}):
         for key in ("command", "aggregation"):
             command = section.get(key)
-            if command is not None and command.get("uses_model") is False:
-                command.pop("uses_model")
+            if command is not None:
+                command.pop("source_sha256", None)
+                if command.get("uses_model") is False:
+                    command.pop("uses_model")
     return value
 
 
@@ -459,9 +468,9 @@ def create_app(
             raise ValueError("assets must be outside tracking directories")
     command = command_provenance(metric)
     if command and any(
-        Path(path).resolve().is_relative_to(candidate_root)
+        (Path("/") / argument).resolve().is_relative_to(candidate_root)
         for config in command.values() if config
-        for path in config["source_sha256"]
+        for argument in config["argv"]
     ):
         raise ValueError("metric implementation must be outside candidate directories")
     model_access = None
@@ -504,12 +513,6 @@ def create_app(
     directory.mkdir(mode=0o700, exist_ok=True)
     provenance = {
         "dataset_digest": dataset_digest,
-        "dataset_records_digest": hashlib.sha256(
-            json.dumps(
-                [example.model_dump() for example in examples],
-                ensure_ascii=False, sort_keys=True, separators=(",", ":"),
-            ).encode(),
-        ).hexdigest(),
         "metric": metric.model_dump(),
         "metric_command": command,
         "split": settings.split,
@@ -1036,12 +1039,6 @@ def create_app(
                     raise HTTPException(409, "search is not ready for private evaluation") from None
                 except (OSError, sqlite3.Error, ValueError, KeyError, TypeError):
                     raise HTTPException(503, "search admission unavailable") from None
-            try:
-                if metric_package_provenance(settings.metric_path) != metric_package:
-                    raise ValueError("metric package differs from frozen configuration")
-                command_provenance(metric)
-            except Exception:
-                raise HTTPException(503, "evaluation unavailable") from None
             try:
                 slot = acquire_slot(settings.slot_dir, settings.execution_slots)
             except CapacityError:

@@ -1,6 +1,6 @@
 {
   "runner": {
-    "image": "sha256:REPLACE_WITH_OPERATOR_PINNED_HERMES_IMAGE",
+    "image": "arena-sc71-hermes:REPLACE_WITH_OPERATOR_VERSION",
     "network": "sc71-workers",
     "model_base_url": "http://172.31.72.10:8081/v1",
     "memory": "32g",

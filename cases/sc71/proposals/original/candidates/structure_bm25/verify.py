@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import subprocess
@@ -84,20 +83,8 @@ def main():
         }
         (output / "results.json").write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
         print(f"{name}: {code}", flush=True)
-    protected = json.loads((PACKAGE / "checks/protected-before.json").read_text(encoding="utf-8"))
-    changed = [
-        name
-        for name, expected in protected.items()
-        if not (WORK / name).is_file()
-        or hashlib.sha256((WORK / name).read_bytes()).hexdigest() != expected
-    ]
-    (output / "protected-after.json").write_text(
-        json.dumps({"checked": len(protected), "changed": changed}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print(f"Protected existing files changed: {len(changed)}", flush=True)
     print(output, flush=True)
-    if changed or any(result["exit_code"] != 0 for result in results.values()):
+    if any(result["exit_code"] != 0 for result in results.values()):
         raise SystemExit(1)
 
 

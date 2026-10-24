@@ -280,7 +280,7 @@ def test_unsafe_snapshot_counts_and_preserves_failed_parent(
     assert journal.status()["proposed"] == 1
     assert "restricted" in record["snapshot_error"]
     assert record["digest"] is None
-    assert record["snapshot_digest"] is None
+    assert "snapshot_digest" not in record
     assert record["resources"] == {"total_tokens": 19, "seconds": 2.5, "tokens_complete": True}
     assert "secret" not in json.dumps(journal.export())
     with pytest.raises(SearchError, match="snapshot is unavailable"):
@@ -322,7 +322,7 @@ def test_unreadable_directory_counts_without_claiming_restorability(
     record = propose(journal, source, "unreadable")
     assert journal.status()["proposed"] == 1
     assert record["snapshot_error"] == "cannot read snapshot files"
-    assert record["snapshot_digest"] is None
+    assert "snapshot_digest" not in record
     assert record["digest"] is None
     with pytest.raises(SearchError, match="snapshot is unavailable"):
         journal.restore("unreadable", tmp_path / "restored")
@@ -518,30 +518,17 @@ def test_early_stopped_curve_can_use_explicit_common_horizon(journal: Journal, s
         curve(journal, horizon=1)
 
 
-def test_archive_integrity_covers_executable_bits(journal: Journal, source: Path, tmp_path: Path):
-    import io
-    import sqlite3
-    import zipfile
-
+def test_snapshot_preserves_executable_bits(journal: Journal, source: Path, tmp_path: Path):
     original = propose(journal, source, "one")
     (source / "solve.py").chmod(0o644)
     changed = propose(journal, source, "two")
     assert original["digest"] != changed["digest"]
-    assert original["snapshot_digest"] != changed["snapshot_digest"]
-    with sqlite3.connect(journal.path) as connection:
-        snapshot = connection.execute(
-            "SELECT snapshot FROM candidates WHERE id = 'one'"
-        ).fetchone()[0]
-        output = io.BytesIO()
-        with zipfile.ZipFile(io.BytesIO(snapshot)) as old, zipfile.ZipFile(output, "w") as new:
-            for member in old.infolist():
-                member.external_attr = 0o644 << 16
-                new.writestr(member, old.read(member))
-        connection.execute(
-            "UPDATE candidates SET snapshot = ? WHERE id = 'one'", (output.getvalue(),)
-        )
-    with pytest.raises(SearchError, match="digest"):
-        journal.restore("one", tmp_path / "tampered")
+    assert "snapshot_digest" not in original
+    restored = tmp_path / "restored"
+    journal.restore("one", restored)
+    assert (restored / "solve.py").stat().st_mode & 0o777 == 0o755
+    journal.restore("two", tmp_path / "changed")
+    assert (tmp_path / "changed" / "solve.py").stat().st_mode & 0o777 == 0o644
 
 
 def test_legacy_snapshot_remains_restorable(journal: Journal, source: Path, tmp_path: Path):
@@ -565,7 +552,6 @@ def test_legacy_snapshot_remains_restorable(journal: Journal, source: Path, tmp_
 def test_legacy_restore_preserves_empty_directories_and_access_modes(
     journal: Journal, source: Path, tmp_path: Path,
 ):
-    import hashlib
     import io
     import sqlite3
     import subprocess
@@ -589,7 +575,6 @@ def test_legacy_restore_preserves_empty_directories_and_access_modes(
         for path in sorted(source.rglob("*")):
             archive.write(path, path.relative_to(source).as_posix())
     snapshot = output.getvalue()
-    record["snapshot_digest"] = hashlib.sha256(snapshot).hexdigest()
     with sqlite3.connect(journal.path) as connection:
         connection.execute(
             "UPDATE candidates SET record = ?, snapshot = ? WHERE id = 'legacy'",
@@ -652,7 +637,7 @@ def test_missing_snapshot_counts_without_claiming_restorability(
 ):
     record = propose(journal, tmp_path / "missing", "missing-source")
     assert record["snapshot_error"]
-    assert record["snapshot_digest"] is None
+    assert "snapshot_digest" not in record
     assert record["digest"] is None
     assert journal.status()["proposed"] == 1
 
@@ -661,7 +646,7 @@ def test_unsafe_filename_counts_without_claiming_restorability(journal: Journal,
     (source / "bad\\path").write_text("payload", encoding="utf-8")
     record = propose(journal, source, "unsafe-name")
     assert record["snapshot_error"] == "snapshot contains an unsafe path"
-    assert record["snapshot_digest"] is None
+    assert "snapshot_digest" not in record
     assert journal.status()["proposed"] == 1
 
 
@@ -681,7 +666,7 @@ def test_unencodable_filename_retains_resources_and_ancestry(
     assert record["resources"] == {"total_tokens": 41, "seconds": 3, "tokens_complete": True}
     assert record["parents"] == ["parent"]
     assert record["digest"] is None
-    assert record["snapshot_digest"] is None
+    assert "snapshot_digest" not in record
     with pytest.raises(SearchError, match="snapshot is unavailable"):
         journal.restore("bad-filename", tmp_path / "restored")
     os.unlink(filename)

@@ -29,7 +29,7 @@ def source_package(tmp_path: Path) -> tuple[Path, Path]:
     text = "Синтетический нормативный текст для проверки цитаты.\r\n".encode()
     (kb / "norm" / f"{origin_id}.md").write_bytes(text)
     (kb / "index.tsv").write_text(
-        f"{origin_id}\t10\toriginal.pdf\t{hashlib.sha256(text).hexdigest()}\n"
+        f"{origin_id}\t10\toriginal.pdf\n"
     )
     write_json(kb / "manifest.json", {
         "corpus_version": "v1.1-raw", "snapshot_tag": "snapshot-2026-09-08-full",
@@ -92,11 +92,15 @@ def test_split_is_complete_deterministic_and_preserves_authoritative_bytes(
         assert not all_ids & identifiers
         all_ids |= identifiers
         manifest = json.loads((directory / "manifest.json").read_bytes())
-        assert manifest["dataset_sha256"] == hashlib.sha256(data).hexdigest()
-        canonical = sorted((example.input, example.reference) for example in examples)
-        assert manifest["dataset_digest"] == hashlib.sha256(
-            json.dumps(canonical, ensure_ascii=False, separators=(",", ":")).encode()
-        ).hexdigest()
+        assert manifest["dataset"] == "dataset.jsonl"
+        assert manifest["source_files"] == ["task.md"] + [
+            relative for identifier in sorted(identifiers) for relative in (
+                f"materials/{identifier}/question.md",
+                f"ground_truth/{identifier}.md", f"ground_truth/{identifier}.json",
+            )
+        ]
+        assert "sha256" not in json.dumps(manifest)
+        assert "digest" not in json.dumps(manifest)
         for example in examples:
             reference = json.loads(example.reference or "")
             assert reference["format"] == "sc71-reference-v1"
@@ -117,6 +121,14 @@ def test_split_is_complete_deterministic_and_preserves_authoritative_bytes(
     serialized_report = json.dumps(report)
     assert all(identifier not in serialized_report for identifier in all_ids)
     assert "Эталон" not in serialized_report
+    assert report["source_manifest"] == "manifest.json"
+    assert report["kb"] == {
+        "corpus_version": "v1.1-raw", "snapshot_tag": "snapshot-2026-09-08-full",
+        "file_count": 1, "index": "index.tsv", "manifest": "manifest.json", "norm": "norm",
+    }
+    assert all(report["splits"][split] == {
+        "dataset": "dataset.jsonl", "manifest": "manifest.json",
+    } for split in ("train", "public", "private"))
     manifest = json.loads((source / "manifest.json").read_bytes())
     manifest["examples"].reverse()
     write_json(source / "manifest.json", manifest)
@@ -164,16 +176,14 @@ def test_invalid_source_is_rejected_before_output(
 
 
 @pytest.mark.parametrize("change", [
-    "hash", "quote", "origin", "duplicate_question", "malformed_t1", "kb_manifest",
+    "quote", "origin", "duplicate_question", "malformed_t1", "kb_manifest",
     "index_identity",
 ])
 def test_corpus_checks_and_question_deduplication_do_not_disclose_content(
     source_package: tuple[Path, Path], tmp_path: Path, change: str,
 ) -> None:
     source, kb = source_package
-    if change == "hash":
-        (kb / "norm" / f"{ORIGIN_ID}.md").write_text("SENSITIVE CORPUS CHANGE")
-    elif change == "index_identity":
+    if change == "index_identity":
         fake_id = "a" * 64
         (kb / "norm" / f"{ORIGIN_ID}.md").rename(kb / "norm" / f"{fake_id}.md")
         for name in ("index.tsv", "manifest.json"):
@@ -203,6 +213,29 @@ def test_corpus_checks_and_question_deduplication_do_not_disclose_content(
         prepare(source, kb, tmp_path / "result")
     assert "SENSITIVE" not in str(failure.value)
     assert "T1-01" not in str(failure.value)
+    assert not (tmp_path / "result").exists()
+
+
+def test_legacy_index_checksum_is_not_required_or_checked(
+    source_package: tuple[Path, Path], tmp_path: Path,
+) -> None:
+    source, kb = source_package
+    (kb / "index.tsv").write_text(f"{ORIGIN_ID}\t10\toriginal.pdf\tlegacy\n")
+    document = kb / "norm" / f"{ORIGIN_ID}.md"
+    document.write_bytes(document.read_bytes() + "Дополнительный текст.\n".encode())
+    assert prepare(source, kb, tmp_path / "result")["counts"]["train"] == 10
+
+
+def test_corpus_symlink_is_rejected_before_output(
+    source_package: tuple[Path, Path], tmp_path: Path,
+) -> None:
+    source, kb = source_package
+    document = kb / "norm" / f"{ORIGIN_ID}.md"
+    outside = tmp_path / "outside.md"
+    document.rename(outside)
+    document.symlink_to(outside)
+    with pytest.raises(PreparationError, match="source symlink"):
+        prepare(source, kb, tmp_path / "result")
     assert not (tmp_path / "result").exists()
 
 

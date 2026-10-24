@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import shutil
@@ -34,7 +33,7 @@ def draft_metric(tmp_path: Path) -> Path:
     return directory
 
 
-def test_frozen_package_runs_program_metric_and_pins_all_files(tmp_path: Path) -> None:
+def test_frozen_package_runs_program_metric_and_lists_all_files(tmp_path: Path) -> None:
     source = draft_metric(tmp_path)
     frozen = tmp_path / "frozen"
     freeze_metric(source, frozen)
@@ -44,15 +43,19 @@ def test_frozen_package_runs_program_metric_and_pins_all_files(tmp_path: Path) -
         str(Path(sys.executable).absolute()), str(frozen / "score.py"),
         str(frozen / "policy.json"),
     ]
-    assert set(metric.command.source_sha256) == {
-        str(Path(sys.executable).absolute()),
-        *(str(path) for path in frozen.iterdir()),
+    provenance = metric_package_provenance(frozen)
+    assert provenance == {
+        "format_version": 1,
+        "files": {
+            name: {"executable": False}
+            for name in ("metric.json", "score.py", "policy.json", "description.md")
+        },
     }
     assert command_provenance(metric)
     assert evaluate_answer(metric, Example(id="x", input="synthetic"), "abc")["score"] == 6
 
 
-def test_package_digest_is_independent_of_installation_path(tmp_path: Path) -> None:
+def test_package_inventory_is_independent_of_installation_path(tmp_path: Path) -> None:
     frozen = tmp_path / "frozen"
     freeze_metric(draft_metric(tmp_path), frozen)
     relocated = tmp_path / "relocated"
@@ -63,14 +66,22 @@ def test_package_digest_is_independent_of_installation_path(tmp_path: Path) -> N
     assert metric.command.argv[1] == str(relocated / "score.py")
 
 
-@pytest.mark.parametrize("change", ["edit", "add", "delete", "executable"])
-def test_changed_frozen_package_is_rejected(tmp_path: Path, change: str) -> None:
+def test_package_content_is_not_checked_against_a_checksum(tmp_path: Path) -> None:
+    frozen = tmp_path / "frozen"
+    freeze_metric(draft_metric(tmp_path), frozen)
+    original = metric_package_provenance(frozen)
+    (frozen / "policy.json").write_text('{"weight": 100}')
+    metric = load_metric(frozen)
+    assert metric_package_provenance(frozen) == original
+    assert evaluate_answer(metric, Example(id="x", input="synthetic"), "abc")["score"] == 300
+
+
+@pytest.mark.parametrize("change", ["add", "delete", "executable"])
+def test_changed_frozen_package_inventory_is_rejected(tmp_path: Path, change: str) -> None:
     frozen = tmp_path / "frozen"
     freeze_metric(draft_metric(tmp_path), frozen)
     asset = frozen / "policy.json"
-    if change == "edit":
-        asset.write_text('{"weight": 100}')
-    elif change == "add":
+    if change == "add":
         (frozen / "new.py").write_text("pass\n")
     elif change == "delete":
         asset.unlink()
@@ -82,21 +93,50 @@ def test_changed_frozen_package_is_rejected(tmp_path: Path, change: str) -> None
         metric_package_provenance(frozen)
 
 
-def test_legacy_standalone_metric_is_unchanged(tmp_path: Path) -> None:
+def test_standalone_metric_loads_without_package(tmp_path: Path) -> None:
     path = tmp_path / "metric.json"
     executable = str(Path(sys.executable).absolute())
     metric = Metric.model_validate({
         "version": "legacy", "kind": "command",
         "command": {
             "argv": [executable, "-c", "print('{\"score\": 1}')"],
-            "source_sha256": {
-                executable: hashlib.sha256(Path(executable).read_bytes()).hexdigest(),
-            },
         },
     })
     path.write_text(metric.model_dump_json())
     assert load_metric(path) == metric
     assert metric_package_provenance(path) is None
+
+
+def test_legacy_standalone_metric_ignores_obsolete_source_checksums(tmp_path: Path) -> None:
+    path = tmp_path / "metric.json"
+    path.write_text(json.dumps({
+        "version": "legacy", "kind": "command",
+        "command": {
+            "argv": [sys.executable, "-c", "print('{\"score\": 1}')"],
+            "source_sha256": {sys.executable: "invalid"},
+        },
+    }))
+    metric = load_metric(path)
+    assert metric.command is not None
+    assert "source_sha256" not in metric.command.model_dump()
+    assert evaluate_answer(metric, Example(id="x", input=""), "")["score"] == 1
+
+
+@pytest.mark.parametrize("legacy_checksum", [None, "invalid", {"invalid": []}])
+def test_legacy_package_lock_ignores_obsolete_checksums(
+    tmp_path: Path, legacy_checksum: object,
+) -> None:
+    frozen = tmp_path / "frozen"
+    original = freeze_metric(draft_metric(tmp_path), frozen)
+    lock = frozen / "metric.lock.json"
+    content = json.loads(lock.read_text())
+    for entry in content["files"].values():
+        entry["sha256"] = legacy_checksum
+    lock.write_text(json.dumps(content))
+    (frozen / "policy.json").write_text('{"weight": 100}')
+    metric = load_metric(frozen)
+    assert metric_package_provenance(frozen) == original
+    assert evaluate_answer(metric, Example(id="x", input=""), "abc")["score"] == 300
 
 
 def test_unsealed_directory_is_rejected(tmp_path: Path) -> None:

@@ -74,6 +74,36 @@ def test_train_records_open_data_and_uses_single_answer(settings):
     assert calls == ["task-0", "task-1"]
 
 
+def test_legacy_checksum_metadata_preserves_train_answers(settings, tmp_path):
+    from evaluator.metric_package import freeze_metric
+
+    draft = tmp_path / "draft"
+    draft.mkdir()
+    (draft / "score.py").write_text("print('{\"score\":2}')\n")
+    (draft / "metric.json").write_text(json.dumps({
+        "version": "prepared", "kind": "command", "command": {"argv": ["python", "score.py"]},
+    }))
+    package = tmp_path / "frozen"
+    freeze_metric(draft, package)
+    configured = replace(settings, evaluation=replace(settings.evaluation, metric_path=package))
+    original = result(api(configured), payload())
+    path = configured.evaluation.state_dir / "configuration.json"
+    stored = json.loads(path.read_text())
+    stored["metric"]["command"]["source_sha256"] = {"/old/source.py": "legacy"}
+    stored["package"]["sha256"] = "legacy"
+    for entry in stored["package"]["files"].values():
+        entry["sha256"] = "legacy"
+    path.write_text(json.dumps(stored))
+
+    def repeated_solve(*args):
+        pytest.fail("recorded answer must not run again")
+
+    restarted = api(configured, solve=repeated_solve)
+    repeated = restarted.post("/v1/evaluations", json=payload()).json()
+    assert repeated["evaluation_id"] == original["evaluation_id"]
+    assert restarted.get("/v1/evaluations/" + original["evaluation_id"]).json() == original
+
+
 def test_solver_failure_retains_measured_resources(settings):
     usage = {**empty_usage(), "attempts": 2, "unreported_attempts": 2}
 
@@ -380,7 +410,6 @@ def test_build_endpoint_rejects_harness_without_capability_before_execution(
 
 
 def test_registered_ordinary_harness_preserves_adapter_parameters(settings, monkeypatch):
-    import hashlib
     import sys
 
     program = settings.evaluation.metric_path.parent / "score.py"
@@ -391,10 +420,7 @@ def test_registered_ordinary_harness_preserves_adapter_parameters(settings, monk
     executable = Path(sys.executable).resolve()
     settings.evaluation.metric_path.write_text(json.dumps({
         "version": "command-v1", "kind": "command",
-        "command": {"argv": [str(executable), str(program)], "source_sha256": {
-            str(path): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (executable, program)
-        }},
+        "command": {"argv": [str(executable), str(program)]},
     }))
     image = "sha256:" + "a" * 64
     configured = replace(settings, evaluation=replace(
