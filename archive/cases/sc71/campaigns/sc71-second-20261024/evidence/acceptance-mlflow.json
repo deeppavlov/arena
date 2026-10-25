@@ -1,0 +1,54 @@
+{
+  "campaign_id": "sc71-second-20261024",
+  "synthetic_only": true,
+  "model_calls_during_export": 0,
+  "verification": "run status, complete record artifact and trace span count matched saved acceptance",
+  "experiment_ids": {
+    "shared": "2",
+    "operator": "3"
+  },
+  "scenarios": {
+    "retrieval": {
+      "shared": {
+        "status": "exported",
+        "run_id": "fe0ffc81978c4eafbcbf23e0949dc6a2",
+        "trace_id": "tr-5ad73741a550b07fa11dc61bbbe0fcbe",
+        "spans": 4
+      },
+      "operator": {
+        "status": "exported",
+        "run_id": "c0340f8cebf344629eda552fa0b3f289",
+        "trace_id": "tr-34245c862fca3e998cc0dbfa0ad09542",
+        "spans": 4
+      }
+    },
+    "delegation": {
+      "shared": {
+        "status": "exported",
+        "run_id": "c8cbbf8072ff40f68e2f12361fa0ddb7",
+        "trace_id": "tr-abacd2fedb385e081e52fbc012e7e709",
+        "spans": 9
+      },
+      "operator": {
+        "status": "exported",
+        "run_id": "372da48cc4fe4dfa9e5c48dfd9a4ace0",
+        "trace_id": "tr-056d5e05807d020a5c52ff90b438797e",
+        "spans": 9
+      }
+    },
+    "judge": {
+      "shared": {
+        "status": "exported",
+        "run_id": "42cf40d39a784b608a79f7dedbc63a87",
+        "trace_id": "tr-ae961f5160b67b1bec7cfbfd342f8f6f",
+        "spans": 11
+      },
+      "operator": {
+        "status": "exported",
+        "run_id": "82a482370ee34039b08d3aec9ac8c21d",
+        "trace_id": "tr-0da16e51273e22f0a5972ada2bbcba4d",
+        "spans": 11
+      }
+    }
+  }
+}

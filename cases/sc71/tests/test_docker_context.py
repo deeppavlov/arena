@@ -8,6 +8,12 @@ ROOT = Path(__file__).resolve().parents[3]
 HERMES = Path("cases/sc71/harness/hermes")
 
 
+def test_hermes_researcher_can_install_the_tracking_client() -> None:
+    dockerfile = (ROOT / HERMES / "Dockerfile").read_text()
+    arena = dockerfile.split("WORKDIR /opt/arena\n", 1)[1]
+    assert "RUN uv sync --frozen --no-dev --extra tracking\n" in arena
+
+
 @pytest.mark.parametrize("hermes", [False, True])
 def test_build_context_excludes_other_cases_and_sensitive_files(
     tmp_path: Path, hermes: bool,

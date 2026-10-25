@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "search_started": false,
+  "journal": {
+    "max_solutions": 100,
+    "stopped_at": null,
+    "stop_reason": null,
+    "finalization": null,
+    "stopped": false,
+    "proposed": 0,
+    "remaining_proposals": 100,
+    "running": [],
+    "completed_measurements": 0
+  },
+  "private_readiness": {
+    "mode": "campaign",
+    "gate_enabled": true,
+    "journal_ready": true,
+    "max_solutions": 100,
+    "finalists": 10,
+    "output_count": 3,
+    "evaluation_enabled": true,
+    "release_id": "sc71-second-20261024"
+  },
+  "mlflow": {
+    "campaign_id": "sc71-second-20261024",
+    "marker": "SC71_SECOND_SYNTHETIC_TRACE_20261024",
+    "run_id": "6e128c9a2e27437d8e1330ccb5a75aff",
+    "uri": "http://shared-tracking:5000",
+    "experiment_id": "1",
+    "trace_ids": [
+      "tr-82e568a1b51e4aa4c7d6e86094605382"
+    ],
+    "payload_verified": true
+  }
+}

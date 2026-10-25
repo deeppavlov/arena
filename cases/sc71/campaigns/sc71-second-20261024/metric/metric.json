@@ -1,0 +1,15 @@
+{
+  "version": "sc71-answer-quality-v1",
+  "kind": "command",
+  "direction": "maximize",
+  "command": {
+    "argv": ["python", "score.py"],
+    "uses_model": true,
+    "timeout_seconds": 1209600
+  },
+  "aggregation": {
+    "argv": ["python", "score.py", "--aggregate"],
+    "uses_model": false,
+    "timeout_seconds": 21600
+  }
+}

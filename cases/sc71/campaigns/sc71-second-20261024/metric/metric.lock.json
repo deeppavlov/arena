@@ -1,0 +1,17 @@
+{
+  "format_version": 1,
+  "files": {
+    "README.md": {
+      "executable": false
+    },
+    "metric.json": {
+      "executable": false
+    },
+    "policy.json": {
+      "executable": false
+    },
+    "score.py": {
+      "executable": false
+    }
+  }
+}

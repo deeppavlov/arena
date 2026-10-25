@@ -1,0 +1,95 @@
+{
+  "cwd": "/home/kaneki/Documents/DeepPavlov/arena",
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "ruff",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "started_at": "2026-10-25T20:54:33.145644+00:00",
+      "elapsed_seconds": 0.175,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-repair-checks-20261025/ruff.log"
+    },
+    {
+      "name": "pyright",
+      "command": [
+        "uv",
+        "run",
+        "pyright"
+      ],
+      "started_at": "2026-10-25T20:54:33.145811+00:00",
+      "elapsed_seconds": 5.412,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-repair-checks-20261025/pyright.log"
+    },
+    {
+      "name": "pytest",
+      "command": [
+        "uv",
+        "run",
+        "pytest"
+      ],
+      "started_at": "2026-10-25T20:54:33.146106+00:00",
+      "elapsed_seconds": 56.031,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-repair-checks-20261025/pytest.log"
+    },
+    {
+      "name": "smoke",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "evaluator.smoke"
+      ],
+      "started_at": "2026-10-25T20:54:33.147785+00:00",
+      "elapsed_seconds": 2.9,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-repair-checks-20261025/smoke.log"
+    },
+    {
+      "name": "sc71-pytest",
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "cases/sc71/tests"
+      ],
+      "started_at": "2026-10-25T20:54:33.147949+00:00",
+      "elapsed_seconds": 7.183,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-repair-checks-20261025/sc71-pytest.log"
+    },
+    {
+      "name": "sc71-pyright",
+      "command": [
+        "uv",
+        "run",
+        "pyright",
+        "-p",
+        "cases/sc71/pyrightconfig.json"
+      ],
+      "started_at": "2026-10-25T20:54:33.148276+00:00",
+      "elapsed_seconds": 3.52,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-repair-checks-20261025/sc71-pyright.log"
+    }
+  ],
+  "tests_passed": {
+    "core": 1603,
+    "sc71": 172,
+    "total": 1775
+  },
+  "warnings": [
+    "Existing Starlette TestClient/httpx deprecation warning in core pytest and smoke.",
+    "uv automatically removed a broken interpreter cache entry before ruff; checks succeeded."
+  ],
+  "scope": "Actual root workspace after launcher integration; no source edits, model calls, or server operations."
+}

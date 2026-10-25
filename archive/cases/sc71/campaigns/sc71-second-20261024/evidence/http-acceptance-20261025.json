@@ -1,0 +1,36 @@
+{
+  "synthetic_only": true,
+  "real_model_requests": 0,
+  "evaluation_id": "7ce032cea93c538e263fdfe3bdc2d87ae6c07f11a5cf53a1c2fa0f549623b8d4",
+  "metrics": {
+    "solver_tokens": 15,
+    "solver_seconds": 11.255407307762653,
+    "solver_unreported_attempts": 0,
+    "solver_resources_complete": true,
+    "judge_tokens": 0,
+    "judge_seconds": 0.16883837499999998,
+    "judge_unreported_attempts": 0,
+    "judge_resources_complete": true,
+    "wall_seconds": 11.431512245,
+    "score": 1.0
+  },
+  "journal": {
+    "max_solutions": 1,
+    "stopped_at": null,
+    "stop_reason": null,
+    "finalization": null,
+    "stopped": false,
+    "proposed": 1,
+    "remaining_proposals": 0,
+    "running": [],
+    "completed_measurements": 1
+  },
+  "tracking": {
+    "run_id": "5fa00e7aa0764868a89934b954f5a4ed",
+    "experiment_id": "4",
+    "trace_ids": [
+      "tr-74dca759c06eb4ee6401b89d12dc13c1"
+    ],
+    "payload_verified": true
+  }
+}

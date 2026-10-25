@@ -20,7 +20,7 @@ RUN uv sync --frozen --no-dev --extra ddgs
 RUN ln -s /assets/kb /kb
 WORKDIR /opt/arena
 COPY pyproject.toml uv.lock /opt/arena/
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --extra tracking
 COPY evaluator /opt/arena/evaluator
 COPY runner/main.py /opt/arena/runner/main.py
 COPY cases/sc71/harness/hermes/*.py cases/sc71/harness/hermes/config.yaml /opt/arena/cases/sc71/harness/hermes/

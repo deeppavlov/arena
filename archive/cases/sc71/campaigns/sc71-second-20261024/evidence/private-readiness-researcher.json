@@ -1,0 +1,10 @@
+{
+  "mode": "campaign",
+  "gate_enabled": true,
+  "journal_ready": true,
+  "max_solutions": 100,
+  "finalists": 10,
+  "output_count": 3,
+  "evaluation_enabled": true,
+  "release_id": "sc71-second-20261024"
+}

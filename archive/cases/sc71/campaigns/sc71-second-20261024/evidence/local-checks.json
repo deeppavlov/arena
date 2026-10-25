@@ -1,0 +1,94 @@
+{
+  "cwd": "/home/kaneki/Documents/DeepPavlov/arena",
+  "revision_context": "Final verification after mlflow_probe call_artifacts fix",
+  "all_passed": true,
+  "total_tests_passed": 1768,
+  "checks": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "cwd": "/home/kaneki/Documents/DeepPavlov/arena",
+      "started_at": "2026-10-24T10:38:47.786361+00:00",
+      "elapsed_seconds": 0.088,
+      "exit_code": 0,
+      "name": "ruff",
+      "result": "PASS",
+      "log": "/tmp/arena-sc71-final-checks/ruff.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pyright"
+      ],
+      "cwd": "/home/kaneki/Documents/DeepPavlov/arena",
+      "started_at": "2026-10-24T10:38:47.788072+00:00",
+      "elapsed_seconds": 4.423,
+      "exit_code": 0,
+      "name": "pyright",
+      "result": "0 errors, 0 warnings",
+      "log": "/tmp/arena-sc71-final-checks/pyright.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest"
+      ],
+      "cwd": "/home/kaneki/Documents/DeepPavlov/arena",
+      "started_at": "2026-10-24T10:38:47.782349+00:00",
+      "elapsed_seconds": 55.193,
+      "exit_code": 0,
+      "name": "pytest",
+      "result": "1603 passed; 1 StarletteDeprecationWarning",
+      "log": "/tmp/arena-sc71-final-checks/pytest.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "evaluator.smoke"
+      ],
+      "cwd": "/home/kaneki/Documents/DeepPavlov/arena",
+      "started_at": "2026-10-24T10:38:47.786127+00:00",
+      "elapsed_seconds": 2.403,
+      "exit_code": 0,
+      "name": "smoke",
+      "result": "PASS; StarletteDeprecationWarning",
+      "log": "/tmp/arena-sc71-final-checks/smoke.log"
+    },
+    {
+      "cmd": "uv run pytest cases/sc71/tests",
+      "started_at": "2026-10-24T10:38:54.682367+00:00",
+      "finished_at": "2026-10-24T10:38:58.178540+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 3.496,
+      "name": "sc71-pytest",
+      "command": "uv run pytest cases/sc71/tests",
+      "result": "165 passed",
+      "log": "/tmp/arena-sc71-final-checks/sc71-pytest.log"
+    },
+    {
+      "cmd": "uv run pyright -p cases/sc71/pyrightconfig.json",
+      "started_at": "2026-10-24T10:38:54.682862+00:00",
+      "finished_at": "2026-10-24T10:38:56.773163+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 2.09,
+      "name": "sc71-pyright",
+      "command": "uv run pyright -p cases/sc71/pyrightconfig.json",
+      "result": "0 errors, 0 warnings",
+      "log": "/tmp/arena-sc71-final-checks/sc71-pyright.log"
+    }
+  ],
+  "notes": [
+    "No source edits or real model calls.",
+    "Existing Starlette/httpx TestClient deprecation warning."
+  ]
+}

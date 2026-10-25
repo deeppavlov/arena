@@ -1,0 +1,10 @@
+*
+!cases/
+!cases/sc71/
+!cases/sc71/deploy/
+!cases/sc71/deploy/gpu6/
+!cases/sc71/deploy/gpu6/squid.conf
+!cases/sc71/campaigns/
+!cases/sc71/campaigns/sc71-second-20261024/
+!cases/sc71/campaigns/sc71-second-20261024/deploy/
+!cases/sc71/campaigns/sc71-second-20261024/deploy/firewall.sh

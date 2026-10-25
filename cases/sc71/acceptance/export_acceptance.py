@@ -64,7 +64,8 @@ def build_record(state, scenario, model_calls):
     return sanitize_record({
         "split": "train", "status": status,
         "params": {
-            "case_id": "sc71-preparation-acceptance", "campaign_id": "sc71-first-20261019",
+            "case_id": "sc71-preparation-acceptance",
+            "campaign_id": state["settings"].get("campaign_id", "sc71-first-20261019"),
             "candidate_id": "sc71-synthetic-acceptance", "scenario": scenario,
             "configuration": configuration,
             "model": "deepseek-ai/DeepSeek-V4-Flash-0731", "harness": "hermes",

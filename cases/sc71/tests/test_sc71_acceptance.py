@@ -250,3 +250,21 @@ def test_acceptance_verification_does_not_require_metric_lock(acceptance, tmp_pa
     assert acceptance.main() == 0
     load_metric.assert_called_once_with(tmp_path / "metric")
     verify_result.assert_called_once_with(settings, "retrieval", {})
+
+
+@pytest.mark.parametrize("campaign_id", [None, "sc71-second-20261024"])
+def test_acceptance_export_uses_fixed_campaign_and_preserves_legacy_default(campaign_id):
+    exporter = SimpleNamespace(**runpy.run_path(str(PACKAGE / "export_acceptance.py")))
+    settings = {"runner": {"image": "hermes:fixed"}}
+    if campaign_id is not None:
+        settings["campaign_id"] = campaign_id
+    state = {
+        "synthetic_only": True, "settings": settings,
+        "scenarios": {"retrieval": {
+            "status": "accepted", "started_at_unix": 1, "finished_at_unix": 2,
+            "wall_seconds": 1, "result": {},
+        }},
+    }
+    record = exporter.build_record(state, "retrieval", [])
+    assert record["params"]["campaign_id"] == (campaign_id or "sc71-first-20261019")
+    assert record["params"]["configuration"] == settings

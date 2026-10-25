@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "synthetic_only": true,
+  "image": "sha256:f732b1293904b9f70b6cde2744a0fd9d4af01273809c8f7a832740480c68cd7c",
+  "receipt_version": 2,
+  "build_invocations": 1,
+  "reused_identical_receipt": true,
+  "input_absent": true,
+  "model_calls": 0,
+  "resources": {
+    "usage": {
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0,
+      "attempts": 0,
+      "unreported_attempts": 0
+    },
+    "wall_seconds": 8.633888641837984,
+    "usage_complete": true,
+    "wall_seconds_complete": true
+  },
+  "network": "none",
+  "start_time_ns": 1792838057565295210,
+  "end_time_ns": 1792838066191020852,
+  "prepared_readonly": true,
+  "solve_output_mount_absent": true
+}

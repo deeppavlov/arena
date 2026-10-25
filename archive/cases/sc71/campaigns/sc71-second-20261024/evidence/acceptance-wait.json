@@ -1,0 +1,9 @@
+{
+  "job": "arena-sc71-second-acceptance-rest",
+  "first_scenario_seconds": 14.756670377217233,
+  "remaining_scenarios": 2,
+  "safety_factor": 1.15,
+  "estimated_remaining_seconds": 33.940341867599635,
+  "started_at": "2026-10-24T10:35:15.708251131Z",
+  "wait_strategy": "docker wait completion event; no model status polling"
+}

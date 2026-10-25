@@ -1,0 +1,263 @@
+name: arena-sc71-second
+
+x-runtime: &runtime
+  init: true
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 512
+  mem_limit: 4g
+  cpus: 4
+  tmpfs:
+    - /tmp:rw,nosuid,size=2g,mode=1777
+  restart: unless-stopped
+
+x-evaluator: &evaluator
+  <<: *runtime
+  image: ${ARENA_EVALUATOR_IMAGE:?}
+  command: [python, -m, evaluator]
+  group_add: ["${ARENA_DOCKER_GID:?}"]
+  env_file: ["${ARENA_ROOT:?}/operator/evaluator.env"]
+  environment: &evaluator-environment
+    ARENA_RUNNER_SUPPORTS_BUILD: "true"
+    ARENA_RUNNER_SUPPORTS_ASSET_SELECTION: "true"
+    ARENA_INPUT_ASSETS_DIGEST: ${SC71_INPUT_ASSETS_DIGEST:?}
+    MLFLOW_TRACKING_URI: http://shared-tracking:5000
+    ARENA_OPERATOR_MLFLOW_TRACKING_URI: http://operator-tracking:5000
+  volumes: &evaluator-volumes
+    - ${ARENA_ROOT}/operator/metric:/private/metric:ro
+    - ${ARENA_ROOT}/operator/state:${ARENA_ROOT}/operator/state
+    - ${ARENA_ROOT}/operator/usage:${ARENA_ROOT}/operator/usage
+    - ${ARENA_ROOT}/operator/traces:${ARENA_ROOT}/operator/traces
+    - ${ARENA_ROOT}/assets:${ARENA_ROOT}/assets:ro
+    - ${ARENA_ROOT}/secrets:/run/secrets:ro
+    - /var/run/docker.sock:/var/run/docker.sock
+  healthcheck:
+    test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+
+x-gateway: &gateway
+  <<: *runtime
+  image: ${ARENA_EVALUATOR_IMAGE:?}
+  command: [python, -m, evaluator.gateway]
+  env_file: ["${ARENA_ROOT:?}/operator/gateway.env"]
+  environment: &gateway-environment
+    MODEL_STRICT_SCHEMA_INTEGERS: "true"
+  volumes:
+    - ${ARENA_ROOT}/operator/usage:${ARENA_ROOT}/operator/usage
+    - ${ARENA_ROOT}/operator/traces:${ARENA_ROOT}/operator/traces
+    - ${ARENA_ROOT}/secrets/model-api-key:/run/secrets/model-api-key:ro
+  healthcheck:
+    test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/healthz', timeout=3)"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+
+services:
+  train-evaluator:
+    <<: *evaluator
+    command: [python, -m, evaluator.train, serve, --host, 0.0.0.0, --port, "8080"]
+    depends_on:
+      model-gateway: {condition: service_healthy}
+    environment:
+      <<: *evaluator-environment
+      ARENA_SPLIT: public
+      ARENA_DATASET_PATH: /private/dataset.jsonl
+      ARENA_STATE_DIR: ${ARENA_ROOT}/operator/state/train
+      ARENA_TRACKING_DIR: ${ARENA_ROOT}/operator/state/train/tracking
+      ARENA_TOKEN_FILE: /run/secrets/train-token
+    volumes:
+      - ${ARENA_ROOT}/operator/dataset/train/dataset.jsonl:/private/dataset.jsonl:ro
+      - ${ARENA_ROOT}/staging:/staging:ro
+      - ${ARENA_ROOT}/derived:${ARENA_ROOT}/derived
+      - ${ARENA_ROOT}/operator/metric:/private/metric:ro
+      - ${ARENA_ROOT}/operator/state:${ARENA_ROOT}/operator/state
+      - ${ARENA_ROOT}/operator/builds:${ARENA_ROOT}/operator/builds
+      - ${ARENA_ROOT}/operator/usage:${ARENA_ROOT}/operator/usage
+      - ${ARENA_ROOT}/operator/traces:${ARENA_ROOT}/operator/traces
+      - ${ARENA_ROOT}/assets:${ARENA_ROOT}/assets:ro
+      - ${ARENA_ROOT}/secrets:/run/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports: ["127.0.0.1:18830:8080"]
+    networks:
+      research: {ipv4_address: 172.31.81.10}
+      control: {}
+      operator-tracking: {}
+  public-evaluator:
+    <<: *evaluator
+    depends_on:
+      train-evaluator: {condition: service_healthy}
+    environment:
+      <<: *evaluator-environment
+      ARENA_SPLIT: public
+      ARENA_DATASET_PATH: /private/dataset.jsonl
+      ARENA_STATE_DIR: ${ARENA_ROOT}/operator/state/public
+      ARENA_TRACKING_DIR: ${ARENA_ROOT}/operator/state/public/tracking
+      ARENA_TOKEN_FILE: /run/secrets/public-token
+    volumes:
+      - ${ARENA_ROOT}/operator/dataset/public/dataset.jsonl:/private/dataset.jsonl:ro
+      - ${ARENA_ROOT}/operator/metric:/private/metric:ro
+      - ${ARENA_ROOT}/operator/state:${ARENA_ROOT}/operator/state
+      - ${ARENA_ROOT}/operator/builds:${ARENA_ROOT}/operator/builds
+      - ${ARENA_ROOT}/operator/usage:${ARENA_ROOT}/operator/usage
+      - ${ARENA_ROOT}/operator/traces:${ARENA_ROOT}/operator/traces
+      - ${ARENA_ROOT}/assets:${ARENA_ROOT}/assets:ro
+      - ${ARENA_ROOT}/derived:${ARENA_ROOT}/derived:ro
+      - ${ARENA_ROOT}/secrets:/run/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports: ["127.0.0.1:18831:8080"]
+    networks:
+      research: {ipv4_address: 172.31.81.11}
+      control: {}
+      operator-tracking: {}
+  private-evaluator:
+    <<: *evaluator
+    depends_on:
+      train-evaluator: {condition: service_healthy}
+    environment:
+      <<: *evaluator-environment
+      ARENA_SPLIT: private
+      ARENA_DATASET_PATH: /private/dataset.jsonl
+      ARENA_STATE_DIR: ${ARENA_ROOT}/operator/state/private
+      ARENA_TRACKING_DIR: ${ARENA_ROOT}/operator/state/private/tracking
+      ARENA_TOKEN_FILE: /run/secrets/private-token
+      ARENA_FINALISTS: ${SC71_FINALISTS:?}
+      ARENA_OUTPUT_COUNT: ${SC71_OUTPUT_COUNT:?}
+      ARENA_RELEASE_ID: ${SC71_PRIVATE_RELEASE_ID:?}
+      ARENA_SEARCH_MODE: campaign
+      ARENA_SEARCH_JOURNAL: /search/search.sqlite3
+      ARENA_SEARCH_MAX_SOLUTIONS: "100"
+      ARENA_SEARCH_STOP_PATH: /operator-search/stop.json
+    volumes:
+      - campaign-runtime:/search:ro
+      - ${ARENA_ROOT}/operator/search:/operator-search:ro
+      - ${ARENA_ROOT}/operator/dataset/private/dataset.jsonl:/private/dataset.jsonl:ro
+      - ${ARENA_ROOT}/operator/metric:/private/metric:ro
+      - ${ARENA_ROOT}/operator/state:${ARENA_ROOT}/operator/state
+      - ${ARENA_ROOT}/operator/builds:${ARENA_ROOT}/operator/builds
+      - ${ARENA_ROOT}/operator/usage:${ARENA_ROOT}/operator/usage
+      - ${ARENA_ROOT}/operator/traces:${ARENA_ROOT}/operator/traces
+      - ${ARENA_ROOT}/assets:${ARENA_ROOT}/assets:ro
+      - ${ARENA_ROOT}/derived:${ARENA_ROOT}/derived:ro
+      - ${ARENA_ROOT}/secrets:/run/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports: ["127.0.0.1:18832:8080"]
+    networks:
+      research: {ipv4_address: 172.31.81.12}
+      control: {}
+      operator-tracking: {}
+  model-gateway:
+    <<: *gateway
+    networks:
+      workers: {ipv4_address: 172.31.82.10}
+      control: {}
+  researcher-gateway:
+    <<: *gateway
+    environment:
+      <<: *gateway-environment
+      MODEL_USAGE_DIR: ${ARENA_ROOT}/operator/outer-usage
+      MODEL_TRACE_DIR: ${ARENA_ROOT}/operator/outer-traces
+    volumes:
+      - ${ARENA_ROOT}/operator/outer-usage:${ARENA_ROOT}/operator/outer-usage
+      - ${ARENA_ROOT}/operator/outer-traces:${ARENA_ROOT}/operator/outer-traces
+      - ${ARENA_ROOT}/secrets/model-api-key:/run/secrets/model-api-key:ro
+    networks:
+      research: {ipv4_address: 172.31.81.30}
+      control: {}
+  internet-proxy:
+    <<: *runtime
+    user: "13:13"
+    image: ${ARENA_INFRA_IMAGE:?}
+    command: [squid, -N, -f, /etc/squid/squid.conf]
+    networks:
+      research: {ipv4_address: 172.31.81.40}
+      egress: {}
+  research-monitor:
+    <<: *runtime
+    image: ${ARENA_EVALUATOR_IMAGE:?}
+    command: [python, -m, integrations.docker.research_monitor, watch, --config, /run/research-monitor.json]
+    group_add: ["${ARENA_DOCKER_GID:?}"]
+    environment:
+      MLFLOW_TRACKING_URI: http://shared-tracking:5000
+      ARENA_OPERATOR_MLFLOW_TRACKING_URI: http://operator-tracking:5000
+      MLFLOW_ENABLE_ASYNC_TRACE_LOGGING: "false"
+    volumes:
+      - ${ARENA_ROOT}/operator/research-monitor.json:/run/research-monitor.json:ro
+      - ${ARENA_ROOT}/operator/launch:${ARENA_ROOT}/operator/launch:ro
+      - ${ARENA_ROOT}/operator/outer-usage:${ARENA_ROOT}/operator/outer-usage
+      - ${ARENA_ROOT}/operator/outer-traces:${ARENA_ROOT}/operator/outer-traces:ro
+      - ${ARENA_ROOT}/operator/state:${ARENA_ROOT}/operator/state
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [control, operator-tracking]
+  researcher:
+    <<: *runtime
+    profiles: [search]
+    image: ${ARENA_HERMES_IMAGE:?}
+    entrypoint: [python, /opt/arena/cases/sc71/harness/hermes/researcher.py]
+    command:
+      - --prompt-file
+      - /workspace/cases/sc71/campaigns/sc71-second-20261024/start.md
+      - --journal
+      - /workspace/cases/sc71/campaigns/sc71-second-20261024/search.sqlite3
+      - --private-url
+      - http://private-evaluator:8080
+      - --private-token-file
+      - /run/arena/private-token
+      - --private-finalists
+      - ${SC71_FINALISTS:?}
+      - --private-output-count
+      - ${SC71_OUTPUT_COUNT:?}
+      - --private-release-id
+      - ${SC71_PRIVATE_RELEASE_ID:?}
+    mem_limit: 32g
+    cpus: 8
+    pids_limit: 2048
+    restart: "no"
+    tmpfs:
+      - /tmp:rw,exec,nosuid,size=16g,mode=1777
+    working_dir: /workspace
+    environment:
+      HOME: /workspace/.home
+      HERMES_HOME: /workspace/.hermes
+      ARENA_MODEL_ACCESS_FILE: /run/arena/model-access.json
+      ARENA_CAMPAIGN: sc71-second-20261024
+      MLFLOW_TRACKING_URI: http://shared-tracking:5000
+      http_proxy: http://internet-proxy:3128
+      https_proxy: http://internet-proxy:3128
+      HTTP_PROXY: http://internet-proxy:3128
+      HTTPS_PROXY: http://internet-proxy:3128
+      no_proxy: localhost,127.0.0.1,researcher-gateway,train-evaluator,public-evaluator,private-evaluator,shared-tracking
+      NO_PROXY: localhost,127.0.0.1,researcher-gateway,train-evaluator,public-evaluator,private-evaluator,shared-tracking
+    volumes:
+      - ${ARENA_ROOT}/workspace:/workspace
+      - campaign-runtime:/workspace/cases/sc71/campaigns/sc71-second-20261024
+      - ${ARENA_ROOT}/assets:/assets:ro
+      - ${ARENA_ROOT}/derived:/assets/derived:ro
+      - ${ARENA_ROOT}/staging:/workspace/staging
+      - ${ARENA_ROOT}/research-access:/run/arena:ro
+    networks: [research]
+
+networks:
+  research:
+    external: true
+    name: sc71-second-researchers
+  workers:
+    external: true
+    name: sc71-second-workers
+  control:
+    external: true
+    name: sc71-second-control
+  egress:
+    external: true
+    name: sc71-second-egress
+  operator-tracking:
+    external: true
+    name: sc71-second-operator-tracking
+
+volumes:
+  campaign-runtime:
+    external: true
+    name: sc71-second-campaign-runtime

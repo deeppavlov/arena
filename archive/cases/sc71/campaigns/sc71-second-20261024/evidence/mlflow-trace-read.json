@@ -1,0 +1,11 @@
+{
+  "campaign_id": "sc71-second-20261024",
+  "marker": "SC71_SECOND_SYNTHETIC_TRACE_20261024",
+  "run_id": "6e128c9a2e27437d8e1330ccb5a75aff",
+  "uri": "http://shared-tracking:5000",
+  "experiment_id": "1",
+  "trace_ids": [
+    "tr-82e568a1b51e4aa4c7d6e86094605382"
+  ],
+  "payload_verified": true
+}
