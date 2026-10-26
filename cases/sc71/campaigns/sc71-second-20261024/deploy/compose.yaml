@@ -20,6 +20,7 @@ x-evaluator: &evaluator
   group_add: ["${ARENA_DOCKER_GID:?}"]
   env_file: ["${ARENA_ROOT:?}/operator/evaluator.env"]
   environment: &evaluator-environment
+    ARENA_RUNNER_MODEL_BASE_URL: http://model-gateway:8081/v1
     ARENA_RUNNER_SUPPORTS_BUILD: "true"
     ARENA_RUNNER_SUPPORTS_ASSET_SELECTION: "true"
     ARENA_INPUT_ASSETS_DIGEST: ${SC71_INPUT_ASSETS_DIGEST:?}

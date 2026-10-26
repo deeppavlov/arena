@@ -1,0 +1,44 @@
+{
+  "synthetic_only": true,
+  "solution_configurations": 1,
+  "evaluation_id": "40a21e97c137fe56bc889a390ac8df79b321200f0796116e42d2f1271533fcd9",
+  "metrics": {
+    "solver_tokens": 918,
+    "solver_seconds": 11.813837508205324,
+    "solver_unreported_attempts": 0,
+    "solver_resources_complete": true,
+    "judge_tokens": 9002,
+    "judge_seconds": 10.271177272,
+    "judge_unreported_attempts": 0,
+    "judge_resources_complete": true,
+    "wall_seconds": 22.099063817,
+    "score": 5.0
+  },
+  "judge_evidence": {
+    "valid_votes": 9,
+    "weighted_score": 5.0,
+    "minimum_score": 4,
+    "solver_model_attempts": 1,
+    "judge_model_attempts": 9
+  },
+  "journal": {
+    "max_solutions": 1,
+    "stopped_at": null,
+    "stop_reason": null,
+    "finalization": null,
+    "stopped": false,
+    "proposed": 1,
+    "remaining_proposals": 0,
+    "running": [],
+    "completed_measurements": 1
+  },
+  "tracking": {
+    "run_id": "d2f18bc51e534e468519c4c6b51a88af",
+    "experiment_id": "5",
+    "trace_ids": [
+      "tr-19e274fd3f6341d825088efec4cf5ad5"
+    ],
+    "payload_verified": true
+  }
+}
+

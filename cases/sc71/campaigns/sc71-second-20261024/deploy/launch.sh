@@ -30,7 +30,7 @@ for name in ("train-evaluator", "public-evaluator", "private-evaluator", "model-
 '
 for service in train-evaluator public-evaluator private-evaluator; do
   docker compose --env-file "$ARENA_ROOT/operator/images.env" -f cases/sc71/campaigns/sc71-second-20261024/deploy/compose.yaml exec -T "$service" python -c '
-import os
+import json, os, urllib.parse, urllib.request
 from pathlib import Path
 from evaluator.capacity import acquire_slot
 directory = os.environ["ARENA_SLOT_DIR"]
@@ -39,6 +39,12 @@ if not directory:
 lease = acquire_slot(Path(directory), int(os.environ.get("ARENA_EXECUTION_SLOTS", "4")))
 assert lease is not None
 lease.close()
+url = urllib.parse.urlsplit(os.environ["ARENA_RUNNER_MODEL_BASE_URL"])
+health = url._replace(path="/healthz", query="", fragment="").geturl()
+opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+with opener.open(health, timeout=5) as response:
+    if json.load(response).get("status") != "ok":
+        raise ValueError("Configured model gateway is not healthy")
 '
 done
 docker run --rm --network none -v "$ARENA_ROOT/operator/metric:/metric:ro" "$ARENA_EVALUATOR_IMAGE" python -m evaluator.prepare verify --metric /metric

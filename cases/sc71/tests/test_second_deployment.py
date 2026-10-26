@@ -1,14 +1,42 @@
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Thread
 
 import pytest
 
 DEPLOY = Path(__file__).parents[1] / "campaigns/sc71-second-20261024/deploy"
 SERVICES = ("train-evaluator", "public-evaluator", "private-evaluator")
+
+
+@contextmanager
+def gateway_server(status=200):
+    requests = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            requests.append(self.path)
+            self.send_response(status)
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok"}')
+
+        def log_message(self, format, *args):
+            pass
+
+    with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
+        thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+        thread.start()
+        try:
+            yield f"http://127.0.0.1:{server.server_port}/v1", requests
+        finally:
+            server.shutdown()
+            thread.join()
 
 
 @pytest.fixture
@@ -43,6 +71,9 @@ if "exec" in arguments:
     assert arguments[index + 3:index + 5] == ["python", "-c"]
     environment = dict(os.environ, ARENA_SLOT_DIR=str(root / "operator" / service),
                        ARENA_EXECUTION_SLOTS="1")
+    environment["ARENA_RUNNER_MODEL_BASE_URL"] = os.environ["TEST_GATEWAY_URL"]
+    if service == os.environ.get("TEST_FAILED_GATEWAY_SERVICE"):
+        environment["ARENA_RUNNER_MODEL_BASE_URL"] = os.environ["TEST_FAILED_GATEWAY_URL"]
     result = subprocess.run([sys.executable, "-c", arguments[index + 5]], env=environment)
     raise SystemExit(result.returncode)
 if "ps" in arguments and "--format" in arguments:
@@ -65,9 +96,45 @@ else
 fi
 ''')
     cat.chmod(0o755)
-    return dict(os.environ, ARENA_ROOT=str(tmp_path),
-                PATH=str(binary) + os.pathsep + os.environ["PATH"],
-                PYTHONPATH=str(Path(__file__).resolve().parents[3]))
+    with gateway_server() as (url, _):
+        yield dict(os.environ, ARENA_ROOT=str(tmp_path), TEST_GATEWAY_URL=url,
+                   PATH=str(binary) + os.pathsep + os.environ["PATH"],
+                   PYTHONPATH=str(Path(__file__).resolve().parents[3]))
+
+
+@pytest.mark.parametrize("service", SERVICES)
+def test_second_launch_rejects_unreachable_gateway_before_model_access(
+    tmp_path, launch_environment, service,
+):
+    with socket.socket() as unavailable:
+        unavailable.bind(("127.0.0.1", 0))
+        result = subprocess.run(
+            ["bash", str(DEPLOY / "launch.sh")],
+            env=dict(launch_environment, TEST_FAILED_GATEWAY_SERVICE=service,
+                     TEST_FAILED_GATEWAY_URL=f"http://127.0.0.1:{unavailable.getsockname()[1]}/v1"),
+            capture_output=True, text=True, check=False,
+        )
+    assert result.returncode != 0
+    assert not (tmp_path / "operator/launch/active.json").exists()
+    calls = [json.loads(row) for row in (tmp_path / "docker-calls.jsonl").read_text().splitlines()]
+    assert not any("create_usage" in str(row) for row in calls)
+    assert not any("up" in row for row in calls)
+
+
+def test_second_launch_rejects_unhealthy_gateway_before_model_access(tmp_path, launch_environment):
+    with gateway_server(status=503) as (url, requests):
+        result = subprocess.run(
+            ["bash", str(DEPLOY / "launch.sh")],
+            env=dict(launch_environment, TEST_FAILED_GATEWAY_SERVICE=SERVICES[0],
+                     TEST_FAILED_GATEWAY_URL=url),
+            capture_output=True, text=True, check=False,
+        )
+    assert result.returncode != 0
+    assert requests == ["/healthz"]
+    assert not (tmp_path / "operator/launch/active.json").exists()
+    calls = [json.loads(row) for row in (tmp_path / "docker-calls.jsonl").read_text().splitlines()]
+    assert not any("create_usage" in str(row) for row in calls)
+    assert not any("up" in row for row in calls)
 
 
 @pytest.mark.parametrize("service", SERVICES)
@@ -92,16 +159,19 @@ def test_second_launch_rejects_unusable_capacity_before_model_access(
     assert directory.exists() is (failure != "missing")
 
 
-def test_second_launch_releases_all_capacity_probes_before_model_access(
+def test_second_launch_checks_gateways_and_releases_capacity_before_model_access(
     tmp_path, launch_environment,
 ):
     from evaluator.capacity import acquire_slot
 
-    result = subprocess.run(
-        ["bash", str(DEPLOY / "launch.sh")], env=launch_environment,
-        capture_output=True, text=True, check=False,
-    )
+    with gateway_server() as (url, requests):
+        result = subprocess.run(
+            ["bash", str(DEPLOY / "launch.sh")],
+            env=dict(launch_environment, TEST_GATEWAY_URL=url),
+            capture_output=True, text=True, check=False,
+        )
     assert result.returncode == 0, result.stderr
+    assert requests == ["/healthz"] * len(SERVICES)
     calls = [json.loads(row) for row in (tmp_path / "docker-calls.jsonl").read_text().splitlines()]
     capability_index = next(index for index, row in enumerate(calls) if "create_usage" in str(row))
     checked = [row[row.index("exec") + 2] for row in calls[:capability_index] if "exec" in row]
@@ -148,6 +218,9 @@ def test_second_campaign_compose_has_independent_state(tmp_path):
                           ("private-evaluator", "18832")):
         assert services[service]["ports"][0]["published"] == port
         assert services[service]["ports"][0]["host_ip"] == "127.0.0.1"
+        assert services[service]["environment"]["ARENA_RUNNER_MODEL_BASE_URL"] == (
+            "http://model-gateway:8081/v1"
+        )
     private = services["private-evaluator"]
     assert private["environment"]["ARENA_SEARCH_MODE"] == "campaign"
     assert private["environment"]["ARENA_SEARCH_MAX_SOLUTIONS"] == "100"

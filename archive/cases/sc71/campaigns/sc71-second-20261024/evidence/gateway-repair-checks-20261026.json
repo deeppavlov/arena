@@ -1,0 +1,138 @@
+{
+  "cwd": "/home/kaneki/Documents/DeepPavlov/arena",
+  "all_passed": false,
+  "checks": [
+    {
+      "name": "ruff",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "started_at": "2026-10-26T08:20:12.698783+00:00",
+      "elapsed_seconds": 0.209,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-gateway-checks-20261026/ruff.log"
+    },
+    {
+      "name": "pyright",
+      "command": [
+        "uv",
+        "run",
+        "pyright"
+      ],
+      "started_at": "2026-10-26T08:20:12.700752+00:00",
+      "elapsed_seconds": 16.491,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-gateway-checks-20261026/pyright.log"
+    },
+    {
+      "name": "pytest",
+      "command": [
+        "uv",
+        "run",
+        "pytest"
+      ],
+      "started_at": "2026-10-26T08:20:12.705523+00:00",
+      "elapsed_seconds": 143.58,
+      "exit_code": 1,
+      "log": "/tmp/arena-sc71-gateway-checks-20261026/pytest.log"
+    },
+    {
+      "name": "smoke",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "evaluator.smoke"
+      ],
+      "started_at": "2026-10-26T08:20:12.711936+00:00",
+      "elapsed_seconds": 6.955,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-gateway-checks-20261026/smoke.log"
+    },
+    {
+      "name": "sc71-pytest",
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "cases/sc71/tests"
+      ],
+      "started_at": "2026-10-26T08:20:12.716351+00:00",
+      "elapsed_seconds": 31.446,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-gateway-checks-20261026/sc71-pytest.log"
+    },
+    {
+      "name": "sc71-pyright",
+      "command": [
+        "uv",
+        "run",
+        "pyright",
+        "-p",
+        "cases/sc71/pyrightconfig.json"
+      ],
+      "started_at": "2026-10-26T08:20:12.718599+00:00",
+      "elapsed_seconds": 9.479,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-gateway-checks-20261026/sc71-pyright.log"
+    }
+  ],
+  "tests_passed": {
+    "core": 1598,
+    "sc71": 176,
+    "total": 1774
+  },
+  "scope": "Root workspace after gateway routing fix; no source edits, real model calls or server operations.",
+  "rechecks": [
+    {
+      "name": "pytest-timing-recheck",
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/test_metrics.py::test_metric_terminates_spawned_work_before_return[timeout]",
+        "-q"
+      ],
+      "started_at": "2026-10-26T08:23:02.696008+00:00",
+      "elapsed_seconds": 4.485,
+      "exit_code": 1,
+      "log": "/tmp/arena-sc71-gateway-checks-20261026/pytest-timing-recheck.log"
+    },
+    {
+      "name": "pytest-sequential",
+      "command": [
+        "uv",
+        "run",
+        "pytest"
+      ],
+      "started_at": "2026-10-26T08:23:40.267691+00:00",
+      "elapsed_seconds": 147.54,
+      "exit_code": 1,
+      "log": "/tmp/arena-sc71-gateway-checks-20261026/pytest-sequential.log"
+    }
+  ],
+  "warnings": [
+    "Initial core pytest:1602 passed,1 failed; isolated failed-test recheck also failed; final sequential core pytest:1598 passed,5 failed. No additional repeats were made.",
+    "The five final failures are existing tests with 0.25-second child-startup or 0.5-second synthetic HTTP/model-command deadlines; child startup/model call did not finish before the timeout. These source files were not modified.",
+    "Previous successful repair check also used Python3.14.7 and pytest9.1.1.",
+    "Starlette TestClient/httpx deprecation warning remains."
+  ],
+  "python_version": "3.14.7",
+  "tests_failed": {
+    "core": 5,
+    "sc71": 0,
+    "total": 5
+  },
+  "failed_tests": [
+    "tests/test_metric_model.py::test_failed_custom_judge_retains_usage_and_redacts_capability[raise SystemExit(5)]",
+    "tests/test_metric_model.py::test_failed_custom_judge_retains_usage_and_redacts_capability[import time; time.sleep(10)]",
+    "tests/test_metrics.py::test_metric_terminates_spawned_work_before_return[timeout]",
+    "tests/test_metrics.py::test_metric_terminates_spawned_work_before_return[failure]",
+    "tests/test_metrics.py::test_metric_terminates_spawned_work_before_return[success]"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "checked_at_utc": "2026-10-26T08:29:17.790590+00:00",
+  "campaign_id": "sc71-second-20261024",
+  "candidate_id": "sc71-s02-refusal",
+  "measurement_id": "tr-s02-gateway-repair-t1-04",
+  "evaluation_id": "e33de29d567bf2198ac24be56a80e234f6e1fe66175bbb5aa3c737532016605b",
+  "example_ids": [
+    "T1-04"
+  ],
+  "status": "FINISHED",
+  "score": 1.7999999999999998,
+  "metrics": {
+    "solver_tokens": 118880,
+    "solver_seconds": 82.2502051917836,
+    "solver_unreported_attempts": 0,
+    "solver_resources_complete": true,
+    "judge_tokens": 44442,
+    "judge_seconds": 56.1727267,
+    "judge_unreported_attempts": 0,
+    "judge_resources_complete": true,
+    "wall_seconds": 56.299490043,
+    "score": 1.7999999999999998
+  },
+  "solver_run_id": "bbdf21c4-8d66-463d-aa27-bb6ead3182d1",
+  "solver_answer_reused": true,
+  "new_solver_calls": 0,
+  "judge_votes_per_criterion": {
+    "completeness": 3,
+    "accuracy": 3,
+    "groundedness": 3
+  },
+  "judge_attempts": 9,
+  "judge_run_ids": [
+    "007f8fed-9a84-4287-b81d-a3d8cab3774e"
+  ],
+  "tracking": {
+    "shared": {
+      "status": "exported",
+      "run_id": "b8e1e3dc8e61443897e1def01a7ca019"
+    },
+    "operator": {
+      "status": "exported",
+      "run_id": "4fc751b55f854b97bca85a2120a18077"
+    }
+  },
+  "preflight": {
+    "healthy": true,
+    "answer_cached": true,
+    "judge_score_cached": false,
+    "subset_never_submitted": true
+  },
+  "prior_failed_evaluation_preserved": true
+}
