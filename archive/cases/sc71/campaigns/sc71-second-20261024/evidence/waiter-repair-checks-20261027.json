@@ -1,0 +1,92 @@
+{
+  "cwd": "/home/kaneki/Documents/DeepPavlov/arena",
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "ruff",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "started_at": "2026-10-27T07:31:53.787960+00:00",
+      "elapsed_seconds": 0.161,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-waiter-checks-20261027/ruff.log"
+    },
+    {
+      "name": "pyright",
+      "command": [
+        "uv",
+        "run",
+        "pyright"
+      ],
+      "started_at": "2026-10-27T07:31:53.788155+00:00",
+      "elapsed_seconds": 5.122,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-waiter-checks-20261027/pyright.log"
+    },
+    {
+      "name": "smoke",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "evaluator.smoke"
+      ],
+      "started_at": "2026-10-27T07:31:53.789718+00:00",
+      "elapsed_seconds": 2.711,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-waiter-checks-20261027/smoke.log"
+    },
+    {
+      "name": "sc71-pytest",
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "cases/sc71/tests"
+      ],
+      "started_at": "2026-10-27T07:31:53.790138+00:00",
+      "elapsed_seconds": 9.654,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-waiter-checks-20261027/sc71-pytest.log"
+    },
+    {
+      "name": "sc71-pyright",
+      "command": [
+        "uv",
+        "run",
+        "pyright",
+        "-p",
+        "cases/sc71/pyrightconfig.json"
+      ],
+      "started_at": "2026-10-27T07:31:53.790423+00:00",
+      "elapsed_seconds": 2.744,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-waiter-checks-20261027/sc71-pyright.log"
+    },
+    {
+      "name": "pytest",
+      "command": [
+        "uv",
+        "run",
+        "pytest"
+      ],
+      "started_at": "2026-10-27T07:32:03.444283+00:00",
+      "elapsed_seconds": 54.155,
+      "exit_code": 0,
+      "log": "/tmp/arena-sc71-waiter-checks-20261027/pytest.log"
+    }
+  ],
+  "tests_passed": {
+    "core": 1603,
+    "sc71": 176,
+    "total": 1779
+  },
+  "failed_tests": [],
+  "scope": "Current root workspace; no source changes, server operations or real model calls. Five checks in parallel, then core pytest alone, with no retries."
+}

@@ -564,3 +564,97 @@ def test_cli_timeout_option(
     else:
         assert not received
         assert output.err == "arena client: evaluator timeout must be positive and finite\n"
+
+
+@pytest.mark.parametrize("state", ["complete", "failed"])
+@pytest.mark.parametrize("public", [False, True])
+def test_wait_saves_terminal_response_without_resubmitting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+    state: str, public: bool,
+) -> None:
+    token = tmp_path / "token"
+    token.write_text("test-token")
+    output = tmp_path / "status.json"
+    records: list[dict[str, object]] = [{"status": "running"}, {"status": state}]
+    if public:
+        for record in records:
+            record["evaluation_id"] = "a" * 64
+        if state == "complete":
+            records[-1]["scores"] = [{"candidate_id": "idea", "score": 0.0}]
+    received: list[httpx.Request] = []
+    sleeps = []
+
+    def handle(outgoing: httpx.Request) -> httpx.Response:
+        received.append(outgoing)
+        return httpx.Response(200, json=records[len(received) - 1])
+
+    def sleep(seconds: float) -> None:
+        assert json.loads(output.read_text()) == records[0]
+        sleeps.append(seconds)
+
+    original_client = httpx.Client
+    monkeypatch.setattr(
+        httpx, "Client",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    monkeypatch.setattr("time.sleep", sleep)
+    args = ["wait", "--url", "http://evaluator", "--token-file", str(token),
+            "--output", str(output), "--poll-seconds", "2.5", "--timeout", "42"]
+    if public:
+        args.extend(["--evaluation-id", "a" * 64])
+    assert main(args) == (0 if state == "complete" else 3)
+    assert json.loads(output.read_text()) == records[-1]
+    assert json.loads(capsys.readouterr().out) == records[-1]
+    assert sleeps == [2.5]
+    assert len(received) == 2
+    assert all(item.method == "GET" for item in received)
+    assert all(item.url.path == "/v1/evaluations" + ("/" + "a" * 64 if public else "")
+               for item in received)
+    assert all(item.extensions["timeout"]["read"] == 42 for item in received)
+
+
+@pytest.mark.parametrize("failure", ["unknown", "missing", "unhashable", "http", "network", "json"])
+def test_wait_stops_on_invalid_response_or_transport_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str], failure: str,
+) -> None:
+    token = tmp_path / "token"
+    token.write_text("test-token")
+    output = tmp_path / "status.json"
+    received = []
+
+    def handle(outgoing: httpx.Request) -> httpx.Response:
+        received.append(outgoing)
+        if failure == "network":
+            raise httpx.ConnectError("request failed", request=outgoing)
+        if failure == "http":
+            return httpx.Response(503, json={"detail": "unavailable"})
+        if failure == "json":
+            return httpx.Response(200, content=b"invalid JSON")
+        record = {"unknown": {"status": "FAILED"}, "missing": {}, "unhashable": {"status": []}}
+        return httpx.Response(200, json=record[failure])
+
+    def sleep(seconds: float) -> None:
+        raise AssertionError("Invalid status or request failure must stop waiting")
+
+    original_client = httpx.Client
+    monkeypatch.setattr(
+        httpx, "Client",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    monkeypatch.setattr("time.sleep", sleep)
+    assert main(["wait", "--url", "http://evaluator", "--token-file", str(token),
+                 "--output", str(output)]) == 1
+    assert len(received) == 1
+    assert received[0].method == "GET"
+    assert not output.exists()
+    assert capsys.readouterr().err.startswith("arena client: ")
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "-inf", "bad-interval"])
+def test_wait_rejects_invalid_poll_interval_before_request(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], value: str,
+) -> None:
+    assert main(["wait", "--url", "http://evaluator", "--token-file", str(tmp_path / "missing"),
+                 "--output", str(tmp_path / "status.json"), "--poll-seconds=" + value]) == 1
+    assert capsys.readouterr().err == "arena client: poll interval must be positive and finite\n"

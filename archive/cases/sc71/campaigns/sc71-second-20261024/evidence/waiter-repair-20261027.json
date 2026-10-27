@@ -1,0 +1,83 @@
+{
+  "campaign_id": "sc71-second-20261024",
+  "date": "2026-10-27",
+  "fixed_public_waiter": true,
+  "regression_tests_passed": 5,
+  "new_evaluation_submissions": 0,
+  "waiter-repair": {
+    "patched": "/workspace/cases/sc71/campaigns/sc71-second-20261024/board/runs/wait_public.py",
+    "terminated_old_waiters": [
+      27892,
+      27900,
+      27909,
+      29031,
+      32072
+    ],
+    "old_waiters_remaining": []
+  },
+  "public-status-capture": [
+    {
+      "candidate": "s20",
+      "evaluation_id": "b40bcf38df08894b497e8e9020621af33f6d64070fb8c738ae580d8be72551be",
+      "status": "complete",
+      "exit_code": 0,
+      "scores": [
+        {
+          "candidate_id": "sc71-s20-assembly",
+          "score": 3.7527777777777778
+        }
+      ]
+    },
+    {
+      "candidate": "s21",
+      "evaluation_id": "8e2388a3afea20eefb71beeea5b8d6ad2981304fb1a28a2361eaf8788d36dd5e",
+      "status": "complete",
+      "exit_code": 0,
+      "scores": [
+        {
+          "candidate_id": "sc71-s21-dehardcode",
+          "score": 3.5905555555555555
+        }
+      ]
+    },
+    {
+      "candidate": "s23",
+      "evaluation_id": "63c7a5574b8a98a07997f2ddd8a83f9ad7ef46b95be96a7d40c5e0ad5ed9dba6",
+      "status": "failed",
+      "exit_code": 3,
+      "scores": null
+    },
+    {
+      "candidate": "s25",
+      "evaluation_id": "86a4564afda6db6fb56fa1660977f1830a289d43ea99f5a21ff478b7e1af1dd2",
+      "status": "failed",
+      "exit_code": 3,
+      "scores": null
+    }
+  ],
+  "glob-repair": {
+    "terminated_glob_pid": 31476,
+    "process_gone": true,
+    "main_researcher_alive": true
+  },
+  "journal.before": {
+    "max_solutions": 100,
+    "stopped_at": null,
+    "stop_reason": null,
+    "finalization": null,
+    "stopped": false,
+    "proposed": 32,
+    "remaining_proposals": 68,
+    "running": [],
+    "completed_measurements": 64
+  },
+  "resume": {
+    "same_outer_run": "19a7d623-95d0-4b74-bfb4-20814c472827",
+    "container_restarted": false,
+    "researcher_running": true,
+    "old_processes_remaining": 0,
+    "model_attempts_before": 1813,
+    "model_attempts_after": 1823,
+    "recent_trace_utc": "2026-10-27T07:35:48.950346+00:00"
+  }
+}

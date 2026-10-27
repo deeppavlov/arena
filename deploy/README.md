@@ -180,6 +180,21 @@ docker compose --env-file /etc/arena/operator.env --profile private up -d
 
 Не удаляйте private state и не переименовывайте кампанию, чтобы отправить изменённый пакет на тот же holdout. Сохраняйте историю допусков при переносе сервиса. Для первого приёмочного запуска используйте искусственные данные: проверьте изоляцию, учёт ресурсов, идемпотентность, сохранение допуска после рестарта и отсутствие закрытых деталей в API. Тесты репозитория не проверяют сеть конкретного Docker-хоста.
 
+### Ожидание public/private
+
+Для уже отправленной проверки используйте штатный `wait`; он делает только GET-запросы и сохраняет каждый валидный ответ API в обязательный `--output`. Public требует `--evaluation-id` из submit, private читается без него:
+
+```bash
+uv run python -m evaluator.client wait \
+  --url https://public-evaluator.example --token-file /run/secrets/public-submit \
+  --evaluation-id '<evaluation-id>' --output runs/example/public-status.json
+uv run python -m evaluator.client wait \
+  --url https://private-evaluator.example --token-file /run/secrets/private-submit \
+  --output runs/example/private-status.json
+```
+
+Ожидание продолжается только при `running`: `complete` завершает команду кодом 0, `failed` — кодом 3, неизвестный статус, неверный ответ или ошибка запроса — кодом 1. `--poll-seconds` задаёт конечный положительный интервал, по умолчанию 60 секунд; `--timeout` ограничивает отдельный HTTP-запрос, общего лимита длительности проверки нет. Коды 1 и 3 обрабатывайте явно, не превращая их в повторную отправку кандидата. Public сохраняет только разрешённый ответ с общим score при успехе, private — только статус; `failed` не подменяется нулевым score. Для train применяется отдельный `evaluator.train` со статусами `RUNNING`, `FINISHED`, `FAILED`.
+
 ## Сервис без модели
 
 Когда решатель и метрика не используют LLM, gateway и ключ модели не нужны. На доверенном узле с Docker и установленными зависимостями запустите evaluator с операторскими переменными окружения. В отличие от Compose, процесс читает `ARENA_TOKEN_FILE`, а не переменную пути монтирования `ARENA_SUBMIT_TOKEN_FILE`:

@@ -6,6 +6,7 @@ import os
 import re
 import stat
 import sys
+import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Literal
@@ -182,6 +183,34 @@ def search_readiness(
     return result
 
 
+def wait_for_evaluation(
+    base_url: str,
+    token_file: Path,
+    output: Path,
+    *,
+    evaluation_id: str | None = None,
+    poll_seconds: float | str = 60,
+    timeout: float | str | None = None,
+) -> dict[str, object]:
+    try:
+        interval = float(poll_seconds)
+    except (TypeError, ValueError):
+        raise ClientError("poll interval must be positive and finite") from None
+    if isinstance(poll_seconds, bool) or not math.isfinite(interval) or interval <= 0:
+        raise ClientError("poll interval must be positive and finite")
+    while True:
+        result = request(
+            "GET", base_url, token_file, timeout=timeout, evaluation_id=evaluation_id,
+        )
+        status = result.get("status")
+        if status not in ("running", "complete", "failed"):
+            raise ClientError("invalid evaluation status")
+        output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        if status != "running":
+            return result
+        time.sleep(interval)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Freeze candidates and use the evaluator")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -197,13 +226,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     status = commands.add_parser("status", help="read evaluation status and permitted results")
     status.add_argument("--evaluation-id", help="public evaluation ID returned by submit")
+    wait = commands.add_parser("wait", help="save public/private status until complete or failed")
+    wait.add_argument("--evaluation-id", help="public evaluation ID returned by submit")
+    wait.add_argument("--output", type=Path, required=True)
+    wait.add_argument("--poll-seconds", default="60", help="seconds between status requests")
     readiness = commands.add_parser("search-readiness", help="verify campaign admission settings")
     readiness.add_argument("--require-campaign", action="store_true")
     readiness.add_argument("--max-solutions", type=int)
     readiness.add_argument("--finalists", type=int)
     readiness.add_argument("--output-count", type=int)
     readiness.add_argument("--release-id")
-    for command in (submit, status, readiness):
+    for command in (submit, status, wait, readiness):
         command.add_argument("--url", required=True)
         command.add_argument("--token-file", type=Path, required=True)
         command.add_argument(
@@ -256,6 +289,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 submission.model_dump(mode="json"),
                 timeout=arguments.timeout,
             )
+        elif arguments.command == "wait":
+            result = wait_for_evaluation(
+                arguments.url, arguments.token_file, arguments.output,
+                evaluation_id=arguments.evaluation_id, poll_seconds=arguments.poll_seconds,
+                timeout=arguments.timeout,
+            )
         elif arguments.command == "search-readiness":
             result = search_readiness(
                 arguments.url, arguments.token_file, timeout=arguments.timeout,
@@ -269,7 +308,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 timeout=arguments.timeout, evaluation_id=arguments.evaluation_id,
             )
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 0
+        return 3 if arguments.command == "wait" and result["status"] == "failed" else 0
     except ClientError as error:
         print(f"arena client: {error}", file=sys.stderr)
         return 1
