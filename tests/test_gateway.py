@@ -475,15 +475,23 @@ def test_gateway_retries_transient_failures_and_preserves_request(retry_waits: l
     assert response.json() == {"choices": [{"message": {"content": "ok"}}], "usage": None}
     assert len(requests) == 5
     assert all(request.content == requests[0].content for request in requests)
-    assert retry_waits == [30, 60, 120, 240]
+    assert retry_waits == [30, 90, 240, 540]
 
 
-def test_gateway_stops_after_five_retries(retry_waits: list[float]) -> None:
+@pytest.mark.parametrize("recovers", [False, True])
+@pytest.mark.parametrize("failure", ["http", "empty"])
+def test_gateway_uses_half_hour_retry_window_and_stops_at_terminal_result(
+    retry_waits: list[float], recovers: bool, failure: str,
+) -> None:
     requests: list[httpx.Request] = []
 
     def upstream(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(200, json=valid_response(""))
+        if recovers and len(requests) == 6:
+            return httpx.Response(200, json=valid_response())
+        if failure == "empty":
+            return httpx.Response(200, json=valid_response(""))
+        return httpx.Response(500 if len(requests) == 4 else 503)
 
     app = create_gateway(
         GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
@@ -491,9 +499,15 @@ def test_gateway_stops_after_five_retries(retry_waits: list[float]) -> None:
     )
     with TestClient(app) as client:
         response = client.post("/v1/chat/completions", json=request_body())
-    assert response.status_code == 502
+    assert response.status_code == (200 if recovers else 502)
+    if recovers:
+        assert response.json()["choices"][0]["message"]["content"] == "Answer"
+    else:
+        assert response.json() == {"detail": "Model unavailable"}
     assert len(requests) == 6
-    assert len(retry_waits) == 5
+    assert all(request.content == requests[0].content for request in requests)
+    assert retry_waits == [30, 90, 240, 540, 900]
+    assert sum(retry_waits) == 1800
 
 
 def test_gateway_reads_long_timeout_and_retry_delay_from_env(

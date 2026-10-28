@@ -314,7 +314,7 @@ def test_client_has_exactly_five_retries_and_retains_unknown_usage(
     with pytest.raises(httpx.ReadTimeout):
         client.complete([])
     assert attempts == 6
-    assert sleeps == [30, 60, 120, 240, 300]
+    assert sleeps == [30, 90, 240, 540, 900]
     assert client.usage["attempts"] == client.usage["unreported_attempts"] == 6
     assert client.elapsed_seconds >= 0
 

@@ -270,8 +270,8 @@ def run_scenario(scenario: str) -> dict[str, Any]:
             def agent_factory(**kwargs):
                 agent = AIAgent(**kwargs)
                 agent_settings.update(
-                    api_timeout=agent._resolved_api_call_timeout() == 130410,
-                    api_stale_timeout=agent._resolved_api_call_stale_timeout_base()[0] == 130410,
+                    api_timeout=agent._resolved_api_call_timeout() == 131460,
+                    api_stale_timeout=agent._resolved_api_call_stale_timeout_base()[0] == 131460,
                 )
                 return agent
 

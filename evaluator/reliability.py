@@ -28,12 +28,10 @@ def retry_delays(
 ) -> list[float]:
     if type(retries) is not int or retries < 0:
         raise ValueError("retries must be a nonnegative integer")
-    delay = min(validate_timing(retry_delay, "retry_delay", allow_zero=True), 300)
-    delays = []
-    for _ in range(retries):
-        delays.append(delay)
-        delay = min(delay * 2, 300)
-    return delays
+    delay = min(validate_timing(retry_delay, "retry_delay", allow_zero=True), 900)
+    multipliers = (1, 3, 8, 18, 30)
+    return [min(delay * multipliers[min(index, len(multipliers) - 1)], 900)
+            for index in range(retries)]
 
 
 def request_timeout(

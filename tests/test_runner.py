@@ -88,7 +88,7 @@ def test_hardened_container_only_receives_task_and_public_mounts(tmp_path, monke
     assert result == {
         "input": "private task",
         "model": "internal-model",
-        "model_request_timeout": 130410,
+        "model_request_timeout": 131460,
         "prepare_timeout": 172800,
     }
     command = commands[0]
@@ -227,7 +227,7 @@ def test_example_harness_preserves_answers_and_gateway_protocol(monkeypatch, ans
 
     def open_request(request, timeout):
         requests.append(json.loads(request.data))
-        assert timeout == 130410
+        assert timeout == 131460
         response = {"choices": [{"message": {"content": answer}}]}
         return io.BytesIO(json.dumps(response).encode())
 
@@ -245,7 +245,7 @@ def test_example_harness_preserves_answers_and_gateway_protocol(monkeypatch, ans
                 "input": "task",
                 "model": "internal",
                 "model_base_url": "http://model-gateway:8081/runs/example/v1",
-                "model_request_timeout": 130410,
+                "model_request_timeout": 131460,
                 "prepare_timeout": 172800,
             }
         )
@@ -417,7 +417,7 @@ def test_operator_timeouts_are_passed_to_harness(tmp_path, monkeypatch):
     )
     task = json.loads(runner(tmp_path, "task").answer)
 
-    assert task["model_request_timeout"] == 182
+    assert task["model_request_timeout"] == 240
     assert task["prepare_timeout"] == 80
     assert runner.timeout == 604800
 
@@ -466,7 +466,7 @@ def test_example_harness_preparation_uses_operator_timeout(monkeypatch):
                 "input": "task",
                 "model": "internal",
                 "model_base_url": "http://gateway/runs/test/v1",
-                "model_request_timeout": 130410,
+                "model_request_timeout": 131460,
                 "prepare_timeout": 172800,
             }
         )
@@ -479,7 +479,7 @@ def test_example_harness_preparation_uses_operator_timeout(monkeypatch):
             "assets_dir": "/assets",
             "model": "internal",
             "model_base_url": "http://gateway/runs/test/v1",
-            "model_request_timeout": 130410,
+            "model_request_timeout": 131460,
         }
     ]
 
@@ -504,7 +504,7 @@ def test_example_harness_does_not_repeat_gateway_retries(monkeypatch):
                 "input": "task",
                 "model": "internal",
                 "model_base_url": "http://gateway/runs/test/v1",
-                "model_request_timeout": 130410,
+                "model_request_timeout": 131460,
                 "prepare_timeout": 172800,
             }
         )

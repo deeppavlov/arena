@@ -7,10 +7,18 @@ from evaluator import reliability
 
 
 def test_retry_schedule_and_timeout_include_all_attempts():
-    assert reliability.retry_delays() == [30, 60, 120, 240, 300]
-    assert reliability.request_timeout(100) == 1410
+    assert reliability.retry_delays() == [30, 90, 240, 540, 900]
+    assert sum(reliability.retry_delays()) == 1800
+    assert reliability.request_timeout(100) == 2460
+    assert reliability.request_timeout(reliability.MODEL_TIMEOUT) == 131460
     assert reliability.retry_delays(0) == []
     assert reliability.request_timeout(100, retries=0) == 160
+
+
+def test_retry_schedule_scales_custom_delay_and_caps_long_sequences():
+    assert reliability.retry_delays(7, 10) == [10, 30, 80, 180, 300, 300, 300]
+    assert reliability.retry_delays(7, 60) == [60, 180, 480, 900, 900, 900, 900]
+    assert reliability.retry_delays(7, 1e308) == [900] * 7
 
 
 @pytest.mark.parametrize("retries", [-1, 1.5, True, "5"])
@@ -96,7 +104,32 @@ def test_retry_call_allows_five_retries(monkeypatch, error):
 
     assert reliability.retry_call(operation) == "answer"
     assert len(calls) == 6
-    assert sleeps == [30, 60, 120, 240, 300]
+    assert sleeps == [30, 90, 240, 540, 900]
+
+
+@pytest.mark.parametrize("recovery_seconds, expected_attempts", [(600, 5), (1200, 6)])
+def test_retry_call_recovers_after_extended_model_outage(
+    monkeypatch, recovery_seconds, expected_attempts,
+):
+    elapsed = 0
+    attempts = []
+
+    def sleep(delay):
+        nonlocal elapsed
+        elapsed += delay
+
+    def operation():
+        attempts.append(elapsed)
+        if elapsed < recovery_seconds:
+            raise httpx.HTTPStatusError(
+                "model unavailable", request=httpx.Request("POST", "http://model"),
+                response=httpx.Response(503),
+            )
+        return "answer"
+
+    monkeypatch.setattr(reliability.time, "sleep", sleep)
+    assert reliability.retry_call(operation) == "answer"
+    assert attempts == [0, 30, 120, 360, 900, 1800][:expected_attempts]
 
 
 def test_retry_call_reraises_final_error_without_extra_sleep(monkeypatch):

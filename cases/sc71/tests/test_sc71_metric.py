@@ -64,7 +64,7 @@ def payload(answer: str | None = None, *, topic: str = "T1", answerable: bool = 
         "answer": answer if answer is not None else f"«{QUOTE}» [/kb/norm/{A}.md, п. 1]",
         "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
         "model_base_url": "http://gateway/runs/test/capability/v1",
-        "model_request_timeout": 130410,
+        "model_request_timeout": 131460,
     }
 
 
@@ -299,7 +299,7 @@ def test_http_uses_gateway_timeout_schema_and_no_proxy_or_sdk_retries(
     request = opener.open.call_args.args[0]
     assert request.full_url == payload()["model_base_url"] + "/chat/completions"
     assert json.loads(request.data) == body
-    assert opener.open.call_args.kwargs["timeout"] == 130410
+    assert opener.open.call_args.kwargs["timeout"] == 131460
 
 
 def test_frozen_package_runs_in_evaluator_with_zero_model_usage(

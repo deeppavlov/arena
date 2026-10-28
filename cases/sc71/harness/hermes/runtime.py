@@ -9,7 +9,7 @@ from typing import Any
 MODEL = "deepseek-ai/DeepSeek-V4-Flash-0731"
 REVISION = "86fa9e6ca1de7ee71132d2be0103f3e37d1fa872"
 CONFIG_BASE_URL = "http://arena-gateway.invalid/v1"
-REQUEST_TIMEOUT = 130410
+REQUEST_TIMEOUT = 131460
 RUNNER_TIMEOUT = 604800
 
 

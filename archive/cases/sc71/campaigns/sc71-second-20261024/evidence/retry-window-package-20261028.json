@@ -1,0 +1,49 @@
+{
+  "status": "ready_for_next_outer_resume_not_applied",
+  "old_delays_seconds": [
+    30,
+    60,
+    120,
+    240,
+    300
+  ],
+  "new_delays_seconds": [
+    30,
+    90,
+    240,
+    540,
+    900
+  ],
+  "new_request_timeout_seconds": 131460,
+  "model_retries": 5,
+  "live_services_changed": false,
+  "source_files": [
+    "evaluator/reliability.py",
+    "cases/sc71/harness/hermes/runtime.py",
+    "cases/sc71/harness/hermes/config.yaml",
+    "cases/sc71/harness/hermes/mock_check.py"
+  ],
+  "prepared_at": "2026-10-28T07:02:03.137655+00:00",
+  "images": {
+    "researcher-gateway": "sha256:1d1d4e749d655057bb3d3a1439f9f781198bb0ae7d610c5b33e67a5bc2233d4a",
+    "researcher": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c"
+  },
+  "verification": {
+    "gateway_synthetic_attempts": 6,
+    "gateway_total_pause_seconds": 1800,
+    "gateway_recovered": true,
+    "hermes_scenarios_passed": [
+      "retrieval",
+      "files",
+      "delegate",
+      "nested",
+      "failure"
+    ],
+    "compose_only_image_fields_changed": [
+      "researcher",
+      "researcher-gateway"
+    ],
+    "real_model_calls": 0
+  },
+  "server_package": "/cephfs/home/malyshev_sa/arena-sc71-second-20261024/operator/pending/retry-20261028"
+}

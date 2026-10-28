@@ -26,7 +26,7 @@ docker image inspect arena-hermes:sc71 --format '{{.Id}}'
 Необязательный `prepare.py` запускается до Hermes в рабочем каталоге метода. Он получает через stdin:
 
 ```json
-{"input":"вопрос","parameters":{},"assets_dir":"/assets","candidate_dir":"/candidate","workspace_dir":"/tmp/arena-workspace","model":"deepseek-ai/DeepSeek-V4-Flash-0731","model_base_url":"выданный gateway URL","model_request_timeout":130410}
+{"input":"вопрос","parameters":{},"assets_dir":"/assets","candidate_dir":"/candidate","workspace_dir":"/tmp/arena-workspace","model":"deepseek-ai/DeepSeek-V4-Flash-0731","model_base_url":"выданный gateway URL","model_request_timeout":131460}
 ```
 
 Он возвращает JSON-объект с необязательным `context` типа string. Доступ к модели из кода метода осуществляется через выданный gateway URL; его нельзя записывать в файлы, ошибки, трейсы или переменные окружения. URL содержит временный секрет допуска. Подготовка ограничена операторским таймаутом 48 часов, весь пример — 7 сутками.
@@ -47,7 +47,7 @@ docker image inspect arena-hermes:sc71 --format '{{.Id}}'
 
 - `max_concurrent_children=30`, `oneshot_max_children=30`, `max_spawn_depth=3`;
 - до 10000 шагов основного агента и каждого дочернего агента;
-- 130410 секунд ожидания gateway, покрывающих шесть попыток по 6 часов и паузы;
+- 131460 секунд ожидания gateway, покрывающих шесть попыток по 6 часов и паузы;
 - семь суток для терминальных команд, общего исполнения инструментов, жизни терминала, heartbeat дочерних агентов и проверки зависших фоновых делегирований;
 - выключены короткий watchdog хода, общий временной бюджет Hermes и fallback-модели;
 - интерактивные подтверждения команд выключены внутри ограниченного контейнера;

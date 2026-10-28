@@ -35,7 +35,7 @@ Build CLI восстанавливает именно зарегистриров
 В изолированном запуске `/candidate` и `/assets` доступны только для чтения; `/output` — отдельный каталог результата с записью. Скрипт получает через stdin JSON со следующими полями:
 
 ```json
-{"assets_dir":"/assets","candidate_dir":"/candidate","workspace_dir":"/tmp/arena-workspace","output_dir":"/output","parameters":{},"model":"deepseek-ai/DeepSeek-V4-Flash-0731","model_base_url":"временный gateway URL","model_request_timeout":130410}
+{"assets_dir":"/assets","candidate_dir":"/candidate","workspace_dir":"/tmp/arena-workspace","output_dir":"/output","parameters":{},"model":"deepseek-ai/DeepSeek-V4-Flash-0731","model_base_url":"временный gateway URL","model_request_timeout":131460}
 ```
 
 Поля `input` и `reference` отсутствуют. Скрипт пишет готовое представление в `output_dir` и возвращает один JSON-объект; сообщения для диагностики направляет в stderr. Заявленные скриптом время или токены не считаются измерением. Таймаут сборки задаёт `prepare_timeout`, в кампании — 48 часов. Gateway выполняет до пяти технических повторов после первой попытки с прежними входом и настройками; дополнительный цикл повторов клиента не нужен. URL содержит секрет допуска и не записывается в файлы, ошибки, argv, переменные окружения или трейсы.

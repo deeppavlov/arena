@@ -5,12 +5,23 @@ import pytest
 from cases.sc71.harness.hermes import main, mock_check, runtime
 
 
+def test_hermes_timeouts_cover_model_attempts_and_thirty_minutes_of_retry_delays(
+    tmp_path, monkeypatch,
+):
+    monkeypatch.setattr(runtime.os, "environ", {})
+    runtime.prepare_home(tmp_path)
+    timeout = 6 * 21600 + 1800 + 60
+    assert runtime.os.environ["HERMES_API_TIMEOUT"] == str(timeout)
+    assert runtime.os.environ["HERMES_API_CALL_STALE_TIMEOUT"] == str(timeout)
+    assert f"    timeout: {timeout}\n" in (tmp_path / "config.yaml").read_text()
+
+
 def task():
     return {
         "input": "Find the record",
         "model": runtime.MODEL,
         "model_base_url": "http://gateway/runs/id/secret/v1",
-        "model_request_timeout": 130410,
+        "model_request_timeout": 131460,
         "prepare_timeout": 172800,
     }
 

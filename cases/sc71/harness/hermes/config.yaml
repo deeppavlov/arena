@@ -41,7 +41,7 @@ auxiliary:
     model: deepseek-ai/DeepSeek-V4-Flash-0731
     api_mode: chat_completions
     reasoning_effort: max
-    timeout: 130410
+    timeout: 131460
     fallback_chain: []
   web_extract: *auxiliary
   title_generation: *auxiliary
