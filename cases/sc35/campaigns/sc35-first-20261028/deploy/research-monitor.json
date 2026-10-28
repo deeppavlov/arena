@@ -1,0 +1,20 @@
+{
+  "active_file": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/launch/active.json",
+  "usage_dir": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/outer-usage",
+  "trace_dir": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/outer-traces",
+  "state_dir": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/state/research-monitor",
+  "params": {
+    "case_id": "sc35",
+    "campaign_id": "sc35-first-20261028",
+    "role": "researcher"
+  },
+  "shared_queues": [
+    "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/state/train/tracking/queue/shared",
+    "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/state/public/tracking/queue/shared"
+  ],
+  "operator_queues": [
+    "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/state/train/tracking/queue/operator",
+    "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/state/public/tracking/queue/operator",
+    "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/state/private/tracking/queue/operator"
+  ]
+}

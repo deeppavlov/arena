@@ -1,0 +1,9 @@
+{
+  "synthetic_only": true,
+  "operation": "build",
+  "network": "none",
+  "no_example_input": true,
+  "model_calls": 0,
+  "passed": true,
+  "wall_seconds": 7.732646112330258
+}

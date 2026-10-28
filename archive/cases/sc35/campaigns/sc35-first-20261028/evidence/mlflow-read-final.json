@@ -1,0 +1,11 @@
+{
+  "campaign_id": "sc35-first-20261028",
+  "marker": "SC35_FIRST_SYNTHETIC_TRACE_20261028",
+  "run_id": "10f7a8b1d27b4d258e53bec1c41ccc54",
+  "uri": "http://shared-tracking:5000",
+  "experiment_id": "1",
+  "trace_ids": [
+    "tr-0eb1683ef7518a0c8cabb97612b9c2df"
+  ],
+  "payload_verified": true
+}

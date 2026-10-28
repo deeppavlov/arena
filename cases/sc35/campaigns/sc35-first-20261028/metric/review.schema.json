@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SC-35 common span review, v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "document_sha256",
+    "text_sha256",
+    "taxonomy_sha256",
+    "extraction_version",
+    "offset_unit",
+    "status",
+    "findings",
+    "unresolved"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "sc35-span-review-v1"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "extraction_version": {
+      "const": "sc35-corrupted-text-v1"
+    },
+    "offset_unit": {
+      "const": "unicode_codepoint"
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "needs_mapping",
+        "needs_categories",
+        "error"
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "spans",
+          "message",
+          "anchor_kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "enum": [
+              "sections_content",
+              "metadata",
+              "annotation_contents",
+              "page_layout",
+              "headings",
+              "paragraphs_lists",
+              "figures",
+              "formulas",
+              "tables",
+              "notes_footnotes",
+              "references_terms",
+              "appendices",
+              "unclassified"
+            ]
+          },
+          "spans": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "start",
+                "end"
+              ],
+              "properties": {
+                "start": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "end": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "anchor_kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rule_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "unresolved": {
+      "type": "array"
+    },
+    "document_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "text_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "taxonomy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ready"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "findings": {
+            "items": {
+              "properties": {
+                "category": {
+                  "enum": [
+                    "sections_content",
+                    "metadata",
+                    "annotation_contents",
+                    "page_layout",
+                    "headings",
+                    "paragraphs_lists",
+                    "figures",
+                    "formulas",
+                    "tables",
+                    "notes_footnotes",
+                    "references_terms",
+                    "appendices"
+                  ]
+                }
+              }
+            }
+          },
+          "unresolved": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

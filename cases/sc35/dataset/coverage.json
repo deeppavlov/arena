@@ -1,0 +1,695 @@
+{
+  "profile_id": "espd-pmi-unified-v1",
+  "rule_count": 113,
+  "primary_backends": {
+    "format": 64,
+    "semantic-llm": 20,
+    "graph": 15,
+    "typography": 14
+  },
+  "content_review_rules": 40,
+  "coverage_complete": false,
+  "routing_is_not_proof_of_implemented_or_successful_verification": true,
+  "execution_evidence": "Each Doc_Review.rule_assessments records actual statuses; not_run/needs_context/needs_render are not passes.",
+  "physical_geometry": "Requires rendered mapping; configuration_candidates are not confirmed findings and do not earn span score.",
+  "rules": [
+    {
+      "rule_id": "ESPD-19.101-2024-4.6-designation_wrong_pmi_kind",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_country_separator",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_edition_separator",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_kind_separator",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_organization_separator",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_part_separator",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_registration_separator",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-4-designation_kind_group_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-5-designation_edition_zero",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-7-designation_number_zero",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.103-77-8-designation_part_zero",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.104-78-2.2-approval_designation_suffix",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.104-78-3.1-title_designation_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.104-78-3.1-title_program_title_case",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.104-78-3.1-title_year_suffix",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.105-78-2.1-title_sheet_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.3-annotation_purpose_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.3-annotation_summary_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.4-contents_entry_address_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.4-contents_entry_number_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.4-contents_entry_title_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-1.5-page_format",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-1.7-list_sort_alpha",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-1.7-list_sort_numeric",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.2-margin_bottom",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.2-margin_left",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.2-margin_right",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.2-margin_top",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.3-annotation_numbered",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.4-contents_numbered",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.6-paragraph_indent",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-heading_final_period",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-heading_word_break",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-section_centered",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-section_uppercase",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-subsection_case",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-subsection_indent",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.8-heading_after_spacing",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.8-heading_before_spacing",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.8-heading_line_spacing",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.9-heading_number_sequence",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.9-heading_number_style",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.2.1-term_list",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.2.4-footnote_marker",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_explanation_position",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_number_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_number_position",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_number_sequence",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_reference",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_repeated_reference",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_title_position",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_number_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_number_position",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_number_sequence",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_part_prefix",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_reference",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_newline",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_order",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_where_colon",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_where_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.3-parameter_dimension",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.5.1-enterprise_reference",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.5.1-external_reference",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.5.1-standard_designation",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.6.2-table_title_case",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.6.3-table_footnote_position",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.7.1-multiple_note_label",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.7.1-multiple_note_numbering",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.7.1-single_note_label",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.7.1-single_note_numbered",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.8.1-custom_abbreviation",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_label_position",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_number",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_page_break",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_title_case",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_title_center",
+      "backend": "format",
+      "coverage": "configuration_only_requires_render",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.5-appendix_reference_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.5-appendix_toc_missing",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_documentation_requirements",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_goal",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_means_procedure",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_methods",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_object",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_program_requirements",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.1-empty_section",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.1-object_designation_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.1-object_domain_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.1-object_name_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.2-empty_section",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.3-empty_section",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.4-empty_section",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.7-means_procedure_empty",
+      "backend": "format",
+      "coverage": "recognized_objects_only",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.7-software_means_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.7-technical_means_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.7-test_procedure_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.8-empty_section",
+      "backend": "graph",
+      "coverage": "text_structure",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.8-expected_result_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.8-test_method_description_missing",
+      "backend": "semantic-llm",
+      "coverage": "requires_model",
+      "content_review_enabled": true
+    },
+    {
+      "rule_id": "TYP-01",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-02",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-03",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-04",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-05",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-06",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-07",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-08",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-09",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-10",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-11",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-12",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-13",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    },
+    {
+      "rule_id": "TYP-14",
+      "backend": "typography",
+      "coverage": "editorial_recognized_objects_only",
+      "content_review_enabled": false
+    }
+  ]
+}

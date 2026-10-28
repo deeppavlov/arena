@@ -1,0 +1,19 @@
+{
+  "kind": "command",
+  "direction": "maximize",
+  "version": "sc35-span-unified-v1",
+  "command": {
+    "argv": [
+      "python",
+      "score.py"
+    ],
+    "uses_model": false
+  },
+  "aggregation": {
+    "argv": [
+      "python",
+      "aggregate.py"
+    ],
+    "uses_model": false
+  }
+}

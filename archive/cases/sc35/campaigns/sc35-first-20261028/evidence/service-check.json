@@ -1,0 +1,35 @@
+{
+  "train": {
+    "ARENA_STATE_DIR": "writable",
+    "ARENA_USAGE_DIR": "writable",
+    "ARENA_TRACE_DIR": "writable",
+    "ARENA_BUILD_DIR": "writable",
+    "ARENA_SLOT_DIR": "writable",
+    "capacity_lease": "acquired-and-released",
+    "gateway_healthy": true,
+    "metric_verified": true,
+    "uid": 10001
+  },
+  "public": {
+    "ARENA_STATE_DIR": "writable",
+    "ARENA_USAGE_DIR": "writable",
+    "ARENA_TRACE_DIR": "writable",
+    "ARENA_BUILD_DIR": "writable",
+    "ARENA_SLOT_DIR": "writable",
+    "capacity_lease": "acquired-and-released",
+    "gateway_healthy": true,
+    "metric_verified": true,
+    "uid": 10001
+  },
+  "private": {
+    "ARENA_STATE_DIR": "writable",
+    "ARENA_USAGE_DIR": "writable",
+    "ARENA_TRACE_DIR": "writable",
+    "ARENA_BUILD_DIR": "writable",
+    "ARENA_SLOT_DIR": "writable",
+    "capacity_lease": "acquired-and-released",
+    "gateway_healthy": true,
+    "metric_verified": true,
+    "uid": 10001
+  }
+}

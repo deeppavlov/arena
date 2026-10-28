@@ -1,0 +1,8 @@
+dataset/**/*.jsonl
+dataset/source/
+dataset/train/
+dataset/public/
+dataset/private/
+/runtime/
+campaigns/*/*.sqlite3*
+campaigns/*/records/

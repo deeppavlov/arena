@@ -1,0 +1,18 @@
+{
+  "synthetic_only": true,
+  "campaign_id": "sc35-synthetic-http-20261028",
+  "evaluation_id": "1ae144ab83192a643657ce166a482827712733a55536d1ad0dbf4d00eb35b9b4",
+  "run_id": "d3cc2354dc7a442e8f52792a2b8b392c",
+  "score": 100.0,
+  "solver_tokens": 18,
+  "judge_tokens": 0,
+  "solver_seconds": 11.9077806500718,
+  "judge_seconds": 1.063991181,
+  "journal_completed_measurements": 1,
+  "experiment_id": "2",
+  "trace_ids": [
+    "tr-e70120ca298ec95f46989ed12ec0e058"
+  ],
+  "payload_verified": true,
+  "uri": "http://shared-tracking:5000"
+}

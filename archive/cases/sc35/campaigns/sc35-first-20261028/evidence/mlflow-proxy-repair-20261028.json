@@ -1,0 +1,474 @@
+{
+  "campaign_id": "sc35-first-20261028",
+  "purpose": "Repair operator MLflow nginx transport without changing active search",
+  "completed_utc": "2026-10-28T15:14:59.913026+00:00",
+  "authorization": "Explicit user request to fix MLflow",
+  "changed_remote_files": [
+    "release/cases/sc35/campaigns/sc35-first-20261028/deploy/mlflow-compose.yaml",
+    "release/cases/sc35/campaigns/sc35-first-20261028/deploy/operator-nginx.conf"
+  ],
+  "backup": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/mlflow-proxy-repair-20261028/mlflow-compose.before.yaml",
+  "configuration_change": [
+    "case-owned nginx config mount",
+    "proxy_http_version 1.1",
+    "proxy_request_buffering off",
+    "proxy_buffering off"
+  ],
+  "memory_limit_unchanged_bytes": 134217728,
+  "nginx_validation": {
+    "passed": true,
+    "used_existing_proxy_image_from_docker_inspect": true
+  },
+  "compose_validation": {
+    "config_quiet_passed": true,
+    "applied_service": "operator-tracking",
+    "no_deps": true,
+    "pull": "never"
+  },
+  "image_evidence": {
+    "historical_preparation_image_id": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+    "historical_source": "archive/cases/sc35/campaigns/sc35-first-20261028/evidence/services.json",
+    "current_image_id": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+    "equal_to_historical": true,
+    "limitation": "The immediate before snapshot did not retain the image ID. Validation used the then-existing container's exact image ID; deployment reused the locally installed nginx:1.28-alpine image with --pull never."
+  },
+  "before": {
+    "observed_utc": "2026-10-28T15:08:23.041242+00:00",
+    "containers": [
+      {
+        "name": "arena-sc35-first-researcher-1",
+        "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+        "started": "2026-10-28T08:17:41.865161515Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 34359738368
+      },
+      {
+        "name": "arena-sc35-first-research-monitor-1",
+        "id": "71e1f22cc9f67522d907f0f9a7be51ece050f09a3247bd90141ec61433132851",
+        "started": "2026-10-28T07:39:07.746631349Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-train-evaluator-1",
+        "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+        "started": "2026-10-28T07:39:39.148688222Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-public-evaluator-1",
+        "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+        "started": "2026-10-28T07:40:10.655461749Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-private-evaluator-1",
+        "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+        "started": "2026-10-28T07:40:10.654490509Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-model-gateway-1",
+        "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+        "started": "2026-10-28T07:39:07.748582329Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-researcher-gateway-1",
+        "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+        "started": "2026-10-28T07:39:07.748019605Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-internet-proxy-1",
+        "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+        "started": "2026-10-28T07:39:07.747383198Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "sc35-first-mlflow-shared-tracking-1",
+        "id": "ae7a55f95cbfbc3885f7a2895e680fb623f1562d139aba76069cbdb16d2fc1c7",
+        "started": "2026-10-28T07:39:06.981400681Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "sc35-first-mlflow-operator-tracking-1",
+        "id": "70814c095a9e650ea2881e04fac8e4c9ca723f35e1aade7cb3c09bdfc2e0e01f",
+        "started": "2026-10-28T15:07:31.851765698Z",
+        "status": "running",
+        "restarts": 321,
+        "oom": false,
+        "health": null,
+        "memory_limit": 134217728
+      },
+      {
+        "name": "deus-ex-mlflow-tracking-1",
+        "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+        "started": "2026-10-05T13:01:36.158459624Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 0
+      }
+    ]
+  },
+  "before_kernel_oom_mentions_proxy_cgroup": 39,
+  "before_cgroup_counters_limitation": "Kernel OOM evidence and configured 128 MiB memory limit were captured. Immediate pre-recreate live cgroup max_usage/failcnt/oom_kill counters were not retained.",
+  "before_queues": {
+    "observed_utc": "2026-10-28T15:08:23.169062+00:00",
+    "flush_modified_utc": "2026-10-28T15:03:23.101727+00:00",
+    "queues": [
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 2
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      }
+    ]
+  },
+  "after": {
+    "observed_utc": "2026-10-28T15:13:24.028386+00:00",
+    "containers": [
+      {
+        "name": "arena-sc35-first-researcher-1",
+        "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+        "image_id": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+        "started": "2026-10-28T08:17:41.865161515Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 34359738368
+      },
+      {
+        "name": "arena-sc35-first-research-monitor-1",
+        "id": "71e1f22cc9f67522d907f0f9a7be51ece050f09a3247bd90141ec61433132851",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.746631349Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-train-evaluator-1",
+        "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:39.148688222Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-public-evaluator-1",
+        "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:40:10.655461749Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-private-evaluator-1",
+        "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:40:10.654490509Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-model-gateway-1",
+        "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.748582329Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-researcher-gateway-1",
+        "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.748019605Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-internet-proxy-1",
+        "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+        "image_id": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+        "started": "2026-10-28T07:39:07.747383198Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "sc35-first-mlflow-shared-tracking-1",
+        "id": "ae7a55f95cbfbc3885f7a2895e680fb623f1562d139aba76069cbdb16d2fc1c7",
+        "image_id": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38",
+        "started": "2026-10-28T07:39:06.981400681Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "sc35-first-mlflow-operator-tracking-1",
+        "id": "9fbef35b41614de72864b7b7fe27752956e21766a7929940bced786025f5490a",
+        "image_id": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+        "started": "2026-10-28T15:10:43.516364409Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 134217728
+      },
+      {
+        "name": "deus-ex-mlflow-tracking-1",
+        "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+        "image_id": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+        "started": "2026-10-05T13:01:36.158459624Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 0
+      }
+    ]
+  },
+  "after_kernel_oom_mentions_proxy_cgroup": 0,
+  "final_proxy": {
+    "observed_utc": "2026-10-28T15:14:59.913026+00:00",
+    "container_id": "9fbef35b41614de72864b7b7fe27752956e21766a7929940bced786025f5490a",
+    "started": "2026-10-28T15:10:43.516364409Z",
+    "restarts": 0,
+    "oom": false,
+    "memory_current_bytes": 4128768,
+    "memory_peak_bytes": 6590464,
+    "memory_limit_bytes": 134217728,
+    "memory_failcnt": 0,
+    "oom_control": {
+      "oom_kill_disable": 0,
+      "under_oom": 0,
+      "oom_kill": 0
+    }
+  },
+  "unchanged_other_services": [
+    {
+      "name": "arena-sc35-first-researcher-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "arena-sc35-first-research-monitor-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "arena-sc35-first-train-evaluator-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "arena-sc35-first-public-evaluator-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "arena-sc35-first-private-evaluator-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "arena-sc35-first-model-gateway-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "arena-sc35-first-researcher-gateway-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "arena-sc35-first-internet-proxy-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "sc35-first-mlflow-shared-tracking-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    },
+    {
+      "name": "deus-ex-mlflow-tracking-1",
+      "unchanged_id": true,
+      "unchanged_started": true,
+      "unchanged_restarts": true
+    }
+  ],
+  "synthetic_transfer": {
+    "observed_utc": "2026-10-28T15:12:13.303732+00:00",
+    "synthetic_only": true,
+    "generation_requests": 0,
+    "experiment_id": "6",
+    "run_id": "9ccca38e17cf4bf7b6a09bf21a98c8d8",
+    "upload_bytes": 167772160,
+    "download_bytes": 167772160,
+    "chunked_upload": true,
+    "streamed_download": true,
+    "content_equal": true,
+    "upload_status": 200,
+    "elapsed_seconds": 4.664
+  },
+  "delivery": {
+    "observed_utc": "2026-10-28T15:14:04.147341+00:00",
+    "flush_modified_utc": "2026-10-28T15:13:59.152434+00:00",
+    "status": "delivered",
+    "queue_count": 7,
+    "shared_queue_count": 3,
+    "operator_queue_count": 4,
+    "pending_before": 2,
+    "pending_after": 0,
+    "errors_after": 0,
+    "statuses_all_ok": true,
+    "monitor_auto_flush": true,
+    "manual_flush": false,
+    "programmatic_wait_seconds": 40
+  },
+  "server_delivery_confirmation": {
+    "observed_utc": "2026-10-28T15:16:48.825821+00:00",
+    "queue": "public/operator",
+    "delivery_metadata_only": true,
+    "records": [
+      {
+        "status": "exported",
+        "run_id": "38e4bfe03d064ae9b334fe38ef49cab9",
+        "attempts": 23,
+        "delivery_modified_utc": "2026-10-28T15:13:47.735524+00:00",
+        "server_status": "FINISHED",
+        "server_tags": {
+          "arena_visibility": "operator",
+          "arena_execution_status": "FINISHED",
+          "arena_export_complete": "true"
+        }
+      },
+      {
+        "status": "exported",
+        "run_id": "752edb45d1054f29b9ac4f7c6a3d9a5f",
+        "attempts": 23,
+        "delivery_modified_utc": "2026-10-28T15:11:19.771726+00:00",
+        "server_status": "FINISHED",
+        "server_tags": {
+          "arena_visibility": "operator",
+          "arena_execution_status": "FINISHED",
+          "arena_export_complete": "true"
+        }
+      }
+    ]
+  },
+  "scope": {
+    "researcher_restarted": false,
+    "evaluators_restarted": false,
+    "monitor_restarted": false,
+    "backends_restarted": false,
+    "models_metric_dataset_changed": false,
+    "secrets_or_closed_payloads_read": false,
+    "synthetic_run_retained": true
+  }
+}

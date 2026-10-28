@@ -1,0 +1,11 @@
+{
+  "max_solutions": 100,
+  "stopped_at": null,
+  "stop_reason": null,
+  "finalization": null,
+  "stopped": false,
+  "proposed": 0,
+  "remaining_proposals": 100,
+  "running": [],
+  "completed_measurements": 0
+}

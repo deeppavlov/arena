@@ -1,0 +1,1847 @@
+{
+  "profile_id": "espd-pmi-unified-v1",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "rule_id": "ESPD-19.101-2024-4.6-designation_wrong_pmi_kind",
+      "registry_ids": [
+        "R101-2024-4.6-pmi_code"
+      ],
+      "standard": "ГОСТ 19.101-2024",
+      "clause": "4.6",
+      "source": "https://files.stroyinf.ru/Data/838/83832.pdf",
+      "title": "Неверный код вида ПМИ",
+      "requirement": "Указать код вида 51 для программы и методики испытаний.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_country_separator",
+      "registry_ids": [
+        "R103-2-country_dot"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "2",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Разделитель после кода страны",
+      "requirement": "После кода страны поставить точку.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_edition_separator",
+      "registry_ids": [
+        "R103-2-edition_space"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "2",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Разделитель после редакции",
+      "requirement": "Отделить код вида документа пробелом.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_kind_separator",
+      "registry_ids": [
+        "R103-2-kind_space"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "2",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Разделитель после кода вида",
+      "requirement": "Отделить порядковый номер документа пробелом.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_organization_separator",
+      "registry_ids": [
+        "R103-2-organization_dot"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "2",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Разделитель после кода разработчика",
+      "requirement": "После кода организации поставить точку.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_part_separator",
+      "registry_ids": [
+        "R103-2-part_separator"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "2",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Разделитель перед номером части",
+      "requirement": "Отделить номер части документа дефисом.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-2-designation_registration_separator",
+      "registry_ids": [
+        "R103-2-registration_hyphen"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "2",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Разделитель перед редакцией",
+      "requirement": "Отделить редакцию от регистрационного номера дефисом.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-4-designation_kind_group_missing",
+      "registry_ids": [
+        "R103-4-document_shape"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "4",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Неполный состав групп обозначения ПМИ",
+      "requirement": "Указать отдельные группы кода вида и номера документа данного вида.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Only the local group/suffix predicate is exercised; assignment, authenticity and other document fields are not certified.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-5-designation_edition_zero",
+      "registry_ids": [
+        "R103-5-edition"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "5",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Нулевая редакция документа",
+      "requirement": "Указать номер редакции в диапазоне 01–99.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-7-designation_number_zero",
+      "registry_ids": [
+        "R103-7-document_number"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "7",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Нулевой номер документа",
+      "requirement": "Указать номер документа данного вида в диапазоне 01–99.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.103-77-8-designation_part_zero",
+      "registry_ids": [
+        "R103-8-part_number"
+      ],
+      "standard": "ГОСТ 19.103-77",
+      "clause": "8",
+      "source": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "title": "Нулевой номер части",
+      "requirement": "Указать номер части в диапазоне 1–9.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.104-78-2.2-approval_designation_suffix",
+      "registry_ids": [
+        "R104-2.2-lu_designation"
+      ],
+      "standard": "ГОСТ 19.104-78",
+      "clause": "2.2",
+      "source": "https://www.swrit.ru/doc/espd/19.104-78.pdf",
+      "title": "В обозначении ЛУ пропущен суффикс",
+      "requirement": "Дополнить обозначение документа суффиксом «-ЛУ» в обозначении листа утверждения.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Only the local group/suffix predicate is exercised; assignment, authenticity and other document fields are not certified.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.104-78-3.1-title_designation_missing",
+      "registry_ids": [
+        "R104-3.1-title_field4"
+      ],
+      "standard": "ГОСТ 19.104-78",
+      "clause": "3.1",
+      "source": "https://www.swrit.ru/doc/espd/19.104-78.pdf",
+      "title": "На титуле отсутствует обозначение документа",
+      "requirement": "Заполнить поле обозначения документа на титульном листе.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.104-78-3.1-title_program_title_case",
+      "registry_ids": [
+        "R104-3.1-title_field3"
+      ],
+      "standard": "ГОСТ 19.104-78",
+      "clause": "3.1",
+      "source": "https://www.swrit.ru/doc/espd/19.104-78.pdf",
+      "title": "Строчные буквы в названии программы на титуле",
+      "requirement": "Записать наименование программы прописными буквами.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.104-78-3.1-title_year_suffix",
+      "registry_ids": [
+        "R104-3.1-title_field7"
+      ],
+      "standard": "ГОСТ 19.104-78",
+      "clause": "3.1",
+      "source": "https://www.swrit.ru/doc/espd/19.104-78.pdf",
+      "title": "Слово или сокращение после года на титуле",
+      "requirement": "Оставить числовой год без слова «год» и сокращения «г».",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.105-78-2.1-title_sheet_missing",
+      "registry_ids": [
+        "R105-2.1-title_sheet"
+      ],
+      "standard": "ГОСТ 19.105-78",
+      "clause": "2.1",
+      "source": "https://www.swrit.ru/doc/espd/19.105-78.pdf",
+      "title": "Полностью отсутствует титульный лист",
+      "requirement": "Включить титульный лист в титульную часть документа.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.3-annotation_purpose_missing",
+      "registry_ids": [
+        "R105-3.3-annotation_purpose"
+      ],
+      "standard": "ГОСТ 19.105-78",
+      "clause": "3.3",
+      "source": "https://www.swrit.ru/doc/espd/19.105-78.pdf",
+      "title": "Аннотация не содержит сведений о назначении документа",
+      "requirement": "Указать сведения в поле «Назначение документа».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.3-annotation_summary_missing",
+      "registry_ids": [
+        "R105-3.3-annotation_summary"
+      ],
+      "standard": "ГОСТ 19.105-78",
+      "clause": "3.3",
+      "source": "https://www.swrit.ru/doc/espd/19.105-78.pdf",
+      "title": "Аннотация не содержит краткого изложения основной части",
+      "requirement": "Указать сведения в поле «Краткое содержание документа».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.4-contents_entry_address_missing",
+      "registry_ids": [
+        "R105-3.4-contents_address"
+      ],
+      "standard": "ГОСТ 19.105-78",
+      "clause": "3.4",
+      "source": "https://www.swrit.ru/doc/espd/19.105-78.pdf",
+      "title": "В оглавлении отсутствует адрес структурного элемента",
+      "requirement": "Включить в запись содержания адрес структурного элемента.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.4-contents_entry_number_missing",
+      "registry_ids": [
+        "R105-3.4-contents_identifier"
+      ],
+      "standard": "ГОСТ 19.105-78",
+      "clause": "3.4",
+      "source": "https://www.swrit.ru/doc/espd/19.105-78.pdf",
+      "title": "В оглавлении отсутствует обозначение структурного элемента",
+      "requirement": "Включить в запись содержания обозначение структурного элемента.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.105-78-3.4-contents_entry_title_missing",
+      "registry_ids": [
+        "R105-3.4-contents_name"
+      ],
+      "standard": "ГОСТ 19.105-78",
+      "clause": "3.4",
+      "source": "https://www.swrit.ru/doc/espd/19.105-78.pdf",
+      "title": "В оглавлении отсутствует наименование структурного элемента",
+      "requirement": "Включить в запись содержания наименование структурного элемента.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-1.5-page_format",
+      "registry_ids": [
+        "R106-1.5-format",
+        "R106-1.5-form1_size",
+        "R106-1.5-form2_size"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "1.5",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Формат печатного листа",
+      "requirement": "Выбрать A4/A3 с учётом способа изготовления.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-1.7-list_sort_alpha",
+      "registry_ids": [
+        "R106-1.7-alphabetic_lists"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "1.7",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Алфавитный порядок перечня",
+      "requirement": "Упорядочить перечень терминов по алфавиту.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-1.7-list_sort_numeric",
+      "registry_ids": [
+        "R106-1.7-numeric_lists"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "1.7",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Порядок нумерованного перечня",
+      "requirement": "Упорядочить перечень рисунков по номерам.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.2-margin_bottom",
+      "registry_ids": [
+        "R106-2.1.2-form_bottom"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Граница текстового поля: bottom",
+      "requirement": "Восстановить конфигурацию текстового поля формы1/2.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.2-margin_left",
+      "registry_ids": [
+        "R106-2.1.2-form_left"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Граница текстового поля: left",
+      "requirement": "Восстановить конфигурацию текстового поля формы1/2.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.2-margin_right",
+      "registry_ids": [
+        "R106-2.1.2-form_right"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Граница текстового поля: right",
+      "requirement": "Восстановить конфигурацию текстового поля формы1/2.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.2-margin_top",
+      "registry_ids": [
+        "R106-2.1.2-form_top"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Граница текстового поля: top",
+      "requirement": "Восстановить конфигурацию текстового поля формы1/2.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.3-annotation_numbered",
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.3",
+      "source": "https://www.swrit.ru/doc/espd/19.106-78.pdf",
+      "defect_type": "annotation_numbered",
+      "requirement": "Убрать номер раздела перед заголовком аннотации.",
+      "registry_ids": [
+        "R106-2.1.3-annotation_unnumbered"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.4-contents_numbered",
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.4",
+      "source": "https://www.swrit.ru/doc/espd/19.106-78.pdf",
+      "defect_type": "contents_numbered",
+      "requirement": "Убрать номер раздела перед заголовком содержания.",
+      "registry_ids": [
+        "R106-2.1.4-toc_unnumbered"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.6-paragraph_indent",
+      "registry_ids": [
+        "R106-2.1.6-element_indent"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.6",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Абзац структурного элемента",
+      "requirement": "Задать положительный абзацный отступ.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-heading_final_period",
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.7",
+      "source": "https://www.swrit.ru/doc/espd/19.106-78.pdf",
+      "defect_type": "heading_final_period",
+      "requirement": "Убрать завершающую точку из заголовка.",
+      "registry_ids": [
+        "R106-2.1.7-heading_no_final_period"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-heading_word_break",
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.7",
+      "source": "https://www.swrit.ru/doc/espd/19.106-78.pdf",
+      "defect_type": "heading_word_break",
+      "requirement": "Убрать перенос внутри слова заголовка.",
+      "registry_ids": [
+        "R106-2.1.7-heading_no_wordbreak"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-section_centered",
+      "registry_ids": [
+        "R106-2.1.7-section_centered"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.7",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Выравнивание заголовка раздела",
+      "requirement": "Настроить симметричное размещение заголовка.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-section_uppercase",
+      "registry_ids": [
+        "R106-2.1.7-section_uppercase"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.7",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Регистр заголовка раздела",
+      "requirement": "Записать заголовок раздела прописными буквами.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-subsection_case",
+      "registry_ids": [
+        "R106-2.1.7-subsection_case"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.7",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Регистр заголовка подраздела",
+      "requirement": "Использовать первую прописную и последующие строчные буквы.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.7-subsection_indent",
+      "registry_ids": [
+        "R106-2.1.7-subsection_indent"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.7",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Абзац заголовка подраздела",
+      "requirement": "Начать заголовок подраздела с абзацного отступа.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.8-heading_after_spacing",
+      "registry_ids": [
+        "R106-2.1.8-after_heading_spacing"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.8",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Интервал после заголовка",
+      "requirement": "Для машинного способа обеспечить не менее трёх высот шрифта.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.8-heading_before_spacing",
+      "registry_ids": [
+        "R106-2.1.8-before_heading_spacing"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.8",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Интервал перед заголовком",
+      "requirement": "На той же странице обеспечить не менее четырёх высот шрифта.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.8-heading_line_spacing",
+      "registry_ids": [
+        "R106-2.1.8-multiline_heading_spacing"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.8",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Межстрочность заголовка",
+      "requirement": "Согласовать межстрочное расстояние заголовка с основным текстом.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.9-heading_number_sequence",
+      "registry_ids": [
+        "R106-2.1.9-sequential_numbers"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.9",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Последовательность разделов",
+      "requirement": "Восстановить последовательные номера разделов.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.1.9-heading_number_style",
+      "registry_ids": [
+        "R106-2.1.9-arabic_numbers"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.1.9",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Арабская нумерация раздела",
+      "requirement": "Использовать арабские номера структурных элементов.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.2.1-term_list",
+      "registry_ids": [
+        "R106-2.2.1-term_list"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.2.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Нестандартный термин",
+      "requirement": "Привести введённый термин и определение в перечне терминов.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.2.4-footnote_marker",
+      "registry_ids": [
+        "R106-2.2.4-footnote_marker"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.2.4",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Метка сноски",
+      "requirement": "Оформить арабскую цифру со скобкой верхним индексом.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_explanation_position",
+      "registry_ids": [
+        "R106-2.3.1-figure_explanation_position"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.3.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Пояснение иллюстрации",
+      "requirement": "Разместить поясняющий текст под иллюстрацией.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_number_missing",
+      "registry_ids": [
+        "R106-2.3.1-figure_numbering"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.3.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Номер иллюстрации",
+      "requirement": "Пронумеровать обе иллюстрации арабскими цифрами.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_number_position",
+      "registry_ids": [
+        "R106-2.3.1-figure_number_position"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.3.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Положение номера рисунка",
+      "requirement": "Поместить номер под поясняющим текстом.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_number_sequence",
+      "registry_ids": [
+        "R106-2.3.1-figure_numbering"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.3.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Последовательность иллюстраций",
+      "requirement": "Восстановить сквозную нумерацию иллюстраций.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_reference",
+      "registry_ids": [
+        "R106-2.3.1-figure_reference"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.3.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Ссылка на иллюстрацию",
+      "requirement": "Указать «рис.» и номер иллюстрации.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_repeated_reference",
+      "registry_ids": [
+        "R106-2.3.1-figure_repeated_reference"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.3.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Повторная ссылка на рисунок",
+      "requirement": "Добавить «см.» к повторной ссылке.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.3.1-figure_title_position",
+      "registry_ids": [
+        "R106-2.3.1-figure_title_position"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.3.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Название иллюстрации",
+      "requirement": "Разместить тематическое название над иллюстрацией.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_number_missing",
+      "registry_ids": [
+        "R106-2.4.1-formula_numbers"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Номер формулы",
+      "requirement": "Пронумеровать обе формулы арабскими цифрами.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_number_position",
+      "registry_ids": [
+        "R106-2.4.1-formula_number_position"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Позиция номера формулы",
+      "requirement": "Разместить номер в скобках справа на уровне формулы.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_number_sequence",
+      "registry_ids": [
+        "R106-2.4.1-formula_numbers"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Последовательность формул",
+      "requirement": "Восстановить сквозную нумерацию формул.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_part_prefix",
+      "registry_ids": [
+        "R106-2.4.1-formula_part_prefix"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Номер части в номере формулы",
+      "requirement": "В явно заданном контексте части документа ставить её номер перед номером формулы через точку.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "limitation": "Проверен префикс формулы в явно заданном локальном контексте части; комплектность и истинность всего многочастного издания не оцениваются. Деление документа на части не обязательно.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.1-formula_reference",
+      "registry_ids": [
+        "R106-2.4.1-formula_reference"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Ссылка на формулу",
+      "requirement": "Заключить номер формулы в круглые скобки.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_missing",
+      "registry_ids": [
+        "R106-2.4.2-symbol_explanation"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Полнота обозначений формулы",
+      "requirement": "Расшифровать отсутствующий символ; общего перечня в локальной области нет.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_newline",
+      "registry_ids": [
+        "R106-2.4.2-symbol_newline"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Строки расшифровки формулы",
+      "requirement": "Начать пояснение каждого символа с новой строки.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_order",
+      "registry_ids": [
+        "R106-2.4.2-symbol_sequence"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Порядок обозначений формулы",
+      "requirement": "Перечислить обозначения в порядке появления в формуле.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_where_colon",
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.2",
+      "source": "https://www.swrit.ru/doc/espd/19.106-78.pdf",
+      "defect_type": "formula_where_colon",
+      "requirement": "Убрать двоеточие после начального слова «где».",
+      "registry_ids": [
+        "R106-2.4.2-where_no_colon"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.2-formula_where_missing",
+      "registry_ids": [
+        "R106-2.4.2-where_prefix"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Начало пояснения формулы",
+      "requirement": "Начать первую строку расшифровки со слова «где».",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.4.3-parameter_dimension",
+      "registry_ids": [
+        "R106-2.4.3-consistent_dimension"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.4.3",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Размерность параметра",
+      "requirement": "Использовать одинаковую размерность площади S.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.5.1-enterprise_reference",
+      "registry_ids": [
+        "R106-2.5.1-enterprise_standards"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.5.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Стандарт предприятия",
+      "requirement": "Исключить ссылку на стандарт предприятия из нормативных ссылок ПМИ.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.5.1-external_reference",
+      "registry_ids": [
+        "R106-2.5.1-external_reference_scope"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.5.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Внешняя ссылка",
+      "requirement": "Сослаться на внешний документ, его раздел или приложение.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.5.1-standard_designation",
+      "registry_ids": [
+        "R106-2.5.1-reference_designation"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.5.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Обозначение стандарта",
+      "requirement": "Указать обозначение стандарта в нормативной ссылке.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.6.2-table_title_case",
+      "registry_ids": [
+        "R106-2.6.2-table_title_case"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.6.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Регистр названия таблицы",
+      "requirement": "Записать название обычным регистром, сохраняя начальную прописную.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.6.3-table_footnote_position",
+      "registry_ids": [
+        "R106-2.6.3-table_footnotes"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.6.3",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Положение сноски таблицы",
+      "requirement": "Вернуть табличную сноску непосредственно под таблицу.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.7.1-multiple_note_label",
+      "registry_ids": [
+        "R106-2.7.1-multiple_note_label"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.7.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Оформление нескольких примечаний",
+      "requirement": "После «Примечания» поставить двоеточие.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.7.1-multiple_note_numbering",
+      "registry_ids": [
+        "R106-2.7.1-multiple_note_numbers"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.7.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Нумерация нескольких примечаний",
+      "requirement": "Использовать последовательные арабские номера с точкой.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.7.1-single_note_label",
+      "registry_ids": [
+        "R106-2.7.1-single_note_label"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.7.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Оформление одного примечания",
+      "requirement": "После «Примечание» поставить точку.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.7.1-single_note_numbered",
+      "registry_ids": [
+        "R106-2.7.1-single_note_number"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.7.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Нумерация одного примечания",
+      "requirement": "Убрать номер у единственного примечания.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.8.1-custom_abbreviation",
+      "registry_ids": [
+        "R106-2.2.2-custom_abbreviations",
+        "R106-2.8.1-special_abbreviation_list"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.8.1",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Особая система сокращений",
+      "requirement": "Добавить перечень принятых специальных сокращений.",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_label_position",
+      "registry_ids": [
+        "R106-2.9.2-appendix_label"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.9.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Пометка приложения",
+      "requirement": "Разместить пометку «ПРИЛОЖЕНИЕ» справа сверху.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_number",
+      "registry_ids": [
+        "R106-2.9.2-appendix_number"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.9.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Номера приложений",
+      "requirement": "Использовать арабские номера приложений без знака №.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_page_break",
+      "registry_ids": [
+        "R106-2.9.2-appendix_new_page"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.9.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Начало приложения",
+      "requirement": "Начать приложение с новой страницы.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_title_case",
+      "registry_ids": [
+        "R106-2.9.2-appendix_title_case"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.9.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Регистр названия приложения",
+      "requirement": "Записать тематическое название прописными буквами.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.2-appendix_title_center",
+      "registry_ids": [
+        "R106-2.9.2-appendix_title_center"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.9.2",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Выравнивание названия приложения",
+      "requirement": "Разместить тематическое название симметрично тексту.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "limitation": "Проверено только необходимое условие OOXML; фактическая геометрия/страница требует рендера.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.5-appendix_reference_missing",
+      "registry_ids": [
+        "R106-2.9.5-appendix_reference"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.9.5",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Ссылка на приложение",
+      "requirement": "Дать ссылку на приложение в основном тексте.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.106-78-2.9.5-appendix_toc_missing",
+      "registry_ids": [
+        "R106-2.9.5-appendix_toc"
+      ],
+      "standard": "ГОСТ 19.106-78",
+      "clause": "2.9.5",
+      "source": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "title": "Приложение в содержании",
+      "requirement": "Включить приложение в содержание.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_documentation_requirements",
+      "registry_ids": [
+        "R301-1.2-section_documentation_requirements"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "1.2",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Отсутствует раздел «Требования к программной документации»",
+      "requirement": "Включить обязательный раздел «Требования к программной документации».",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_goal",
+      "registry_ids": [
+        "R301-1.2-section_goal"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "1.2",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Отсутствует раздел «Цель испытаний»",
+      "requirement": "Включить обязательный раздел «Цель испытаний».",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_means_procedure",
+      "registry_ids": [
+        "R301-1.2-section_means_procedure"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "1.2",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Отсутствует раздел «Средства и порядок испытаний»",
+      "requirement": "Включить обязательный раздел «Средства и порядок испытаний».",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_methods",
+      "registry_ids": [
+        "R301-1.2-section_methods"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "1.2",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Отсутствует раздел «Методы испытаний»",
+      "requirement": "Включить обязательный раздел «Методы испытаний».",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_object",
+      "registry_ids": [
+        "R301-1.2-section_object"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "1.2",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Отсутствует раздел «Объект испытаний»",
+      "requirement": "Включить обязательный раздел «Объект испытаний».",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-1.2-section_missing_program_requirements",
+      "registry_ids": [
+        "R301-1.2-section_program_requirements"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "1.2",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Отсутствует раздел «Требования к программе»",
+      "requirement": "Включить обязательный раздел «Требования к программе».",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.1-empty_section",
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.1",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "section_key": "object",
+      "title": "Объект испытаний",
+      "registry_ids": [
+        "R301-2.1-object_name",
+        "R301-2.1-object_domain",
+        "R301-2.1-object_designation"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "requirement": "Раздел «Объект испытаний» должен содержать предусмотренные сведения; полностью пустое тело не удовлетворяет этому условию.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.1-object_designation_missing",
+      "registry_ids": [
+        "R301-2.1-object_designation"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.1",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Не приведено обозначение испытуемой программы",
+      "requirement": "Указать сведения в поле «Обозначение испытуемой программы».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.1-object_domain_missing",
+      "registry_ids": [
+        "R301-2.1-object_domain"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.1",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Не приведена область применения программы",
+      "requirement": "Указать сведения в поле «Область применения».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.1-object_name_missing",
+      "registry_ids": [
+        "R301-2.1-object_name"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.1",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Не приведено наименование испытуемой программы",
+      "requirement": "Указать сведения в поле «Наименование испытуемой программы».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.2-empty_section",
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.2",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "section_key": "goal",
+      "title": "Цель испытаний",
+      "registry_ids": [
+        "R301-2.2-testing_goal"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "requirement": "Раздел «Цель испытаний» должен содержать предусмотренные сведения; полностью пустое тело не удовлетворяет этому условию.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.3-empty_section",
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.3",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "section_key": "program_requirements",
+      "title": "Требования к программе",
+      "registry_ids": [
+        "R301-2.3-testable_requirements"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "requirement": "Раздел «Требования к программе» должен содержать предусмотренные сведения; полностью пустое тело не удовлетворяет этому условию.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.4-empty_section",
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.4",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "section_key": "documentation_requirements",
+      "title": "Требования к программной документации",
+      "registry_ids": [
+        "R301-2.4-documentation_set"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "requirement": "Раздел «Требования к программной документации» должен содержать предусмотренные сведения; полностью пустое тело не удовлетворяет этому условию.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.7-means_procedure_empty",
+      "registry_ids": [
+        "R301-2.7-technical_means",
+        "R301-2.7-software_means",
+        "R301-2.7-test_procedure"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.7",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Пустой раздел средств и порядка испытаний",
+      "requirement": "Описать средства и порядок испытаний.",
+      "evidence_channel": "ooxml",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.7-software_means_missing",
+      "registry_ids": [
+        "R301-2.7-software_means"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.7",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Не указаны программные средства испытаний",
+      "requirement": "Указать сведения в поле «Программные средства испытаний».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.7-technical_means_missing",
+      "registry_ids": [
+        "R301-2.7-technical_means"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.7",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Не указаны технические средства испытаний",
+      "requirement": "Указать сведения в поле «Технические средства испытаний».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.7-test_procedure_missing",
+      "registry_ids": [
+        "R301-2.7-test_procedure"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.7",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Не описан порядок проведения испытаний",
+      "requirement": "Указать сведения в поле «Порядок проведения испытаний».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.8-empty_section",
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.8",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "section_key": "methods",
+      "title": "Методы испытаний",
+      "registry_ids": [
+        "R301-2.8-methods_description",
+        "R301-2.8-check_descriptions",
+        "R301-2.8-test_results"
+      ],
+      "evidence_channel": "ooxml",
+      "coverage_level": "partial",
+      "requirement": "Раздел «Методы испытаний» должен содержать предусмотренные сведения; полностью пустое тело не удовлетворяет этому условию.",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.8-expected_result_missing",
+      "registry_ids": [
+        "R301-2.8-test_results"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.8",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Не указан ожидаемый результат проверки",
+      "requirement": "Указать сведения в поле «Ожидаемый результат проверки».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "ESPD-19.301-79-2.8-test_method_description_missing",
+      "registry_ids": [
+        "R301-2.8-methods_description",
+        "R301-2.8-check_descriptions"
+      ],
+      "standard": "ГОСТ 19.301-79",
+      "clause": "2.8",
+      "source": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "title": "Не описаны действия для выполнения проверки",
+      "requirement": "Указать сведения в поле «Метод выполнения проверки».",
+      "evidence_channel": "semantic",
+      "coverage_level": "full_predicate",
+      "component": "espd",
+      "basis_kind": "gost_requirement"
+    },
+    {
+      "rule_id": "TYP-01",
+      "category": "paragraphs_lists",
+      "title": "Моноширинный шрифт технического блока",
+      "excerpt_items": [
+        1
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-02",
+      "category": "tables",
+      "title": "Отсутствие абзацных отступов в таблице",
+      "excerpt_items": [
+        2
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-03",
+      "category": "tables",
+      "title": "Без выключки по ширине в таблице",
+      "excerpt_items": [
+        2
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-04",
+      "category": "tables",
+      "title": "Одинарный автоматический интервал в таблице",
+      "excerpt_items": [
+        2
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-05",
+      "category": "tables",
+      "title": "Вертикальное выравнивание ячейки по верху",
+      "excerpt_items": [
+        2
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-06",
+      "category": "tables",
+      "title": "Текстовая ячейка выровнена влево",
+      "excerpt_items": [
+        2
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-07",
+      "category": "paragraphs_lists",
+      "title": "Грамматическое тире в обычном тексте",
+      "excerpt_items": [
+        3
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-08",
+      "category": "paragraphs_lists",
+      "title": "Неразрывный пробел после выбранных коротких слов",
+      "excerpt_items": [
+        4,
+        8
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-09",
+      "category": "headings",
+      "title": "Нет конечной точки в заголовке",
+      "excerpt_items": [
+        6
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-10",
+      "category": "tables",
+      "title": "Нет конечной точки в однословной ячейке-фрагменте",
+      "excerpt_items": [
+        6
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-11",
+      "category": "figures",
+      "title": "Нет конечной точки в подписи рисунка",
+      "excerpt_items": [
+        6
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-12",
+      "category": "headings",
+      "title": "Нет скачка уровня заголовка вниз",
+      "excerpt_items": [
+        14
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-13",
+      "category": "headings",
+      "title": "Нет явной отмены нумерации нумерованного заголовка",
+      "excerpt_items": [
+        15
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    },
+    {
+      "rule_id": "TYP-14",
+      "category": "paragraphs_lists",
+      "title": "Шрифт текста из согласованного семейства",
+      "excerpt_items": [
+        10
+      ],
+      "basis_kind": "editorial_recommendation",
+      "severity": "recommendation",
+      "component": "typography"
+    }
+  ],
+  "typography_policy": {
+    "profile_id": "espd-pmi-typography-editorial-v1",
+    "version": "1.0.0",
+    "basis_kind": "editorial_recommendation",
+    "expert_approved": false,
+    "source": "docs/studenikin/2026-10-27_SC-35_типографика.md",
+    "book_catalogue": "https://www.artlebedev.ru/izdal/spravochnik-izdatelya-i-avtora-2017/",
+    "book_clause_verification": "pending_full_text_and_page_references",
+    "rules": [
+      {
+        "rule_id": "TYP-01",
+        "category": "paragraphs_lists",
+        "title": "Моноширинный шрифт технического блока",
+        "excerpt_items": [
+          1
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-02",
+        "category": "tables",
+        "title": "Отсутствие абзацных отступов в таблице",
+        "excerpt_items": [
+          2
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-03",
+        "category": "tables",
+        "title": "Без выключки по ширине в таблице",
+        "excerpt_items": [
+          2
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-04",
+        "category": "tables",
+        "title": "Одинарный автоматический интервал в таблице",
+        "excerpt_items": [
+          2
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-05",
+        "category": "tables",
+        "title": "Вертикальное выравнивание ячейки по верху",
+        "excerpt_items": [
+          2
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-06",
+        "category": "tables",
+        "title": "Текстовая ячейка выровнена влево",
+        "excerpt_items": [
+          2
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-07",
+        "category": "paragraphs_lists",
+        "title": "Грамматическое тире в обычном тексте",
+        "excerpt_items": [
+          3
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-08",
+        "category": "paragraphs_lists",
+        "title": "Неразрывный пробел после выбранных коротких слов",
+        "excerpt_items": [
+          4,
+          8
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-09",
+        "category": "headings",
+        "title": "Нет конечной точки в заголовке",
+        "excerpt_items": [
+          6
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-10",
+        "category": "tables",
+        "title": "Нет конечной точки в однословной ячейке-фрагменте",
+        "excerpt_items": [
+          6
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-11",
+        "category": "figures",
+        "title": "Нет конечной точки в подписи рисунка",
+        "excerpt_items": [
+          6
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-12",
+        "category": "headings",
+        "title": "Нет скачка уровня заголовка вниз",
+        "excerpt_items": [
+          14
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-13",
+        "category": "headings",
+        "title": "Нет явной отмены нумерации нумерованного заголовка",
+        "excerpt_items": [
+          15
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      },
+      {
+        "rule_id": "TYP-14",
+        "category": "paragraphs_lists",
+        "title": "Шрифт текста из согласованного семейства",
+        "excerpt_items": [
+          10
+        ],
+        "basis_kind": "editorial_recommendation",
+        "severity": "recommendation"
+      }
+    ],
+    "limits": [
+      "Opt-in local policy, not a claim of mandatory GOST or full handbook compliance.",
+      "Short-word spacing is a prevention proxy, not proof of a rendered hanging word.",
+      "Numeric alignment, line fitting, table pagination and semantic editing are deferred.",
+      "No automatic slash ban; code, URLs and paths require their original characters.",
+      "Explicit code and text-cell styles establish applicability for narrow policies.",
+      "Unknown theme fonts and table-style inheritance are not inferred."
+    ]
+  },
+  "expert_approved": false,
+  "metric": "span_intersection",
+  "llm_judge_enabled": false
+}

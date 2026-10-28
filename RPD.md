@@ -51,6 +51,7 @@ Build и выбор опубликованных материалов — отд
 | Путь | Что здесь искать |
 | --- | --- |
 | [cases/template/](cases/template/README.md) | Основа нового кейса: задача, данные, метрика, примеры решений и модельных метрик |
+| [cases/sc35/](cases/sc35/README.md), [кампания sc35-first-20261028](cases/sc35/campaigns/sc35-first-20261028/README.md) | Проверка ПМИ по ЕСПД и типографике, детерминированная span-метрика и отдельная подготовка GPU6/Hermes; готовность фиксирует отчёт кампании |
 | [cases/sc71/](cases/sc71/README.md) | Пакет SC-71; его доменные правила и настройки не переносятся в общее ядро |
 | [cases/sc71/campaigns/sc71-second-20261024/](cases/sc71/campaigns/sc71-second-20261024/README.md) | Подготовленный второй запуск SC-71, отдельное развёртывание и свидетельства готовности; выбор кампании задаёт пользователь |
 | [cases/sc71/harness/hermes/](cases/sc71/harness/hermes/README.md) | Адаптер Hermes, runtime, профиль и образ харнеса |
@@ -61,6 +62,7 @@ Build и выбор опубликованных материалов — отд
 | `cases/<case>/ways/`, `cases/<case>/results/` | Решения и результаты проверок; состав конкретного пакета уточняет README кейса |
 | [archive/](archive/README.md) | Исторические отчёты разработки, свидетельства кейсов и локальные материалы; не входят в стартовый контекст |
 | [Dockerfile](Dockerfile), [compose.yaml](compose.yaml), [deploy/README.md](deploy/README.md) | Общие образы и доверенный запуск; [runner/Dockerfile](runner/Dockerfile) — отдельный образ комплектного runner |
+| [deploy/mlflow/](deploy/mlflow/README.md) | Общий nginx proxy операторского MLflow и контейнерная проверка потоковой передачи крупных артефактов |
 | [integrations/docker/](integrations/docker/README.md) | Необязательный монитор исследовательского контейнера; поиск не запускает и не возобновляет |
 
 В `<campaign_dir>`: `campaign.md` задаёт условия, `preparation.md` хранит свидетельства готовности, `board/claims/` и `board/findings/` — гипотезы и результаты, `board/reviews/` — допуск точных снимков и материалов, журнал — все версии и измерения, `selection.md` — основания отбора. Все worktree используют один абсолютный путь к состоянию и журналу. Не выбирай кампанию автоматически по имени или дате каталога.
@@ -94,3 +96,5 @@ uv run python -m evaluator.smoke
 Корневой pytest собирает только `tests/`, pyright проверяет `evaluator`, `runner`, `integrations`, `tests`. Для кейса запускай его проверки отдельно по README. Для SC-71: `uv run pytest cases/sc71/tests` и `uv run pyright -p cases/sc71/pyrightconfig.json`.
 
 Общие тесты и smoke используют синтетические входы и подставные ответы без реальных моделей и кампаний. [tests/docker_smoke.py](tests/docker_smoke.py) — отдельная контейнерная проверка с подставным upstream; она не заменяет приёмку нового образа на целевом узле.
+
+При изменении MLflow proxy дополнительно выполняйте `uv run python tests/mlflow_proxy_smoke.py`: настоящий nginx с ограниченной памятью и синтетические потоки, без MLflow и модельных вызовов. Подключение общего конфига всеми Compose проверяет `tests/test_mlflow_deploy.py` в обычном pytest.

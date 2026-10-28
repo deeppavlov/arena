@@ -1,0 +1,32 @@
+{
+  "format_version": 1,
+  "files": {
+    "README.md": {
+      "executable": false
+    },
+    "aggregate.py": {
+      "executable": false
+    },
+    "metric.json": {
+      "executable": false
+    },
+    "review.schema.json": {
+      "executable": false
+    },
+    "runtime/metric.py": {
+      "executable": false
+    },
+    "runtime/projection.py": {
+      "executable": false
+    },
+    "runtime/taxonomy.py": {
+      "executable": false
+    },
+    "score.py": {
+      "executable": false
+    },
+    "taxonomy.json": {
+      "executable": false
+    }
+  }
+}

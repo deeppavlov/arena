@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-28",
+  "source_revision": "c7333babe0bc38d3d6e7f1ebf2b1dd5d230c53e0",
+  "commands": [
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run pyright",
+      "exit_code": 0,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "command": "uv run pytest",
+      "exit_code": 0,
+      "passed": 1629,
+      "seconds": 80.16
+    },
+    {
+      "command": "uv run python -m evaluator.smoke",
+      "exit_code": 0
+    },
+    {
+      "command": "uv run --with lxml==6.1.3 --with jsonschema==4.26.0 pytest cases/sc35/tests -q",
+      "exit_code": 0,
+      "passed": 32
+    },
+    {
+      "command": "uv run python -m evaluator.prepare verify --metric cases/sc35/campaigns/sc35-first-20261028/metric",
+      "exit_code": 0,
+      "files": 9,
+      "semantic_tests_run": false
+    }
+  ],
+  "real_model_generations": 0,
+  "production_proposals": 0,
+  "commits_created": 0
+}

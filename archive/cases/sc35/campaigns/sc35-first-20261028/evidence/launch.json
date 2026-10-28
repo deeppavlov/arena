@@ -1,0 +1,32 @@
+{
+  "campaign_id": "sc35-first-20261028",
+  "user_instruction": "запускай",
+  "host": "gpu6",
+  "container_name": "arena-sc35-first-researcher-1",
+  "started_at_utc": "2026-10-28T08:17:41Z",
+  "started_at_moscow": "2026-10-28T11:17:41+03:00",
+  "observed_at_utc": "2026-10-28T08:19:48Z",
+  "run_id": "17963c40-1367-4651-bc2b-fbbe5aa35e9e",
+  "launcher_exit_code": 0,
+  "container_status": "running",
+  "monitor_status": "running",
+  "successful_model_requests": 28,
+  "saved_error_statuses": 0,
+  "total_tokens_at_observation": 1973467,
+  "unreported_attempts": 0,
+  "model_run_open": true,
+  "preflight": {
+    "max_solutions": 100,
+    "finalists": 10,
+    "output_count": 3,
+    "release_id": "sc35-first-20261028",
+    "mode": "campaign",
+    "gate_enabled": true,
+    "journal_ready": true,
+    "evaluation_enabled": true,
+    "metric_verified": true,
+    "mlflow_payload_verified": true
+  },
+  "conditions_changed": false,
+  "commits_created": 0
+}

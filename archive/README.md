@@ -5,6 +5,7 @@
 | Каталог | Содержимое |
 | --- | --- |
 | [development/](development/verification.md) | Датированный журнал проверок разработки и другие отчёты об изменениях |
+| [cases/sc35/campaigns/sc35-first-20261028/](cases/sc35/campaigns/sc35-first-20261028/README.md) | Синтетическая приёмка и свидетельства подготовки SC-35 на GPU6 |
 | [cases/sc71/campaigns/sc71-first-20261019/](cases/sc71/campaigns/sc71-first-20261019/README.md) | Исторические свидетельства подготовки и работы первой кампании SC-71 |
 | [cases/sc71/campaigns/sc71-second-20261024/](cases/sc71/campaigns/sc71-second-20261024/README.md) | Датированные свидетельства подготовки второй кампании SC-71 |
 | `local/artifacts/` | Локальные исследования, заметки и исходные материалы |

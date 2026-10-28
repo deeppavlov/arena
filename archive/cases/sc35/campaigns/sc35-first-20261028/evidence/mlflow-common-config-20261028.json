@@ -1,0 +1,535 @@
+{
+  "campaign_id": "sc35-first-20261028",
+  "completed_utc": "2026-10-28T15:49:23.109839+00:00",
+  "purpose": "Align the live SC35 operator proxy with the shared project nginx configuration",
+  "synced_files": [
+    "deploy/mlflow/README.md",
+    "deploy/mlflow/operator-nginx.conf",
+    "cases/sc35/campaigns/sc35-first-20261028/deploy/README.md",
+    "cases/sc35/campaigns/sc35-first-20261028/deploy/mlflow-compose.yaml"
+  ],
+  "backup": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/mlflow-common-config-20261028/mlflow-compose.before.yaml",
+  "validation_before": {
+    "bytes_equal_common_old_runtime": true,
+    "compose_resolved_source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/deploy/mlflow/operator-nginx.conf",
+    "read_only": true
+  },
+  "nginx_test_before": "passed",
+  "nginx_test_after": "passed",
+  "compose_config_quiet": "passed",
+  "apply": {
+    "service": "operator-tracking",
+    "no_deps": true,
+    "pull": "never",
+    "proxy_image_unchanged": true,
+    "configuration_bytes_changed": false
+  },
+  "before": {
+    "observed_utc": "2026-10-28T15:46:24.081847+00:00",
+    "containers": [
+      {
+        "name": "arena-sc35-first-researcher-1",
+        "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+        "image_id": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+        "started": "2026-10-28T08:17:41.865161515Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 34359738368,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-research-monitor-1",
+        "id": "71e1f22cc9f67522d907f0f9a7be51ece050f09a3247bd90141ec61433132851",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.746631349Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-train-evaluator-1",
+        "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:39.148688222Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-public-evaluator-1",
+        "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:40:10.655461749Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-private-evaluator-1",
+        "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:40:10.654490509Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-model-gateway-1",
+        "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.748582329Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-researcher-gateway-1",
+        "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.748019605Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-internet-proxy-1",
+        "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+        "image_id": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+        "started": "2026-10-28T07:39:07.747383198Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "sc35-first-mlflow-shared-tracking-1",
+        "id": "ae7a55f95cbfbc3885f7a2895e680fb623f1562d139aba76069cbdb16d2fc1c7",
+        "image_id": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38",
+        "started": "2026-10-28T07:39:06.981400681Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "sc35-first-mlflow-operator-tracking-1",
+        "id": "9fbef35b41614de72864b7b7fe27752956e21766a7929940bced786025f5490a",
+        "image_id": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+        "started": "2026-10-28T15:10:43.516364409Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 134217728,
+        "config_mounts": [
+          {
+            "source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/cases/sc35/campaigns/sc35-first-20261028/deploy/operator-nginx.conf",
+            "destination": "/etc/nginx/nginx.conf",
+            "read_only": true
+          }
+        ]
+      },
+      {
+        "name": "deus-ex-mlflow-tracking-1",
+        "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+        "image_id": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+        "started": "2026-10-05T13:01:36.158459624Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 0,
+        "config_mounts": []
+      }
+    ]
+  },
+  "after": {
+    "observed_utc": "2026-10-28T15:47:15.168478+00:00",
+    "containers": [
+      {
+        "name": "arena-sc35-first-researcher-1",
+        "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+        "image_id": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+        "started": "2026-10-28T08:17:41.865161515Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 34359738368,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-research-monitor-1",
+        "id": "71e1f22cc9f67522d907f0f9a7be51ece050f09a3247bd90141ec61433132851",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.746631349Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-train-evaluator-1",
+        "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:39.148688222Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-public-evaluator-1",
+        "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:40:10.655461749Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-private-evaluator-1",
+        "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:40:10.654490509Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-model-gateway-1",
+        "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.748582329Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-researcher-gateway-1",
+        "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.748019605Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "arena-sc35-first-internet-proxy-1",
+        "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+        "image_id": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+        "started": "2026-10-28T07:39:07.747383198Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "sc35-first-mlflow-shared-tracking-1",
+        "id": "ae7a55f95cbfbc3885f7a2895e680fb623f1562d139aba76069cbdb16d2fc1c7",
+        "image_id": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38",
+        "started": "2026-10-28T07:39:06.981400681Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296,
+        "config_mounts": []
+      },
+      {
+        "name": "sc35-first-mlflow-operator-tracking-1",
+        "id": "cf837a98494afaf5c55f03f127461a0c6e2138ed3e3028a3c0edd9d1b82f55bb",
+        "image_id": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+        "started": "2026-10-28T15:46:47.895769318Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 134217728,
+        "config_mounts": [
+          {
+            "source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/deploy/mlflow/operator-nginx.conf",
+            "destination": "/etc/nginx/nginx.conf",
+            "read_only": true
+          }
+        ]
+      },
+      {
+        "name": "deus-ex-mlflow-tracking-1",
+        "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+        "image_id": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+        "started": "2026-10-05T13:01:36.158459624Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 0,
+        "config_mounts": []
+      }
+    ]
+  },
+  "queues_before": {
+    "observed_utc": "2026-10-28T15:46:24.114084+00:00",
+    "flush_modified_utc": "2026-10-28T15:46:15.390444+00:00",
+    "queues": [
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      }
+    ]
+  },
+  "queues_after": {
+    "observed_utc": "2026-10-28T15:48:27.317084+00:00",
+    "status": "ok",
+    "flush_modified_utc": "2026-10-28T15:48:24.368743+00:00",
+    "queues": [
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      }
+    ],
+    "proxy_health_http_status": 200,
+    "wait_seconds": 70
+  },
+  "proxy_cgroup_after": {
+    "memory_current_bytes": 3026944,
+    "memory_peak_bytes": 5763072,
+    "memory_limit_bytes": 134217728,
+    "memory_failcnt": 0,
+    "oom_control": {
+      "oom_kill_disable": 0,
+      "under_oom": 0,
+      "oom_kill": 0
+    }
+  },
+  "unchanged_other_services": [
+    {
+      "name": "arena-sc35-first-researcher-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-research-monitor-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-train-evaluator-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-public-evaluator-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-private-evaluator-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-model-gateway-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-researcher-gateway-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-internet-proxy-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "sc35-first-mlflow-shared-tracking-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    },
+    {
+      "name": "deus-ex-mlflow-tracking-1",
+      "id_unchanged": true,
+      "started_unchanged": true,
+      "restarts_unchanged": true,
+      "image_unchanged": true
+    }
+  ],
+  "live_configuration": {
+    "compose_source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/deploy/mlflow/operator-nginx.conf",
+    "runtime_mount": {
+      "source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/deploy/mlflow/operator-nginx.conf",
+      "destination": "/etc/nginx/nginx.conf",
+      "read_only": true
+    },
+    "migration_complete": true,
+    "pending_recreate": false,
+    "legacy_case_file_retained_unused": false
+  },
+  "legacy_cleanup": {
+    "observed_utc": "2026-10-28T15:49:23.109839+00:00",
+    "legacy_mount_references": [],
+    "removed_files": [
+      {
+        "source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/cases/sc35/campaigns/sc35-first-20261028/deploy/operator-nginx.conf",
+        "backup": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/mlflow-common-config-20261028/sc35-operator-nginx.before.conf",
+        "removed": true
+      },
+      {
+        "source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/cases/sc71/deploy/gpu6/mlflow/operator-nginx.conf",
+        "backup": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/mlflow-common-config-20261028/sc71-bundled-operator-nginx.before.conf",
+        "removed": true
+      }
+    ],
+    "shared_config_exists": true,
+    "sc71_installation_changed": false
+  },
+  "scope": {
+    "sc71_live_changed": false,
+    "researcher_restarted": false,
+    "evaluators_restarted": false,
+    "monitor_restarted": false,
+    "backends_restarted": false,
+    "models_metric_dataset_changed": false,
+    "manual_flush": false,
+    "live_large_transfer_repeated": false,
+    "secrets_or_closed_payloads_read": false
+  }
+}

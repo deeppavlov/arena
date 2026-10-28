@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "scenarios": [
+    {
+      "scenario": "success",
+      "passed": true,
+      "checks": {
+        "expected_result": true,
+        "request_count": true,
+        "document_tool_result": true,
+        "no_base64_context": true,
+        "fixed_settings": true,
+        "no_secret_files": true
+      },
+      "model_requests": 2
+    },
+    {
+      "scenario": "failure",
+      "passed": true,
+      "checks": {
+        "expected_result": true,
+        "request_count": true,
+        "document_tool_result": true,
+        "no_base64_context": true,
+        "fixed_settings": true,
+        "no_secret_files": true
+      },
+      "model_requests": 1
+    }
+  ]
+}

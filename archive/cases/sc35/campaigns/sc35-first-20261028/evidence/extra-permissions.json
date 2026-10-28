@@ -1,0 +1,13 @@
+{
+  "train": {
+    "ARENA_ASSET_STORE_DIR": "writable"
+  },
+  "model-gateway": {
+    "MODEL_USAGE_DIR": "writable",
+    "MODEL_TRACE_DIR": "writable"
+  },
+  "researcher-gateway": {
+    "MODEL_USAGE_DIR": "writable",
+    "MODEL_TRACE_DIR": "writable"
+  }
+}

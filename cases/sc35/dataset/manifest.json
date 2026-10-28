@@ -1,0 +1,11 @@
+{
+  "version": "sc35-unified-v1",
+  "split_counts": {
+    "train": 113,
+    "public": 128,
+    "private": 640
+  },
+  "case_count": 881,
+  "closed_data_in_git": false,
+  "independent_source_documents": 1
+}

@@ -1,0 +1,65 @@
+[
+  {
+    "name": "arena-sc35-first-train-evaluator-1",
+    "state": "running",
+    "health": "healthy",
+    "restarts": 0,
+    "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154"
+  },
+  {
+    "name": "arena-sc35-first-public-evaluator-1",
+    "state": "running",
+    "health": "healthy",
+    "restarts": 0,
+    "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154"
+  },
+  {
+    "name": "arena-sc35-first-private-evaluator-1",
+    "state": "running",
+    "health": "healthy",
+    "restarts": 0,
+    "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154"
+  },
+  {
+    "name": "arena-sc35-first-model-gateway-1",
+    "state": "running",
+    "health": "healthy",
+    "restarts": 0,
+    "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154"
+  },
+  {
+    "name": "arena-sc35-first-researcher-gateway-1",
+    "state": "running",
+    "health": "healthy",
+    "restarts": 0,
+    "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154"
+  },
+  {
+    "name": "arena-sc35-first-internet-proxy-1",
+    "state": "running",
+    "health": null,
+    "restarts": 0,
+    "image": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7"
+  },
+  {
+    "name": "arena-sc35-first-research-monitor-1",
+    "state": "running",
+    "health": null,
+    "restarts": 0,
+    "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154"
+  },
+  {
+    "name": "sc35-first-mlflow-shared-tracking-1",
+    "state": "running",
+    "health": null,
+    "restarts": 0,
+    "image": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38"
+  },
+  {
+    "name": "sc35-first-mlflow-operator-tracking-1",
+    "state": "running",
+    "health": null,
+    "restarts": 0,
+    "image": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5"
+  }
+]

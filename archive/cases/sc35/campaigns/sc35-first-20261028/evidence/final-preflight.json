@@ -1,0 +1,11 @@
+{
+  "ready_marker": true,
+  "layout_version": "sc35-first-20261028-layout-v1",
+  "researcher_launched": false,
+  "active_run_exists": false,
+  "proposed": 0,
+  "completed_measurements": 0,
+  "max_solutions": 100,
+  "readiness_valid": true,
+  "mlflow_payload_verified": true
+}

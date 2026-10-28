@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-28",
+  "scope": "SC35 operator MLflow proxy streaming configuration",
+  "checks": [
+    {"command": "uv run ruff check .", "exit_code": 0},
+    {"command": "uv run pyright", "exit_code": 0, "errors": 0, "warnings": 0},
+    {"command": "uv run pytest", "exit_code": 0, "passed": 1629, "seconds": 55.90},
+    {"command": "uv run python -m evaluator.smoke", "exit_code": 0},
+    {"command": "uv run --with lxml==6.1.3 --with jsonschema==4.26.0 pytest cases/sc35/tests", "exit_code": 0, "passed": 32, "seconds": 2.78}
+  ],
+  "pytest_warning": "Existing StarletteDeprecationWarning about httpx",
+  "model_calls_by_checks": 0
+}

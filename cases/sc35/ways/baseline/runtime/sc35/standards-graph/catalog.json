@@ -1,0 +1,7074 @@
+{
+  "schema_version": "sc35-standards-graph-v1",
+  "checked_on": "2026-10-20",
+  "recursively_complete": false,
+  "reference_status_is_not_current_edition_approval": true,
+  "profiles": {
+    "pmi": {
+      "roots": [
+        "gost-19.301-79@1987",
+        "gost-19.101-2024@2026",
+        "gost-19.103-77@1987"
+      ],
+      "facts": {
+        "printed_document": true,
+        "use_legacy_types": false
+      },
+      "note": "Параграф 24 исходной ПМИ явно объявляет шесть стандартов оформления. 19.101-2024 и 19.103 добавлены как корни профиля; остальные достигаются через 19.301. Не утверждённый нормативный профиль."
+    },
+    "nir": {
+      "roots": [
+        "gost-7.32-2017@2018"
+      ],
+      "facts": {
+        "printed_document": true,
+        "nir_process_in_scope": false
+      },
+      "note": "Карта требований НИР. Отсутствие GOLD не препятствует изучению стандартов."
+    }
+  },
+  "nodes": [
+    {
+      "id": "gost-7.32-2017@2018",
+      "source_url": "https://docs.guap.ru/regdocs/stands/gost_7-32-2017_ver-2018.pdf",
+      "sha256": "81c91e6b4a2f3bd7908f40ffc54081b81ffac60fbb36e4fc06025b46f878f767",
+      "page_count": 38,
+      "designation": "ГОСТ 7.32-2017",
+      "edition": "2018",
+      "source_status": "pinned_copy",
+      "references_reviewed": false,
+      "local_predicates": [],
+      "official_card": "https://protect.gost.ru/gost/details/7d280e43-7036-4a69-8e6e-d15867028343"
+    },
+    {
+      "id": "gost-19.301-79@1987",
+      "source_url": "https://www.swrit.ru/doc/espd/19.301-79.pdf",
+      "sha256": "c56a6864c52e5115aa30dd96813b005c166af5fa747792cd828807e5f3e72fbd",
+      "page_count": 2,
+      "designation": "ГОСТ 19.301-79",
+      "edition": "1987",
+      "source_status": "pinned_copy",
+      "references_reviewed": true,
+      "local_predicates": [
+        {
+          "rule_id": "ESPD-19.301-79-1.2-section_missing_documentation_requirements",
+          "clause": "1.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-1.2-section_missing_goal",
+          "clause": "1.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-1.2-section_missing_means_procedure",
+          "clause": "1.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-1.2-section_missing_methods",
+          "clause": "1.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-1.2-section_missing_object",
+          "clause": "1.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-1.2-section_missing_program_requirements",
+          "clause": "1.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.1-empty_section",
+          "clause": "2.1",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.1-object_designation_missing",
+          "clause": "2.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.1-object_domain_missing",
+          "clause": "2.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.1-object_name_missing",
+          "clause": "2.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.2-empty_section",
+          "clause": "2.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.3-empty_section",
+          "clause": "2.3",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.4-empty_section",
+          "clause": "2.4",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.7-means_procedure_empty",
+          "clause": "2.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.7-software_means_missing",
+          "clause": "2.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.7-technical_means_missing",
+          "clause": "2.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.7-test_procedure_missing",
+          "clause": "2.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.8-empty_section",
+          "clause": "2.8",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.8-expected_result_missing",
+          "clause": "2.8",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.301-79-2.8-test_method_description_missing",
+          "clause": "2.8",
+          "coverage_level": "full_predicate"
+        }
+      ]
+    },
+    {
+      "id": "gost-19.105-78@1987",
+      "source_url": "https://www.swrit.ru/doc/espd/19.105-78.pdf",
+      "sha256": "3f74070bc395a7561851ed6586f341a5fc5bf7e3675f332eed0a6720cea640cc",
+      "page_count": 3,
+      "designation": "ГОСТ 19.105-78",
+      "edition": "1987",
+      "source_status": "pinned_copy",
+      "references_reviewed": true,
+      "local_predicates": [
+        {
+          "rule_id": "ESPD-19.105-78-2.1-title_sheet_missing",
+          "clause": "2.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.105-78-3.3-annotation_purpose_missing",
+          "clause": "3.3",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.105-78-3.3-annotation_summary_missing",
+          "clause": "3.3",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.105-78-3.4-contents_entry_address_missing",
+          "clause": "3.4",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.105-78-3.4-contents_entry_number_missing",
+          "clause": "3.4",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.105-78-3.4-contents_entry_title_missing",
+          "clause": "3.4",
+          "coverage_level": "full_predicate"
+        }
+      ]
+    },
+    {
+      "id": "gost-19.106-78@2010",
+      "source_url": "https://files.stroyinf.ru/Data2/1/4294850/4294850038.pdf",
+      "sha256": "9e7d0cbb1e430704b9b7059ee1aab583e9854531ee90ae655585b4cbb4810427",
+      "page_count": 11,
+      "designation": "ГОСТ 19.106-78",
+      "edition": "2010",
+      "source_status": "pinned_copy",
+      "references_reviewed": true,
+      "local_predicates": [
+        {
+          "rule_id": "ESPD-19.106-78-1.5-page_format",
+          "clause": "1.5",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-1.7-list_sort_alpha",
+          "clause": "1.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-1.7-list_sort_numeric",
+          "clause": "1.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.2-margin_bottom",
+          "clause": "2.1.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.2-margin_left",
+          "clause": "2.1.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.2-margin_right",
+          "clause": "2.1.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.2-margin_top",
+          "clause": "2.1.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.3-annotation_numbered",
+          "clause": "2.1.3",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.4-contents_numbered",
+          "clause": "2.1.4",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.6-paragraph_indent",
+          "clause": "2.1.6",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.7-heading_final_period",
+          "clause": "2.1.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.7-heading_word_break",
+          "clause": "2.1.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.7-section_centered",
+          "clause": "2.1.7",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.7-section_uppercase",
+          "clause": "2.1.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.7-subsection_case",
+          "clause": "2.1.7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.7-subsection_indent",
+          "clause": "2.1.7",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.8-heading_after_spacing",
+          "clause": "2.1.8",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.8-heading_before_spacing",
+          "clause": "2.1.8",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.8-heading_line_spacing",
+          "clause": "2.1.8",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.9-heading_number_sequence",
+          "clause": "2.1.9",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.1.9-heading_number_style",
+          "clause": "2.1.9",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.2.1-term_list",
+          "clause": "2.2.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.2.4-footnote_marker",
+          "clause": "2.2.4",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.3.1-figure_explanation_position",
+          "clause": "2.3.1",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.3.1-figure_number_missing",
+          "clause": "2.3.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.3.1-figure_number_position",
+          "clause": "2.3.1",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.3.1-figure_number_sequence",
+          "clause": "2.3.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.3.1-figure_reference",
+          "clause": "2.3.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.3.1-figure_repeated_reference",
+          "clause": "2.3.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.3.1-figure_title_position",
+          "clause": "2.3.1",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.1-formula_number_missing",
+          "clause": "2.4.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.1-formula_number_position",
+          "clause": "2.4.1",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.1-formula_number_sequence",
+          "clause": "2.4.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.1-formula_part_prefix",
+          "clause": "2.4.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.1-formula_reference",
+          "clause": "2.4.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_missing",
+          "clause": "2.4.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_newline",
+          "clause": "2.4.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.2-formula_symbol_order",
+          "clause": "2.4.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.2-formula_where_colon",
+          "clause": "2.4.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.2-formula_where_missing",
+          "clause": "2.4.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.4.3-parameter_dimension",
+          "clause": "2.4.3",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.5.1-enterprise_reference",
+          "clause": "2.5.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.5.1-external_reference",
+          "clause": "2.5.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.5.1-standard_designation",
+          "clause": "2.5.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.6.2-table_title_case",
+          "clause": "2.6.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.6.3-table_footnote_position",
+          "clause": "2.6.3",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.7.1-multiple_note_label",
+          "clause": "2.7.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.7.1-multiple_note_numbering",
+          "clause": "2.7.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.7.1-single_note_label",
+          "clause": "2.7.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.7.1-single_note_numbered",
+          "clause": "2.7.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.8.1-custom_abbreviation",
+          "clause": "2.8.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.9.2-appendix_label_position",
+          "clause": "2.9.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.9.2-appendix_number",
+          "clause": "2.9.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.9.2-appendix_page_break",
+          "clause": "2.9.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.9.2-appendix_title_case",
+          "clause": "2.9.2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.9.2-appendix_title_center",
+          "clause": "2.9.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.9.5-appendix_reference_missing",
+          "clause": "2.9.5",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.106-78-2.9.5-appendix_toc_missing",
+          "clause": "2.9.5",
+          "coverage_level": "full_predicate"
+        }
+      ],
+      "official_card": "https://protect.gost.ru/gost/details/237d9e0c-a8a8-40a2-a2f5-f8182da346a8"
+    },
+    {
+      "id": "gost-19.106-78@1987",
+      "source_url": "https://www.swrit.ru/doc/espd/19.106-78.pdf",
+      "sha256": "d081ee938b223eec6e3f716a7620dcb0c53fe3aafc8546e936a2838fc0e2fbf4",
+      "page_count": 13,
+      "designation": "ГОСТ 19.106-78",
+      "edition": "1987",
+      "source_status": "pinned_copy",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-19.103-77@1987",
+      "source_url": "https://www.swrit.ru/doc/espd/19.103-77.pdf",
+      "sha256": "aa8ab735011b3d8928ff5ca3ae53312196bb7839e9b80af87a4628996e7b1ebb",
+      "page_count": 2,
+      "designation": "ГОСТ 19.103-77",
+      "edition": "1987",
+      "source_status": "pinned_copy",
+      "references_reviewed": true,
+      "local_predicates": [
+        {
+          "rule_id": "ESPD-19.103-77-2-designation_country_separator",
+          "clause": "2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-2-designation_edition_separator",
+          "clause": "2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-2-designation_kind_separator",
+          "clause": "2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-2-designation_organization_separator",
+          "clause": "2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-2-designation_part_separator",
+          "clause": "2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-2-designation_registration_separator",
+          "clause": "2",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-4-designation_kind_group_missing",
+          "clause": "4",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-5-designation_edition_zero",
+          "clause": "5",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-7-designation_number_zero",
+          "clause": "7",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.103-77-8-designation_part_zero",
+          "clause": "8",
+          "coverage_level": "full_predicate"
+        }
+      ]
+    },
+    {
+      "id": "gost-19.104-78@1987",
+      "source_url": "https://www.swrit.ru/doc/espd/19.104-78.pdf",
+      "sha256": "50d39fd8f1783b1dc069a92817cafcac5cd79e41bc70cc654c8238c9e8743583",
+      "page_count": 7,
+      "designation": "ГОСТ 19.104-78",
+      "edition": "1987",
+      "source_status": "pinned_copy",
+      "references_reviewed": false,
+      "local_predicates": [
+        {
+          "rule_id": "ESPD-19.104-78-2.2-approval_designation_suffix",
+          "clause": "2.2",
+          "coverage_level": "partial"
+        },
+        {
+          "rule_id": "ESPD-19.104-78-3.1-title_designation_missing",
+          "clause": "3.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.104-78-3.1-title_program_title_case",
+          "clause": "3.1",
+          "coverage_level": "full_predicate"
+        },
+        {
+          "rule_id": "ESPD-19.104-78-3.1-title_year_suffix",
+          "clause": "3.1",
+          "coverage_level": "full_predicate"
+        }
+      ]
+    },
+    {
+      "id": "gost-19.101-2024@2026",
+      "source_url": "https://files.stroyinf.ru/Data/838/83832.pdf",
+      "sha256": "58a1b6da83a769560d11aa05a046baebd1eb4ead42fc1426980db6c3a8376d5b",
+      "page_count": 9,
+      "designation": "ГОСТ 19.101-2024",
+      "edition": "2026",
+      "source_status": "pinned_copy",
+      "references_reviewed": false,
+      "local_predicates": [
+        {
+          "rule_id": "ESPD-19.101-2024-4.6-designation_wrong_pmi_kind",
+          "clause": "4.6",
+          "coverage_level": "full_predicate"
+        }
+      ]
+    },
+    {
+      "id": "gost-19.601-78@1987",
+      "source_url": "https://www.swrit.ru/doc/espd/19.601-78.pdf",
+      "sha256": "eb74f3016be7e8d251fcc4674c99dab5b82f561277642e5b9ef988cbad7946e5",
+      "page_count": 7,
+      "designation": "ГОСТ 19.601-78",
+      "edition": "1987",
+      "source_status": "pinned_copy",
+      "references_reviewed": true,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-19.603-78@1987",
+      "source_url": "https://www.swrit.ru/doc/espd/19.603-78.pdf",
+      "sha256": "ae5b0e6f42b23869aa3a05541e160d7a6241166f892a6c2e6b72eb027b1642b5",
+      "page_count": 7,
+      "designation": "ГОСТ 19.603-78",
+      "edition": "1987",
+      "source_status": "pinned_copy",
+      "references_reviewed": true,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-19.604-78@1987",
+      "source_url": "https://www.swrit.ru/doc/espd/19.604-78.pdf",
+      "sha256": "cc536c5f64c78622a65d3ce05f52f5f732d6d9075fbea43b5de4189c5a06ae20",
+      "page_count": 6,
+      "designation": "ГОСТ 19.604-78",
+      "edition": "1987",
+      "source_status": "pinned_copy",
+      "references_reviewed": true,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.5-2001@2010",
+      "source_url": "https://ohranatruda.ru/upload/iblock/c10/4294846580.pdf",
+      "sha256": "6e99076dac2cdad7a764f1a7c4b2d93d04bdd5084d518d302eb14cb1eddc4fd0",
+      "page_count": 74,
+      "designation": "ГОСТ 1.5-2001",
+      "edition": "2010",
+      "source_status": "pinned_copy",
+      "references_reviewed": false,
+      "local_predicates": [],
+      "edition_resolution": "pending_amendment_2_2019_and_correction_2019",
+      "comparison_copy": "gost-1.5-2001@2019-copy",
+      "official_card": "https://protect.gost.ru/gost/details/58eed0e4-75a7-407a-8f71-879f74f058df"
+    },
+    {
+      "id": "gost-1.5-2001@2019-copy",
+      "source_url": "https://bolid.ru/files/554/732/gost_1.5-2001_0719.pdf",
+      "sha256": "d756d5723dc5a1c90d72255d94d7d0bad5adb6914e573e4dc9345272ee45ec06",
+      "page_count": 92,
+      "designation": "ГОСТ 1.5-2001",
+      "edition": "2019-copy",
+      "source_status": "pinned_copy",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-19.101-77@pending",
+      "designation": "ГОСТ 19.101-77",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-13.1.002-2003@pending",
+      "designation": "ГОСТ 13.1.002-2003",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.304-81@pending",
+      "designation": "ГОСТ 2.304-81",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.301-68@pending",
+      "designation": "ГОСТ 2.301-68",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.316-2008@pending",
+      "designation": "ГОСТ 2.316-2008",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-13.102-72@pending",
+      "designation": "ГОСТ 13.102-72",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.304-68@pending",
+      "designation": "ГОСТ 2.304-68",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.5-68@pending",
+      "designation": "ГОСТ 1.5-68",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.501-68@pending",
+      "designation": "ГОСТ 2.501-68",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.503-74@pending",
+      "designation": "ГОСТ 2.503-74",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.303-68@pending",
+      "designation": "ГОСТ 2.303-68",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.0@pending",
+      "designation": "ГОСТ 1.0",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.2@pending",
+      "designation": "ГОСТ 1.2",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-19.102@pending",
+      "designation": "ГОСТ 19.102",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.102@pending",
+      "designation": "ГОСТ 2.102",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.321-84@pending",
+      "designation": "ГОСТ 2.321-84",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-8.417-2002@pending",
+      "designation": "ГОСТ 8.417-2002",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.0-92@pending",
+      "designation": "ГОСТ 1.0-92",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.1-2002@pending",
+      "designation": "ГОСТ 1.1-2002",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.2-97@pending",
+      "designation": "ГОСТ 1.2-97",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.3-2002@pending",
+      "designation": "ГОСТ 1.3-2002",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-2.601-2006@pending",
+      "designation": "ГОСТ 2.601-2006",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-15150-69@pending",
+      "designation": "ГОСТ 15150-69",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-14192-96@pending",
+      "designation": "ГОСТ 14192-96",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-17527-2003@pending",
+      "designation": "ГОСТ 17527-2003",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.0-2015@pending",
+      "designation": "ГОСТ 1.0-2015",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-1.2-2015@pending",
+      "designation": "ГОСТ 1.2-2015",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.1-2003@pending",
+      "designation": "ГОСТ 7.1-2003",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.9-95@pending",
+      "designation": "ГОСТ 7.9-95",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.11-2004@pending",
+      "designation": "ГОСТ 7.11-2004",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.12-93@pending",
+      "designation": "ГОСТ 7.12-93",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.79-2000@pending",
+      "designation": "ГОСТ 7.79-2000",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.80-2000@pending",
+      "designation": "ГОСТ 7.80-2000",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.82-2001@pending",
+      "designation": "ГОСТ 7.82-2001",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.90-2007@pending",
+      "designation": "ГОСТ 7.90-2007",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-9327-60@pending",
+      "designation": "ГОСТ 9327-60",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-15.011-82@pending",
+      "designation": "ГОСТ 15.011-82",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-15.101-98@pending",
+      "designation": "ГОСТ 15.101-98",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.25-2001@pending",
+      "designation": "ГОСТ 7.25-2001",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.0.96-2016@pending",
+      "designation": "ГОСТ 7.0.96-2016",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    },
+    {
+      "id": "gost-7.32-2001@pending",
+      "designation": "ГОСТ 7.32-2001",
+      "edition": "не раскрыт",
+      "source_status": "frontier",
+      "references_reviewed": false,
+      "local_predicates": []
+    }
+  ],
+  "edges": [
+    {
+      "id": "E001",
+      "from": "gost-19.301-79@1987",
+      "to": "gost-19.105-78@1987",
+      "clause": "1.1",
+      "pdf_page": 1,
+      "literal_reference": "ГОСТ 19.105-78",
+      "kind": "normative",
+      "source_scope": [
+        "1.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Структура ПМИ",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E002",
+      "from": "gost-19.301-79@1987",
+      "to": "gost-19.101-77@pending",
+      "clause": "введение",
+      "pdf_page": 1,
+      "literal_reference": "ГОСТ 19.101-77",
+      "kind": "normative",
+      "source_scope": [
+        "введение"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "use_legacy_types"
+      ],
+      "condition": "Исторический классификатор",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E003",
+      "from": "gost-19.105-78@1987",
+      "to": "gost-19.106-78@2010",
+      "clause": "1.3",
+      "pdf_page": 2,
+      "literal_reference": "",
+      "kind": "profile_selection",
+      "source_scope": [
+        "1.3"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "printed_document"
+      ],
+      "condition": "Выбор печатного носителя",
+      "review_status": "source_checked",
+      "resolution_note": "1.3 делегирует стандарту носителя, но не называет 19.106; выбор дополнительно проверен по области применения 19.106 (PDF с.2)."
+    },
+    {
+      "id": "E004",
+      "from": "gost-19.105-78@1987",
+      "to": "gost-19.104-78@1987",
+      "clause": "2.1",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 19.104-78",
+      "kind": "normative",
+      "source_scope": [
+        "2.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Титульная часть",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E005",
+      "from": "gost-19.105-78@1987",
+      "to": "gost-19.603-78@1987",
+      "clause": "5.1",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 19.603-78",
+      "kind": "normative",
+      "source_scope": [
+        "5.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Регистрация изменений",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E006",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-19.105-78@1987",
+      "clause": "1.1",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 19.105-78",
+      "kind": "normative",
+      "source_scope": [
+        "1.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общая структура",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E007",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-13.1.002-2003@pending",
+      "clause": "1.2",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 13.1.002-2003",
+      "kind": "normative",
+      "source_scope": [
+        "1.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "microfilming_required"
+      ],
+      "condition": "Пригодность микрофильмированию",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E008",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-2.304-81@pending",
+      "clause": "1.2",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 2.304-81",
+      "kind": "normative",
+      "source_scope": [
+        "1.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "handwritten_fragments"
+      ],
+      "condition": "Рукописные фрагменты",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E009",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-2.301-68@pending",
+      "clause": "1.5",
+      "pdf_page": 3,
+      "literal_reference": "ГОСТ 2.301-68",
+      "kind": "normative",
+      "source_scope": [
+        "1.5"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "printed_document"
+      ],
+      "condition": "Форматы печатных листов",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E010",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-19.103-77@1987",
+      "clause": "2.1.1",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 19.103-77",
+      "kind": "normative",
+      "source_scope": [
+        "2.1.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "document_has_parts"
+      ],
+      "condition": "Обозначение частей",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E011",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-19.604-78@1987",
+      "clause": "2.1.2",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 19.604-78",
+      "kind": "normative",
+      "source_scope": [
+        "2.1.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Строка изменений",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E012",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-2.316-2008@pending",
+      "clause": "2.2.2",
+      "pdf_page": 7,
+      "literal_reference": "ГОСТ 2.316-68",
+      "kind": "normative",
+      "source_scope": [
+        "2.2.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_abbreviations"
+      ],
+      "condition": "Сокращения текста",
+      "review_status": "source_checked",
+      "resolution_note": "Сноска того же издания (PDF с.7) указывает 2.316-2008 с 01.07.2009; замена записана явно."
+    },
+    {
+      "id": "E013",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-2.316-2008@pending",
+      "clause": "сноска к 2.2.2",
+      "pdf_page": 7,
+      "literal_reference": "ГОСТ 2.316-2008",
+      "kind": "edition_note",
+      "source_scope": [
+        "2.2.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Сведения о замене",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E014",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-1.5-2001@2010",
+      "clause": "2.6.2",
+      "pdf_page": 8,
+      "literal_reference": "ГОСТ 1.5-2001",
+      "kind": "normative",
+      "source_scope": [
+        "2.6.2"
+      ],
+      "target_scope": [
+        "4.5"
+      ],
+      "requires": [
+        "has_tables"
+      ],
+      "condition": "Только оформление таблиц",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E015",
+      "from": "gost-19.106-78@2010",
+      "to": "gost-2.316-2008@pending",
+      "clause": "2.8.1",
+      "pdf_page": 9,
+      "literal_reference": "ГОСТ 2.316-68",
+      "kind": "normative",
+      "source_scope": [
+        "2.8.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_abbreviations"
+      ],
+      "condition": "Перечень сокращений",
+      "review_status": "source_checked",
+      "resolution_note": "Версия по издательской сноске к 2.2.2; требуется согласование нормативного профиля."
+    },
+    {
+      "id": "E016",
+      "from": "gost-19.106-78@1987",
+      "to": "gost-13.102-72@pending",
+      "clause": "1.2",
+      "pdf_page": 1,
+      "literal_reference": "ГОСТ 13.102-72",
+      "kind": "normative",
+      "source_scope": [
+        "1.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "microfilming_required"
+      ],
+      "condition": "Историческое микрофильмирование",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E017",
+      "from": "gost-19.106-78@1987",
+      "to": "gost-2.304-68@pending",
+      "clause": "1.2",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 2.304-68",
+      "kind": "normative",
+      "source_scope": [
+        "1.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "handwritten_fragments"
+      ],
+      "condition": "Исторические рукописи",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E018",
+      "from": "gost-19.106-78@1987",
+      "to": "gost-1.5-68@pending",
+      "clause": "2.6.2",
+      "pdf_page": 9,
+      "literal_reference": "ГОСТ 1.5-68",
+      "kind": "normative",
+      "source_scope": [
+        "2.6.2"
+      ],
+      "target_scope": [
+        "table_requirements_pending"
+      ],
+      "requires": [
+        "has_tables"
+      ],
+      "condition": "Историческое оформление таблиц",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E019",
+      "from": "gost-19.104-78@1987",
+      "to": "gost-2.301-68@pending",
+      "clause": "2.1",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 2.301-68",
+      "kind": "normative",
+      "source_scope": [
+        "2.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_approval_sheet"
+      ],
+      "condition": "Лист утверждения А4",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E020",
+      "from": "gost-19.104-78@1987",
+      "to": "gost-19.106-78@2010",
+      "clause": "2.3",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 19.106-78",
+      "kind": "normative",
+      "source_scope": [
+        "2.3"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_approval_sheet",
+        "printed_document"
+      ],
+      "condition": "Продолжение листа утверждения",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E021",
+      "from": "gost-19.104-78@1987",
+      "to": "gost-19.106-78@2010",
+      "clause": "4.2",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 19.106-78",
+      "kind": "normative",
+      "source_scope": [
+        "4.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "printed_document"
+      ],
+      "condition": "Последующие печатные листы",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E022",
+      "from": "gost-19.104-78@1987",
+      "to": "gost-19.601-78@1987",
+      "clause": "2.5",
+      "pdf_page": 4,
+      "literal_reference": "ГОСТ 19.601-78",
+      "kind": "normative",
+      "source_scope": [
+        "2.5"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "document_tracking_in_scope"
+      ],
+      "condition": "Учёт и хранение",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E023",
+      "from": "gost-19.104-78@1987",
+      "to": "gost-19.604-78@1987",
+      "clause": "2.5",
+      "pdf_page": 4,
+      "literal_reference": "ГОСТ 19.604-78",
+      "kind": "normative",
+      "source_scope": [
+        "2.5"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Строка изменений",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E024",
+      "from": "gost-19.103-77@1987",
+      "to": "gost-19.101-77@pending",
+      "clause": "6",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 19.101-77",
+      "kind": "normative",
+      "source_scope": [
+        "6"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "use_legacy_types"
+      ],
+      "condition": "Исторические коды видов",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E025",
+      "from": "gost-19.601-78@1987",
+      "to": "gost-2.501-68@pending",
+      "clause": "1.1",
+      "pdf_page": 1,
+      "literal_reference": "ГОСТ 2.501-68",
+      "kind": "normative",
+      "source_scope": [
+        "1.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "document_tracking_in_scope"
+      ],
+      "condition": "Учётный документооборот",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E026",
+      "from": "gost-19.603-78@1987",
+      "to": "gost-2.304-68@pending",
+      "clause": "2.3",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 2.304-68",
+      "kind": "normative",
+      "source_scope": [
+        "2.3"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "handwritten_notices"
+      ],
+      "condition": "Рукописное извещение",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E027",
+      "from": "gost-19.603-78@1987",
+      "to": "gost-2.503-74@pending",
+      "clause": "2.4",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 2.503-74",
+      "kind": "normative",
+      "source_scope": [
+        "2.4"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Оформление извещения",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E028",
+      "from": "gost-19.603-78@1987",
+      "to": "gost-19.103-77@1987",
+      "clause": "2.4",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 19.103-77",
+      "kind": "normative",
+      "source_scope": [
+        "2.4"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Обозначение извещения",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E029",
+      "from": "gost-19.603-78@1987",
+      "to": "gost-19.601-78@1987",
+      "clause": "8.5",
+      "pdf_page": 6,
+      "literal_reference": "ГОСТ 19.601-78",
+      "kind": "normative",
+      "source_scope": [
+        "8.5"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Учёт изменений",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E030",
+      "from": "gost-19.604-78@1987",
+      "to": "gost-19.603-78@1987",
+      "clause": "1.1",
+      "pdf_page": 1,
+      "literal_reference": "ГОСТ 19.603-78",
+      "kind": "normative",
+      "source_scope": [
+        "1.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Изменение печатных документов",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E031",
+      "from": "gost-19.604-78@1987",
+      "to": "gost-2.303-68@pending",
+      "clause": "2.2",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 2.303-68",
+      "kind": "normative",
+      "source_scope": [
+        "2.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Зачёркивание текста",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E032",
+      "from": "gost-19.604-78@1987",
+      "to": "gost-2.304-68@pending",
+      "clause": "2.2",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 2.304-68",
+      "kind": "normative",
+      "source_scope": [
+        "2.2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Размер исправленных знаков",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E033",
+      "from": "gost-19.604-78@1987",
+      "to": "gost-2.503-74@pending",
+      "clause": "5.1",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 2.503-74",
+      "kind": "normative",
+      "source_scope": [
+        "5.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "formal_changes"
+      ],
+      "condition": "Согласование изменений",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E034",
+      "from": "gost-19.101-2024@2026",
+      "to": "gost-1.0@pending",
+      "clause": "предисловие",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 1.0",
+      "kind": "foreword",
+      "source_scope": [
+        "предисловие"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Разработка самого стандарта",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E035",
+      "from": "gost-19.101-2024@2026",
+      "to": "gost-1.2@pending",
+      "clause": "предисловие",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 1.2",
+      "kind": "foreword",
+      "source_scope": [
+        "предисловие"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Разработка самого стандарта",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E036",
+      "from": "gost-19.101-2024@2026",
+      "to": "gost-19.102@pending",
+      "clause": "3.7",
+      "pdf_page": 4,
+      "literal_reference": "ГОСТ 19.102",
+      "kind": "normative",
+      "source_scope": [
+        "3.7"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "development_process_in_scope"
+      ],
+      "condition": "Стадии разработки",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E037",
+      "from": "gost-19.101-2024@2026",
+      "to": "gost-2.102@pending",
+      "clause": "4.4",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 2.102",
+      "kind": "normative",
+      "source_scope": [
+        "4.4"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "document_instance_type_in_scope"
+      ],
+      "condition": "Вид экземпляра",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E038",
+      "from": "gost-19.101-2024@2026",
+      "to": "gost-19.101-77@pending",
+      "clause": "предисловие",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 19.101-77",
+      "kind": "edition_note",
+      "source_scope": [
+        "предисловие"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Заменённый стандарт",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E039",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-2.321-84@pending",
+      "clause": "4.5.12",
+      "pdf_page": 26,
+      "literal_reference": "ГОСТ 2.321",
+      "kind": "normative",
+      "source_scope": [
+        "4.5.12"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "uses_standard_letter_symbols"
+      ],
+      "condition": "Буквенные обозначения граф",
+      "review_status": "source_checked",
+      "resolution_note": "Год 84 раскрыт в нормативном списке того же издания (PDF с.5). Альтернативные пояснённые обозначения допускаются."
+    },
+    {
+      "id": "E040",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-1.5-2001@2010",
+      "clause": "4.5.11",
+      "pdf_page": 26,
+      "literal_reference": "",
+      "kind": "internal_dependency",
+      "source_scope": [
+        "4.5.11"
+      ],
+      "target_scope": [
+        "4.14.1"
+      ],
+      "requires": [
+        "tables_have_units"
+      ],
+      "condition": "Единицы величин в таблицах",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E041",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-8.417-2002@pending",
+      "clause": "4.14.1",
+      "pdf_page": 39,
+      "literal_reference": "ГОСТ 8.417",
+      "kind": "normative",
+      "source_scope": [
+        "4.14.1"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "tables_have_units"
+      ],
+      "condition": "Обозначения единиц",
+      "review_status": "source_checked",
+      "resolution_note": "Год 2002 раскрыт в нормативном списке того же издания (PDF с.6); текущая замена отдельно не выбиралась."
+    },
+    {
+      "id": "E042",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-1.0-92@pending",
+      "clause": "2",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 1.0-92",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общий нормативный список",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E043",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-1.1-2002@pending",
+      "clause": "2",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 1.1-2002",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общий нормативный список",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E044",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-1.2-97@pending",
+      "clause": "2",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 1.2-97",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общий нормативный список",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E045",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-1.3-2002@pending",
+      "clause": "2",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 1.3-2002",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общий нормативный список",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E046",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-2.601-2006@pending",
+      "clause": "2",
+      "pdf_page": 5,
+      "literal_reference": "ГОСТ 2.601-2006",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общий нормативный список",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E047",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-15150-69@pending",
+      "clause": "2",
+      "pdf_page": 6,
+      "literal_reference": "ГОСТ 15150-69",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общий нормативный список",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E048",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-14192-96@pending",
+      "clause": "2",
+      "pdf_page": 6,
+      "literal_reference": "ГОСТ 14192-96",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общий нормативный список",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E049",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-17527-2003@pending",
+      "clause": "2",
+      "pdf_page": 6,
+      "literal_reference": "ГОСТ 17527-2003",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Общий нормативный список",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E050",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-1.0-92@pending",
+      "clause": "предисловие",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 1.0-92",
+      "kind": "foreword",
+      "source_scope": [
+        "предисловие"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Разработка самого стандарта",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E051",
+      "from": "gost-1.5-2001@2010",
+      "to": "gost-1.2-97@pending",
+      "clause": "предисловие",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 1.2-97",
+      "kind": "foreword",
+      "source_scope": [
+        "предисловие"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Разработка самого стандарта",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E052",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-1.0-2015@pending",
+      "clause": "предисловие",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 1.0-2015",
+      "kind": "foreword",
+      "source_scope": [
+        "предисловие"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Разработка самого стандарта",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E053",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-1.2-2015@pending",
+      "clause": "предисловие",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 1.2-2015",
+      "kind": "foreword",
+      "source_scope": [
+        "предисловие"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Разработка самого стандарта",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E054",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.1-2003@pending",
+      "clause": "2",
+      "pdf_page": 8,
+      "literal_reference": "ГОСТ 7.1-2003",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_bibliography"
+      ],
+      "condition": "Библиографическое описание",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E055",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.9-95@pending",
+      "clause": "2",
+      "pdf_page": 8,
+      "literal_reference": "ГОСТ 7.9-95",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_abstract"
+      ],
+      "condition": "Реферат и аннотация",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E056",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.11-2004@pending",
+      "clause": "2",
+      "pdf_page": 8,
+      "literal_reference": "ГОСТ 7.11-2004",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_foreign_bibliography"
+      ],
+      "condition": "Иностранные сокращения",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E057",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.12-93@pending",
+      "clause": "2",
+      "pdf_page": 8,
+      "literal_reference": "ГОСТ 7.12-93",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_russian_bibliography"
+      ],
+      "condition": "Русские сокращения",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E058",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.79-2000@pending",
+      "clause": "2",
+      "pdf_page": 8,
+      "literal_reference": "ГОСТ 7.79-2000",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "needs_transliteration"
+      ],
+      "condition": "Транслитерация",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E059",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.80-2000@pending",
+      "clause": "2",
+      "pdf_page": 8,
+      "literal_reference": "ГОСТ 7.80-2000",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_bibliography"
+      ],
+      "condition": "Заголовок записи",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E060",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.82-2001@pending",
+      "clause": "2",
+      "pdf_page": 8,
+      "literal_reference": "ГОСТ 7.82-2001",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_electronic_bibliography"
+      ],
+      "condition": "Описание электронных ресурсов",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E061",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.90-2007@pending",
+      "clause": "2",
+      "pdf_page": 9,
+      "literal_reference": "ГОСТ 7.90-2007",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "needs_udc"
+      ],
+      "condition": "Индекс УДК",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E062",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-8.417-2002@pending",
+      "clause": "2",
+      "pdf_page": 9,
+      "literal_reference": "ГОСТ 8.417-2002",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_units"
+      ],
+      "condition": "Единицы величин",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E063",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-9327-60@pending",
+      "clause": "2",
+      "pdf_page": 9,
+      "literal_reference": "ГОСТ 9327-60",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "printed_document"
+      ],
+      "condition": "Формат бумаги",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E064",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-15.011-82@pending",
+      "clause": "2",
+      "pdf_page": 9,
+      "literal_reference": "ГОСТ 15.011",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "has_patent_report"
+      ],
+      "condition": "Патентные исследования",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E065",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-15.101-98@pending",
+      "clause": "2",
+      "pdf_page": 9,
+      "literal_reference": "ГОСТ 15.101-98",
+      "kind": "normative",
+      "source_scope": [
+        "2"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [
+        "nir_process_in_scope"
+      ],
+      "condition": "Порядок выполнения НИР",
+      "review_status": "source_checked",
+      "resolution_note": "Область условия должна подтверждаться документом; дата фиксирует ссылку издания, а не автоматически актуальную версию."
+    },
+    {
+      "id": "E066",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.25-2001@pending",
+      "clause": "приложение Д, пример",
+      "pdf_page": 32,
+      "literal_reference": "ГОСТ 7.25-2001",
+      "kind": "informative",
+      "source_scope": [
+        "appendix_D"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Пример библиографии",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E067",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.0.96-2016@pending",
+      "clause": "приложение Д, пример",
+      "pdf_page": 33,
+      "literal_reference": "ГОСТ 7.0.96-2016",
+      "kind": "informative",
+      "source_scope": [
+        "appendix_D"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Пример библиографии",
+      "review_status": "source_checked"
+    },
+    {
+      "id": "E068",
+      "from": "gost-7.32-2017@2018",
+      "to": "gost-7.32-2001@pending",
+      "clause": "предисловие",
+      "pdf_page": 2,
+      "literal_reference": "ГОСТ 7.32-2001",
+      "kind": "edition_note",
+      "source_scope": [
+        "предисловие"
+      ],
+      "target_scope": [
+        "*"
+      ],
+      "requires": [],
+      "condition": "Заменённый стандарт",
+      "review_status": "source_checked"
+    }
+  ],
+  "inventory": {
+    "gost-7.32-2017@2018": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 178
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.0-2015",
+            "offset": 139
+          },
+          {
+            "designation": "ГОСТ 1.2-2015",
+            "offset": 220
+          },
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 1329
+          },
+          {
+            "designation": "ГОСТ 7.32-2001",
+            "offset": 1445
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 4,
+        "references": []
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 11
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 11
+          }
+        ]
+      },
+      {
+        "pdf_page": 7,
+        "references": []
+      },
+      {
+        "pdf_page": 8,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.1-2003",
+            "offset": 1381
+          },
+          {
+            "designation": "ГОСТ 7.9-95",
+            "offset": 1559
+          },
+          {
+            "designation": "ГОСТ 7.11-2004",
+            "offset": 1680
+          },
+          {
+            "designation": "ГОСТ 7.12-93",
+            "offset": 1875
+          },
+          {
+            "designation": "ГОСТ 7.79-2000",
+            "offset": 2046
+          },
+          {
+            "designation": "ГОСТ 7.80-2000",
+            "offset": 2207
+          },
+          {
+            "designation": "ГОСТ 7.82-2001",
+            "offset": 2369
+          }
+        ]
+      },
+      {
+        "pdf_page": 9,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.90-2007",
+            "offset": 15
+          },
+          {
+            "designation": "ГОСТ 8.417-2002",
+            "offset": 185
+          },
+          {
+            "designation": "ГОСТ 9327-60",
+            "offset": 273
+          },
+          {
+            "designation": "ГОСТ 15.011",
+            "offset": 338
+          },
+          {
+            "designation": "ГОСТ 15.101-98",
+            "offset": 457
+          },
+          {
+            "designation": "ГОСТ 15.101",
+            "offset": 1789
+          }
+        ]
+      },
+      {
+        "pdf_page": 10,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.90",
+            "offset": 735
+          }
+        ]
+      },
+      {
+        "pdf_page": 11,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.9",
+            "offset": 712
+          }
+        ]
+      },
+      {
+        "pdf_page": 12,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 8.417",
+            "offset": 3424
+          }
+        ]
+      },
+      {
+        "pdf_page": 13,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.1",
+            "offset": 646
+          },
+          {
+            "designation": "ГОСТ 7.80",
+            "offset": 656
+          },
+          {
+            "designation": "ГОСТ 7.82",
+            "offset": 668
+          },
+          {
+            "designation": "ГОСТ 15.011",
+            "offset": 1934
+          },
+          {
+            "designation": "ГОСТ 7.1",
+            "offset": 2081
+          },
+          {
+            "designation": "ГОСТ 7.80",
+            "offset": 2091
+          },
+          {
+            "designation": "ГОСТ 7.82",
+            "offset": 2102
+          },
+          {
+            "designation": "ГОСТ 9327",
+            "offset": 2431
+          }
+        ]
+      },
+      {
+        "pdf_page": 14,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.79",
+            "offset": 1358
+          },
+          {
+            "designation": "ГОСТ 7.11",
+            "offset": 1508
+          },
+          {
+            "designation": "ГОСТ 7.12",
+            "offset": 1519
+          }
+        ]
+      },
+      {
+        "pdf_page": 15,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 16,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 17,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 18,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.1",
+            "offset": 2926
+          },
+          {
+            "designation": "ГОСТ 29029",
+            "offset": 3012
+          }
+        ]
+      },
+      {
+        "pdf_page": 19,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 20,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 21,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 22,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 23,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 24,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 25,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 26,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 27,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 28,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 29,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 30,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 31,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 32,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.25-2001",
+            "offset": 1401
+          }
+        ]
+      },
+      {
+        "pdf_page": 33,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.0.96-2016",
+            "offset": 2271
+          }
+        ]
+      },
+      {
+        "pdf_page": 34,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 35,
+        "references": []
+      },
+      {
+        "pdf_page": 36,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 11
+          }
+        ]
+      },
+      {
+        "pdf_page": 37,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 11
+          }
+        ]
+      },
+      {
+        "pdf_page": 38,
+        "references": [
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 11
+          },
+          {
+            "designation": "ГОСТ 7.32-2017",
+            "offset": 316
+          }
+        ]
+      }
+    ],
+    "gost-19.301-79@1987": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.301-79",
+            "offset": 373
+          },
+          {
+            "designation": "ГОСТ 19.101-77",
+            "offset": 715
+          },
+          {
+            "designation": "ГОСТ 19.105-78",
+            "offset": 889
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": []
+      }
+    ],
+    "gost-19.105-78@1987": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.105-78",
+            "offset": 299
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 19.104-78",
+            "offset": 384
+          },
+          {
+            "designation": "ГОСТ 19.603-78",
+            "offset": 1685
+          },
+          {
+            "designation": "ГОСТ 19.105-78",
+            "offset": 1774
+          },
+          {
+            "designation": "ГОСТ 19.105-78",
+            "offset": 1818
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": []
+      }
+    ],
+    "gost-19.106-78@2010": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 252
+          },
+          {
+            "designation": "ГОСТ 19.105-78",
+            "offset": 1014
+          },
+          {
+            "designation": "ГОСТ 13.1.002-2003",
+            "offset": 1266
+          },
+          {
+            "designation": "ГОСТ 2.304-81",
+            "offset": 1815
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 5
+          },
+          {
+            "designation": "ГОСТ 2.301-68",
+            "offset": 193
+          }
+        ]
+      },
+      {
+        "pdf_page": 4,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 5
+          },
+          {
+            "designation": "ГОСТ 19.103-77",
+            "offset": 1366
+          },
+          {
+            "designation": "ГОСТ 19.604-78",
+            "offset": 2290
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 7,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 5
+          },
+          {
+            "designation": "ГОСТ 2.316-68",
+            "offset": 890
+          },
+          {
+            "designation": "ГОСТ 2.316-68",
+            "offset": 971
+          },
+          {
+            "designation": "ГОСТ 2.316-2008",
+            "offset": 3594
+          }
+        ]
+      },
+      {
+        "pdf_page": 8,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 1644
+          }
+        ]
+      },
+      {
+        "pdf_page": 9,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 5
+          },
+          {
+            "designation": "ГОСТ 2.316-68",
+            "offset": 224
+          }
+        ]
+      },
+      {
+        "pdf_page": 10,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 83
+          },
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 121
+          },
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 200
+          }
+        ]
+      },
+      {
+        "pdf_page": 11,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 442
+          }
+        ]
+      }
+    ],
+    "gost-19.106-78@1987": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 318
+          },
+          {
+            "designation": "ГОСТ 19.105-78",
+            "offset": 1164
+          },
+          {
+            "designation": "ГОСТ 13.102-72",
+            "offset": 1452
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 2.304-68",
+            "offset": 593
+          },
+          {
+            "designation": "ГОСТ 2.301-68",
+            "offset": 1568
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": []
+      },
+      {
+        "pdf_page": 4,
+        "references": [
+          {
+            "designation": "ГОСТ 19.103-77",
+            "offset": 1562
+          }
+        ]
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 19.604-78",
+            "offset": 523
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": []
+      },
+      {
+        "pdf_page": 7,
+        "references": [
+          {
+            "designation": "ГОСТ 2.316-68",
+            "offset": 1406
+          },
+          {
+            "designation": "ГОСТ 2.316-68",
+            "offset": 1493
+          }
+        ]
+      },
+      {
+        "pdf_page": 8,
+        "references": []
+      },
+      {
+        "pdf_page": 9,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-68",
+            "offset": 1503
+          }
+        ]
+      },
+      {
+        "pdf_page": 10,
+        "references": [
+          {
+            "designation": "ГОСТ 2.316-68",
+            "offset": 1245
+          }
+        ]
+      },
+      {
+        "pdf_page": 11,
+        "references": []
+      },
+      {
+        "pdf_page": 12,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 505
+          },
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 550
+          },
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 640
+          }
+        ]
+      },
+      {
+        "pdf_page": 13,
+        "references": []
+      }
+    ],
+    "gost-19.103-77@1987": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.103-77",
+            "offset": 304
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-77",
+            "offset": 1052
+          }
+        ]
+      }
+    ],
+    "gost-19.104-78@1987": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.104-78",
+            "offset": 245
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 2.301-68",
+            "offset": 157
+          },
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 779
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": []
+      },
+      {
+        "pdf_page": 4,
+        "references": [
+          {
+            "designation": "ГОСТ 19.601-78",
+            "offset": 1103
+          },
+          {
+            "designation": "ГОСТ 19.604-78",
+            "offset": 1157
+          },
+          {
+            "designation": "ГОСТ 19.601-78",
+            "offset": 2284
+          },
+          {
+            "designation": "ГОСТ 19604-78",
+            "offset": 2338
+          }
+        ]
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 19.106-78",
+            "offset": 638
+          },
+          {
+            "designation": "ГОСТ 19.104-78",
+            "offset": 730
+          },
+          {
+            "designation": "ГОСТ 19.104-78",
+            "offset": 778
+          },
+          {
+            "designation": "ГОСТ 19.104-78",
+            "offset": 846
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": []
+      },
+      {
+        "pdf_page": 7,
+        "references": []
+      }
+    ],
+    "gost-19.101-2024@2026": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 178
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.0",
+            "offset": 136
+          },
+          {
+            "designation": "ГОСТ 1.2",
+            "offset": 212
+          },
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 1364
+          },
+          {
+            "designation": "ГОСТ 19.101-77",
+            "offset": 1485
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 19.102",
+            "offset": 569
+          },
+          {
+            "designation": "ГОСТ 2.102",
+            "offset": 641
+          },
+          {
+            "designation": "ГОСТ Р 2.102-2023",
+            "offset": 2188
+          }
+        ]
+      },
+      {
+        "pdf_page": 4,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 19.102",
+            "offset": 819
+          }
+        ]
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 2.102",
+            "offset": 1007
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 7,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 8,
+        "references": []
+      },
+      {
+        "pdf_page": 9,
+        "references": [
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 11
+          },
+          {
+            "designation": "ГОСТ 19.101-2024",
+            "offset": 237
+          }
+        ]
+      }
+    ],
+    "gost-19.601-78@1987": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.601-78",
+            "offset": 310
+          },
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 1128
+          },
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 1440
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 848
+          },
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 1466
+          },
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 1976
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": [
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 261
+          },
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 812
+          }
+        ]
+      },
+      {
+        "pdf_page": 4,
+        "references": [
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 1308
+          }
+        ]
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 988
+          },
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 1092
+          },
+          {
+            "designation": "ГОСТ 2.501-68",
+            "offset": 2566
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": []
+      },
+      {
+        "pdf_page": 7,
+        "references": []
+      }
+    ],
+    "gost-19.603-78@1987": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.603-78",
+            "offset": 283
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 2.304-68",
+            "offset": 2352
+          },
+          {
+            "designation": "ГОСТ 2.503-74",
+            "offset": 2533
+          },
+          {
+            "designation": "ГОСТ 19.103-77",
+            "offset": 2642
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": []
+      },
+      {
+        "pdf_page": 4,
+        "references": []
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 2.503-74",
+            "offset": 1687
+          },
+          {
+            "designation": "ГОСТ 2.503-74",
+            "offset": 1893
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": [
+          {
+            "designation": "ГОСТ 19.601-78",
+            "offset": 1092
+          },
+          {
+            "designation": "ГОСТ 2.503-74",
+            "offset": 1311
+          },
+          {
+            "designation": "ГОСТ 2.503-74",
+            "offset": 1531
+          },
+          {
+            "designation": "ГОСТ 2.503-74",
+            "offset": 1678
+          },
+          {
+            "designation": "ГОСТ 19.603-78",
+            "offset": 1858
+          },
+          {
+            "designation": "ГОСТ 19.603-78",
+            "offset": 1909
+          },
+          {
+            "designation": "ГОСТ 19.603-78",
+            "offset": 1984
+          }
+        ]
+      },
+      {
+        "pdf_page": 7,
+        "references": []
+      }
+    ],
+    "gost-19.604-78@1987": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 19.604-78",
+            "offset": 362
+          },
+          {
+            "designation": "ГОСТ 19.603-78",
+            "offset": 1139
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 2.303-68",
+            "offset": 427
+          },
+          {
+            "designation": "ГОСТ 2.304-68",
+            "offset": 444
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": []
+      },
+      {
+        "pdf_page": 4,
+        "references": []
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 19.603-78",
+            "offset": 1329
+          },
+          {
+            "designation": "ГОСТ 2.503-74",
+            "offset": 1571
+          },
+          {
+            "designation": "ГОСТ 2.503-74",
+            "offset": 2298
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": [
+          {
+            "designation": "ГОСТ 19.604-78",
+            "offset": 70
+          },
+          {
+            "designation": "ГОСТ 19.604-78",
+            "offset": 115
+          }
+        ]
+      }
+    ],
+    "gost-1.5-2001@2010": [
+      {
+        "pdf_page": 1,
+        "references": []
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.0-92",
+            "offset": 136
+          },
+          {
+            "designation": "ГОСТ 1.2-97",
+            "offset": 215
+          },
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 1474
+          },
+          {
+            "designation": "ГОСТ 1.5-93",
+            "offset": 1868
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 4,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 5,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.1",
+            "offset": 786
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1304
+          },
+          {
+            "designation": "ГОСТ 1.0-92",
+            "offset": 1927
+          },
+          {
+            "designation": "ГОСТ 1.1-2002",
+            "offset": 2001
+          },
+          {
+            "designation": "ГОСТ 1.2-97",
+            "offset": 2080
+          },
+          {
+            "designation": "ГОСТ 1.3-2002",
+            "offset": 2290
+          },
+          {
+            "designation": "ГОСТ 2.321-84",
+            "offset": 2455
+          },
+          {
+            "designation": "ГОСТ 2.601-2006",
+            "offset": 2536
+          },
+          {
+            "designation": "ГОСТ 1.5-93",
+            "offset": 2779
+          }
+        ]
+      },
+      {
+        "pdf_page": 6,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.4-95",
+            "offset": 14
+          },
+          {
+            "designation": "ГОСТ 8.310-90",
+            "offset": 125
+          },
+          {
+            "designation": "ГОСТ 8.417-2002",
+            "offset": 269
+          },
+          {
+            "designation": "ГОСТ 12.1.007-76",
+            "offset": 358
+          },
+          {
+            "designation": "ГОСТ 12.1.044-89",
+            "offset": 479
+          },
+          {
+            "designation": "ГОСТ 12.4.026-76",
+            "offset": 643
+          },
+          {
+            "designation": "ГОСТ 14192-96",
+            "offset": 740
+          },
+          {
+            "designation": "ГОСТ 15150-69",
+            "offset": 772
+          },
+          {
+            "designation": "ГОСТ 17527-2003",
+            "offset": 1001
+          },
+          {
+            "designation": "ГОСТ 19433-88",
+            "offset": 1050
+          },
+          {
+            "designation": "ГОСТ 21140-88",
+            "offset": 1107
+          },
+          {
+            "designation": "ГОСТ 7.4",
+            "offset": 2397
+          },
+          {
+            "designation": "ГОСТ Р 7.04-2006",
+            "offset": 2734
+          },
+          {
+            "designation": "ГОСТ Р 12.4.026-2001",
+            "offset": 2927
+          }
+        ]
+      },
+      {
+        "pdf_page": 7,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.4",
+            "offset": 298
+          },
+          {
+            "designation": "ГОСТ 7.4",
+            "offset": 1051
+          },
+          {
+            "designation": "ГОСТ 1.0-92",
+            "offset": 1991
+          },
+          {
+            "designation": "ГОСТ 1.2-97",
+            "offset": 2070
+          },
+          {
+            "designation": "ГОСТ 1.2-97",
+            "offset": 2542
+          }
+        ]
+      },
+      {
+        "pdf_page": 8,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 900
+          }
+        ]
+      },
+      {
+        "pdf_page": 9,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 10,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 11,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 12,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 13,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7396.0",
+            "offset": 2275
+          }
+        ]
+      },
+      {
+        "pdf_page": 14,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 3349
+          }
+        ]
+      },
+      {
+        "pdf_page": 15,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1380
+          }
+        ]
+      },
+      {
+        "pdf_page": 16,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 353
+          }
+        ]
+      },
+      {
+        "pdf_page": 17,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.0",
+            "offset": 884
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1040
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1305
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 2375
+          }
+        ]
+      },
+      {
+        "pdf_page": 18,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 19,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 3775
+          }
+        ]
+      },
+      {
+        "pdf_page": 20,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 581
+          }
+        ]
+      },
+      {
+        "pdf_page": 21,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 8.417",
+            "offset": 2416
+          },
+          {
+            "designation": "ГОСТ 8.310",
+            "offset": 3464
+          }
+        ]
+      },
+      {
+        "pdf_page": 22,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1973
+          }
+        ]
+      },
+      {
+        "pdf_page": 23,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 24,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 25,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 26,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 2.321",
+            "offset": 2116
+          }
+        ]
+      },
+      {
+        "pdf_page": 27,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 28,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 14236",
+            "offset": 2326
+          }
+        ]
+      },
+      {
+        "pdf_page": 29,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 30,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 31,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 32,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 33,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 30100",
+            "offset": 2151
+          },
+          {
+            "designation": "ГОСТ 1.2",
+            "offset": 2221
+          },
+          {
+            "designation": "ГОСТ 1.2",
+            "offset": 2300
+          },
+          {
+            "designation": "ГОСТ 12.1.012",
+            "offset": 2899
+          },
+          {
+            "designation": "ГОСТ 16519",
+            "offset": 2914
+          },
+          {
+            "designation": "ГОСТ 16844",
+            "offset": 2926
+          },
+          {
+            "designation": "ГОСТ 17770",
+            "offset": 2941
+          },
+          {
+            "designation": "ГОСТ 26927",
+            "offset": 3424
+          },
+          {
+            "designation": "ГОСТ 26930",
+            "offset": 3436
+          },
+          {
+            "designation": "ГОСТ 26934",
+            "offset": 3449
+          },
+          {
+            "designation": "ГОСТ 3489.2",
+            "offset": 3500
+          },
+          {
+            "designation": "ГОСТ 3489.38",
+            "offset": 3515
+          }
+        ]
+      },
+      {
+        "pdf_page": 34,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 305
+          },
+          {
+            "designation": "ГОСТ 15150-69",
+            "offset": 2062
+          },
+          {
+            "designation": "ГОСТ 8.567-99",
+            "offset": 2426
+          },
+          {
+            "designation": "ГОСТ Р 51095-97",
+            "offset": 3514
+          }
+        ]
+      },
+      {
+        "pdf_page": 35,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1497
+          },
+          {
+            "designation": "ГОСТ 32000",
+            "offset": 4011
+          },
+          {
+            "designation": "ГОСТ 16732",
+            "offset": 4077
+          }
+        ]
+      },
+      {
+        "pdf_page": 36,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 18337",
+            "offset": 466
+          },
+          {
+            "designation": "ГОСТ 10223",
+            "offset": 541
+          },
+          {
+            "designation": "ГОСТ 13830",
+            "offset": 650
+          },
+          {
+            "designation": "ГОСТ 7501",
+            "offset": 1051
+          },
+          {
+            "designation": "ГОСТ 20295",
+            "offset": 1090
+          },
+          {
+            "designation": "ГОСТ 17471",
+            "offset": 2137
+          },
+          {
+            "designation": "ГОСТ 32001",
+            "offset": 2244
+          },
+          {
+            "designation": "ГОСТ 16131",
+            "offset": 2857
+          },
+          {
+            "designation": "ГОСТ 16131",
+            "offset": 2910
+          }
+        ]
+      },
+      {
+        "pdf_page": 37,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 38,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 39,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 8.417",
+            "offset": 946
+          }
+        ]
+      },
+      {
+        "pdf_page": 40,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 41,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 6268",
+            "offset": 68
+          }
+        ]
+      },
+      {
+        "pdf_page": 42,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 43,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 7.4",
+            "offset": 1519
+          },
+          {
+            "designation": "ГОСТ 1.0",
+            "offset": 3626
+          }
+        ]
+      },
+      {
+        "pdf_page": 44,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 45,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 46,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 47,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 48,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ Р 51299-99",
+            "offset": 3075
+          },
+          {
+            "designation": "ГОСТ 2.601",
+            "offset": 4585
+          }
+        ]
+      },
+      {
+        "pdf_page": 49,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 50,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 14192",
+            "offset": 2088
+          },
+          {
+            "designation": "ГОСТ 19433",
+            "offset": 2133
+          },
+          {
+            "designation": "ГОСТ 21140",
+            "offset": 2765
+          },
+          {
+            "designation": "ГОСТ 17527",
+            "offset": 3465
+          }
+        ]
+      },
+      {
+        "pdf_page": 51,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 15150",
+            "offset": 2359
+          },
+          {
+            "designation": "ГОСТ 15150",
+            "offset": 3556
+          }
+        ]
+      },
+      {
+        "pdf_page": 52,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 12.1.007",
+            "offset": 1887
+          },
+          {
+            "designation": "ГОСТ 12.1.044",
+            "offset": 2259
+          },
+          {
+            "designation": "ГОСТ 12.4.026",
+            "offset": 3836
+          }
+        ]
+      },
+      {
+        "pdf_page": 53,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 54,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 55,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 56,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 12.4.026",
+            "offset": 3491
+          }
+        ]
+      },
+      {
+        "pdf_page": 57,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 58,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 59,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 60,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 30687-2000",
+            "offset": 24
+          },
+          {
+            "designation": "ГОСТ 3935-2000",
+            "offset": 42
+          },
+          {
+            "designation": "ГОСТ 1.2",
+            "offset": 507
+          },
+          {
+            "designation": "ГОСТ 30324.0-95",
+            "offset": 1165
+          },
+          {
+            "designation": "ГОСТ 30324.2-95",
+            "offset": 1182
+          },
+          {
+            "designation": "ГОСТ 30324.3-95",
+            "offset": 1199
+          },
+          {
+            "designation": "ГОСТ 30324.0-95",
+            "offset": 1253
+          },
+          {
+            "designation": "ГОСТ 30648.1-99",
+            "offset": 1604
+          },
+          {
+            "designation": "ГОСТ 30648.2-99",
+            "offset": 1622
+          },
+          {
+            "designation": "ГОСТ 30648.3-99",
+            "offset": 1640
+          },
+          {
+            "designation": "ГОСТ 2.001-70",
+            "offset": 2306
+          },
+          {
+            "designation": "ГОСТ 2.002-72",
+            "offset": 2320
+          },
+          {
+            "designation": "ГОСТ 2.005",
+            "offset": 2338
+          },
+          {
+            "designation": "ГОСТ 2.601-95",
+            "offset": 2421
+          },
+          {
+            "designation": "ГОСТ 2.602-95",
+            "offset": 2437
+          },
+          {
+            "designation": "ГОСТ 2.603-68",
+            "offset": 2453
+          },
+          {
+            "designation": "ГОСТ 2.604-2000",
+            "offset": 2467
+          },
+          {
+            "designation": "ГОСТ 8.001-80",
+            "offset": 2827
+          },
+          {
+            "designation": "ГОСТ 8.002-86",
+            "offset": 2841
+          },
+          {
+            "designation": "ГОСТ 8.003-83",
+            "offset": 2856
+          },
+          {
+            "designation": "ГОСТ 8.571-2000",
+            "offset": 2875
+          }
+        ]
+      },
+      {
+        "pdf_page": 61,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1106
+          },
+          {
+            "designation": "ГОСТ 24445.0",
+            "offset": 2209
+          },
+          {
+            "designation": "ГОСТ 24445.10",
+            "offset": 2224
+          },
+          {
+            "designation": "ГОСТ 24445.2-80",
+            "offset": 2519
+          },
+          {
+            "designation": "ГОСТ 24445.3-80",
+            "offset": 2538
+          },
+          {
+            "designation": "ГОСТ 24445",
+            "offset": 2781
+          },
+          {
+            "designation": "ГОСТ 24445.0-2005",
+            "offset": 2903
+          },
+          {
+            "designation": "ГОСТ 24445.10-2006",
+            "offset": 2938
+          }
+        ]
+      },
+      {
+        "pdf_page": 62,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 25542",
+            "offset": 141
+          },
+          {
+            "designation": "ГОСТ 25542",
+            "offset": 462
+          },
+          {
+            "designation": "ГОСТ 25542",
+            "offset": 612
+          },
+          {
+            "designation": "ГОСТ 25542.7-2005",
+            "offset": 855
+          },
+          {
+            "designation": "ГОСТ 25542.8-2006",
+            "offset": 887
+          },
+          {
+            "designation": "ГОСТ 25542.9-2007",
+            "offset": 919
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1096
+          },
+          {
+            "designation": "ГОСТ 30571-2003",
+            "offset": 1263
+          },
+          {
+            "designation": "ГОСТ 31245-2004",
+            "offset": 1297
+          },
+          {
+            "designation": "ГОСТ 30701-2001",
+            "offset": 1336
+          },
+          {
+            "designation": "ГОСТ 1.5-93",
+            "offset": 1560
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 2154
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 2323
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 2601
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 3175
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 3301
+          }
+        ]
+      },
+      {
+        "pdf_page": 63,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 30
+          }
+        ]
+      },
+      {
+        "pdf_page": 64,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 65,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 66,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 67,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 68,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 69,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 70,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 71,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 72,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 73,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          }
+        ]
+      },
+      {
+        "pdf_page": 74,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 0
+          },
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 713
+          }
+        ]
+      }
+    ],
+    "gost-1.5-2001@2019-copy": [
+      {
+        "pdf_page": 1,
+        "references": [
+          {
+            "designation": "ГОСТ 1.5-2001",
+            "offset": 28
+          },
+          {
+            "designation": "ГОСТ 1.5-93",
+            "offset": 553
+          },
+          {
+            "designation": "ГОСТ 1.1",
+            "offset": 873
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1519
+          },
+          {
+            "designation": "ГОСТ 1.0-2015",
+            "offset": 2001
+          },
+          {
+            "designation": "ГОСТ 1.1-2002",
+            "offset": 2080
+          },
+          {
+            "designation": "ГОСТ 1.2-2015",
+            "offset": 2162
+          },
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 2364
+          }
+        ]
+      },
+      {
+        "pdf_page": 2,
+        "references": [
+          {
+            "designation": "ГОСТ 2.321-84",
+            "offset": 91
+          },
+          {
+            "designation": "ГОСТ 2.601",
+            "offset": 175
+          },
+          {
+            "designation": "ГОСТ 8.566",
+            "offset": 260
+          },
+          {
+            "designation": "ГОСТ 8.417-2002",
+            "offset": 441
+          },
+          {
+            "designation": "ГОСТ 12.1.007-76",
+            "offset": 532
+          },
+          {
+            "designation": "ГОСТ 12.1.044",
+            "offset": 655
+          },
+          {
+            "designation": "ГОСТ 15150-69",
+            "offset": 820
+          },
+          {
+            "designation": "ГОСТ 17527",
+            "offset": 1050
+          },
+          {
+            "designation": "ГОСТ 21140-88",
+            "offset": 1094
+          }
+        ]
+      },
+      {
+        "pdf_page": 3,
+        "references": []
+      },
+      {
+        "pdf_page": 4,
+        "references": [
+          {
+            "designation": "ГОСТ 1.0",
+            "offset": 107
+          },
+          {
+            "designation": "ГОСТ 1.2",
+            "offset": 185
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 3034
+          }
+        ]
+      },
+      {
+        "pdf_page": 5,
+        "references": []
+      },
+      {
+        "pdf_page": 6,
+        "references": []
+      },
+      {
+        "pdf_page": 7,
+        "references": []
+      },
+      {
+        "pdf_page": 8,
+        "references": []
+      },
+      {
+        "pdf_page": 9,
+        "references": []
+      },
+      {
+        "pdf_page": 10,
+        "references": []
+      },
+      {
+        "pdf_page": 11,
+        "references": []
+      },
+      {
+        "pdf_page": 12,
+        "references": [
+          {
+            "designation": "ГОСТ 7396.0",
+            "offset": 1431
+          }
+        ]
+      },
+      {
+        "pdf_page": 13,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 1895
+          }
+        ]
+      },
+      {
+        "pdf_page": 14,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 441
+          },
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 1606
+          }
+        ]
+      },
+      {
+        "pdf_page": 15,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 1884
+          }
+        ]
+      },
+      {
+        "pdf_page": 16,
+        "references": []
+      },
+      {
+        "pdf_page": 17,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1184
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1452
+          },
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 2492
+          }
+        ]
+      },
+      {
+        "pdf_page": 18,
+        "references": []
+      },
+      {
+        "pdf_page": 19,
+        "references": []
+      },
+      {
+        "pdf_page": 20,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 2897
+          }
+        ]
+      },
+      {
+        "pdf_page": 21,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 535
+          }
+        ]
+      },
+      {
+        "pdf_page": 22,
+        "references": []
+      },
+      {
+        "pdf_page": 23,
+        "references": [
+          {
+            "designation": "ГОСТ 8.417-2002",
+            "offset": 158
+          },
+          {
+            "designation": "ГОСТ 8.566",
+            "offset": 1062
+          }
+        ]
+      },
+      {
+        "pdf_page": 24,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 1198
+          }
+        ]
+      },
+      {
+        "pdf_page": 25,
+        "references": []
+      },
+      {
+        "pdf_page": 26,
+        "references": []
+      },
+      {
+        "pdf_page": 27,
+        "references": []
+      },
+      {
+        "pdf_page": 28,
+        "references": []
+      },
+      {
+        "pdf_page": 29,
+        "references": []
+      },
+      {
+        "pdf_page": 30,
+        "references": []
+      },
+      {
+        "pdf_page": 31,
+        "references": [
+          {
+            "designation": "ГОСТ 2.321",
+            "offset": 221
+          }
+        ]
+      },
+      {
+        "pdf_page": 32,
+        "references": []
+      },
+      {
+        "pdf_page": 33,
+        "references": []
+      },
+      {
+        "pdf_page": 34,
+        "references": []
+      },
+      {
+        "pdf_page": 35,
+        "references": []
+      },
+      {
+        "pdf_page": 36,
+        "references": []
+      },
+      {
+        "pdf_page": 37,
+        "references": []
+      },
+      {
+        "pdf_page": 38,
+        "references": []
+      },
+      {
+        "pdf_page": 39,
+        "references": []
+      },
+      {
+        "pdf_page": 40,
+        "references": []
+      },
+      {
+        "pdf_page": 41,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 2461
+          },
+          {
+            "designation": "ГОСТ 32565",
+            "offset": 2793
+          }
+        ]
+      },
+      {
+        "pdf_page": 42,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 290
+          },
+          {
+            "designation": "ГОСТ 24940-96",
+            "offset": 467
+          },
+          {
+            "designation": "ГОСТ 12.1.012",
+            "offset": 941
+          },
+          {
+            "designation": "ГОСТ 16519",
+            "offset": 956
+          },
+          {
+            "designation": "ГОСТ 16844",
+            "offset": 968
+          },
+          {
+            "designation": "ГОСТ 17770",
+            "offset": 982
+          },
+          {
+            "designation": "ГОСТ 26927",
+            "offset": 1366
+          },
+          {
+            "designation": "ГОСТ 26930",
+            "offset": 1378
+          },
+          {
+            "designation": "ГОСТ 26934",
+            "offset": 1392
+          },
+          {
+            "designation": "ГОСТ 3489.2",
+            "offset": 1445
+          },
+          {
+            "designation": "ГОСТ 3489.38",
+            "offset": 1459
+          },
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 2062
+          },
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 2524
+          }
+        ]
+      },
+      {
+        "pdf_page": 43,
+        "references": [
+          {
+            "designation": "ГОСТ 15150-69",
+            "offset": 961
+          },
+          {
+            "designation": "ГОСТ Р 51095-97",
+            "offset": 1904
+          }
+        ]
+      },
+      {
+        "pdf_page": 44,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 444
+          },
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 807
+          }
+        ]
+      },
+      {
+        "pdf_page": 45,
+        "references": [
+          {
+            "designation": "ГОСТ 5631",
+            "offset": 99
+          },
+          {
+            "designation": "ГОСТ 18337",
+            "offset": 724
+          },
+          {
+            "designation": "ГОСТ 10223",
+            "offset": 800
+          },
+          {
+            "designation": "ГОСТ 13830",
+            "offset": 910
+          },
+          {
+            "designation": "ГОСТ 7501",
+            "offset": 1319
+          },
+          {
+            "designation": "ГОСТ 20295",
+            "offset": 1366
+          },
+          {
+            "designation": "ГОСТ 17471",
+            "offset": 2415
+          }
+        ]
+      },
+      {
+        "pdf_page": 46,
+        "references": [
+          {
+            "designation": "ГОСТ 32001",
+            "offset": 94
+          },
+          {
+            "designation": "ГОСТ 16131",
+            "offset": 714
+          },
+          {
+            "designation": "ГОСТ 16131",
+            "offset": 767
+          }
+        ]
+      },
+      {
+        "pdf_page": 47,
+        "references": []
+      },
+      {
+        "pdf_page": 48,
+        "references": []
+      },
+      {
+        "pdf_page": 49,
+        "references": [
+          {
+            "designation": "ГОСТ 8.417",
+            "offset": 1076
+          }
+        ]
+      },
+      {
+        "pdf_page": 50,
+        "references": []
+      },
+      {
+        "pdf_page": 51,
+        "references": [
+          {
+            "designation": "ГОСТ 6268",
+            "offset": 2397
+          }
+        ]
+      },
+      {
+        "pdf_page": 52,
+        "references": []
+      },
+      {
+        "pdf_page": 53,
+        "references": []
+      },
+      {
+        "pdf_page": 54,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 1046
+          }
+        ]
+      },
+      {
+        "pdf_page": 55,
+        "references": [
+          {
+            "designation": "ГОСТ 7.4",
+            "offset": 54
+          }
+        ]
+      },
+      {
+        "pdf_page": 56,
+        "references": []
+      },
+      {
+        "pdf_page": 57,
+        "references": []
+      },
+      {
+        "pdf_page": 58,
+        "references": []
+      },
+      {
+        "pdf_page": 59,
+        "references": []
+      },
+      {
+        "pdf_page": 60,
+        "references": []
+      },
+      {
+        "pdf_page": 61,
+        "references": [
+          {
+            "designation": "ГОСТ Р 51299",
+            "offset": 2671
+          }
+        ]
+      },
+      {
+        "pdf_page": 62,
+        "references": []
+      },
+      {
+        "pdf_page": 63,
+        "references": []
+      },
+      {
+        "pdf_page": 64,
+        "references": [
+          {
+            "designation": "ГОСТ 21140",
+            "offset": 1338
+          }
+        ]
+      },
+      {
+        "pdf_page": 65,
+        "references": [
+          {
+            "designation": "ГОСТ 15150",
+            "offset": 1276
+          },
+          {
+            "designation": "ГОСТ 15150",
+            "offset": 2489
+          }
+        ]
+      },
+      {
+        "pdf_page": 66,
+        "references": [
+          {
+            "designation": "ГОСТ 12.1.007",
+            "offset": 2177
+          },
+          {
+            "designation": "ГОСТ 12.1.044",
+            "offset": 2556
+          }
+        ]
+      },
+      {
+        "pdf_page": 67,
+        "references": []
+      },
+      {
+        "pdf_page": 68,
+        "references": []
+      },
+      {
+        "pdf_page": 69,
+        "references": []
+      },
+      {
+        "pdf_page": 70,
+        "references": []
+      },
+      {
+        "pdf_page": 71,
+        "references": []
+      },
+      {
+        "pdf_page": 72,
+        "references": [
+          {
+            "designation": "ГОСТ 12.4.026",
+            "offset": 1852
+          }
+        ]
+      },
+      {
+        "pdf_page": 73,
+        "references": []
+      },
+      {
+        "pdf_page": 74,
+        "references": []
+      },
+      {
+        "pdf_page": 75,
+        "references": []
+      },
+      {
+        "pdf_page": 76,
+        "references": [
+          {
+            "designation": "ГОСТ 30687-2000",
+            "offset": 284
+          },
+          {
+            "designation": "ГОСТ 3935-2000",
+            "offset": 303
+          },
+          {
+            "designation": "ГОСТ 1.2-2015",
+            "offset": 773
+          },
+          {
+            "designation": "ГОСТ 30324.0-95",
+            "offset": 1430
+          },
+          {
+            "designation": "ГОСТ 30324.2-95",
+            "offset": 1447
+          },
+          {
+            "designation": "ГОСТ 30324.3-95",
+            "offset": 1464
+          },
+          {
+            "designation": "ГОСТ 30324.0-95",
+            "offset": 1518
+          },
+          {
+            "designation": "ГОСТ 30648.1-99",
+            "offset": 1877
+          },
+          {
+            "designation": "ГОСТ 30648.2-99",
+            "offset": 1894
+          },
+          {
+            "designation": "ГОСТ 30648.3-99",
+            "offset": 1912
+          }
+        ]
+      },
+      {
+        "pdf_page": 77,
+        "references": [
+          {
+            "designation": "ГОСТ 2.001-70",
+            "offset": 118
+          },
+          {
+            "designation": "ГОСТ 2.002-72",
+            "offset": 134
+          },
+          {
+            "designation": "ГОСТ 2.005",
+            "offset": 156
+          },
+          {
+            "designation": "ГОСТ 2.601-95",
+            "offset": 241
+          },
+          {
+            "designation": "ГОСТ 2.602-95",
+            "offset": 257
+          },
+          {
+            "designation": "ГОСТ 2.603-68",
+            "offset": 272
+          },
+          {
+            "designation": "ГОСТ 2.604-2000",
+            "offset": 287
+          },
+          {
+            "designation": "ГОСТ 8.001-80",
+            "offset": 652
+          },
+          {
+            "designation": "ГОСТ 8.002-86",
+            "offset": 667
+          },
+          {
+            "designation": "ГОСТ 8.003-83",
+            "offset": 682
+          },
+          {
+            "designation": "ГОСТ 8.571-2000",
+            "offset": 702
+          },
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 2274
+          }
+        ]
+      },
+      {
+        "pdf_page": 78,
+        "references": [
+          {
+            "designation": "ГОСТ 1.3",
+            "offset": 344
+          },
+          {
+            "designation": "ГОСТ 1.3-2014",
+            "offset": 471
+          },
+          {
+            "designation": "ГОСТ 1.5-93",
+            "offset": 1260
+          }
+        ]
+      },
+      {
+        "pdf_page": 79,
+        "references": [
+          {
+            "designation": "ГОСТ 1.2-2015",
+            "offset": 2006
+          },
+          {
+            "designation": "ГОСТ 2.601",
+            "offset": 2629
+          },
+          {
+            "designation": "ГОСТ 17527",
+            "offset": 2790
+          }
+        ]
+      },
+      {
+        "pdf_page": 80,
+        "references": []
+      },
+      {
+        "pdf_page": 81,
+        "references": []
+      },
+      {
+        "pdf_page": 82,
+        "references": []
+      },
+      {
+        "pdf_page": 83,
+        "references": [
+          {
+            "designation": "ГОСТ 7.4",
+            "offset": 185
+          }
+        ]
+      },
+      {
+        "pdf_page": 84,
+        "references": []
+      },
+      {
+        "pdf_page": 85,
+        "references": []
+      },
+      {
+        "pdf_page": 86,
+        "references": []
+      },
+      {
+        "pdf_page": 87,
+        "references": []
+      },
+      {
+        "pdf_page": 88,
+        "references": []
+      },
+      {
+        "pdf_page": 89,
+        "references": []
+      },
+      {
+        "pdf_page": 90,
+        "references": []
+      },
+      {
+        "pdf_page": 91,
+        "references": []
+      },
+      {
+        "pdf_page": 92,
+        "references": []
+      }
+    ]
+  },
+  "pending_mentions": [
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 15.101",
+      "pdf_pages": [
+        9
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 29029",
+      "pdf_pages": [
+        18
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 7.1",
+      "pdf_pages": [
+        13,
+        18
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 7.11",
+      "pdf_pages": [
+        14
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 7.12",
+      "pdf_pages": [
+        14
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 7.79",
+      "pdf_pages": [
+        14
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 7.80",
+      "pdf_pages": [
+        13
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 7.82",
+      "pdf_pages": [
+        13
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 7.9",
+      "pdf_pages": [
+        11
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 7.90",
+      "pdf_pages": [
+        10
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 8.417",
+      "pdf_pages": [
+        12
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-7.32-2017@2018",
+      "designation": "ГОСТ 9327",
+      "pdf_pages": [
+        13
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-19.106-78@1987",
+      "designation": "ГОСТ 19.103-77",
+      "pdf_pages": [
+        4
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-19.106-78@1987",
+      "designation": "ГОСТ 19.105-78",
+      "pdf_pages": [
+        1
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-19.106-78@1987",
+      "designation": "ГОСТ 19.604-78",
+      "pdf_pages": [
+        5
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-19.106-78@1987",
+      "designation": "ГОСТ 2.301-68",
+      "pdf_pages": [
+        2
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-19.106-78@1987",
+      "designation": "ГОСТ 2.316-68",
+      "pdf_pages": [
+        7,
+        10
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-19.104-78@1987",
+      "designation": "ГОСТ 19604-78",
+      "pdf_pages": [
+        4
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-19.101-2024@2026",
+      "designation": "ГОСТ Р 2.102-2023",
+      "pdf_pages": [
+        3
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 1.0",
+      "pdf_pages": [
+        17,
+        43
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 1.1",
+      "pdf_pages": [
+        5
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 1.2",
+      "pdf_pages": [
+        33,
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 1.3",
+      "pdf_pages": [
+        5,
+        8,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        22,
+        34,
+        35,
+        61,
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 1.5-93",
+      "pdf_pages": [
+        2,
+        5,
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 10223",
+      "pdf_pages": [
+        36
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 12.1.007",
+      "pdf_pages": [
+        52
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 12.1.007-76",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 12.1.012",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 12.1.044",
+      "pdf_pages": [
+        52
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 12.1.044-89",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 12.4.026",
+      "pdf_pages": [
+        52,
+        56
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 12.4.026-76",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 13830",
+      "pdf_pages": [
+        36
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 14192",
+      "pdf_pages": [
+        50
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 14236",
+      "pdf_pages": [
+        28
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 15150",
+      "pdf_pages": [
+        51
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 16131",
+      "pdf_pages": [
+        36
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 16519",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 16732",
+      "pdf_pages": [
+        35
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 16844",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 17471",
+      "pdf_pages": [
+        36
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 17527",
+      "pdf_pages": [
+        50
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 17770",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 18337",
+      "pdf_pages": [
+        36
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 19433",
+      "pdf_pages": [
+        50
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 19433-88",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.001-70",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.002-72",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.005",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.321-84",
+      "pdf_pages": [
+        5
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.601",
+      "pdf_pages": [
+        48
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.601-95",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.602-95",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.603-68",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 2.604-2000",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 20295",
+      "pdf_pages": [
+        36
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 21140",
+      "pdf_pages": [
+        50
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 21140-88",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 24445",
+      "pdf_pages": [
+        61
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 24445.0",
+      "pdf_pages": [
+        61
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 24445.0-2005",
+      "pdf_pages": [
+        61
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 24445.10",
+      "pdf_pages": [
+        61
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 24445.10-2006",
+      "pdf_pages": [
+        61
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 24445.2-80",
+      "pdf_pages": [
+        61
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 24445.3-80",
+      "pdf_pages": [
+        61
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 25542",
+      "pdf_pages": [
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 25542.7-2005",
+      "pdf_pages": [
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 25542.8-2006",
+      "pdf_pages": [
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 25542.9-2007",
+      "pdf_pages": [
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 26927",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 26930",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 26934",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30100",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30324.0-95",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30324.2-95",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30324.3-95",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30571-2003",
+      "pdf_pages": [
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30648.1-99",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30648.2-99",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30648.3-99",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30687-2000",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 30701-2001",
+      "pdf_pages": [
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 31245-2004",
+      "pdf_pages": [
+        62
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 32000",
+      "pdf_pages": [
+        35
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 32001",
+      "pdf_pages": [
+        36
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 3489.2",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 3489.38",
+      "pdf_pages": [
+        33
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 3935-2000",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 6268",
+      "pdf_pages": [
+        41
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 7.4",
+      "pdf_pages": [
+        6,
+        7,
+        43
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 7.4-95",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 7396.0",
+      "pdf_pages": [
+        13
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 7501",
+      "pdf_pages": [
+        36
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 8.001-80",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 8.002-86",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 8.003-83",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 8.310",
+      "pdf_pages": [
+        21
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 8.310-90",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 8.417-2002",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 8.567-99",
+      "pdf_pages": [
+        34
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ 8.571-2000",
+      "pdf_pages": [
+        60
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ Р 12.4.026-2001",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ Р 51095-97",
+      "pdf_pages": [
+        34
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ Р 51299-99",
+      "pdf_pages": [
+        48
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2010",
+      "designation": "ГОСТ Р 7.04-2006",
+      "pdf_pages": [
+        6
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.0",
+      "pdf_pages": [
+        4
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.0-2015",
+      "pdf_pages": [
+        1
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.1",
+      "pdf_pages": [
+        1
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.1-2002",
+      "pdf_pages": [
+        1
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.2",
+      "pdf_pages": [
+        4
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.2-2015",
+      "pdf_pages": [
+        1,
+        76,
+        79
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.3",
+      "pdf_pages": [
+        1,
+        4,
+        17,
+        20,
+        24,
+        78
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.3-2014",
+      "pdf_pages": [
+        1,
+        13,
+        14,
+        15,
+        21,
+        41,
+        42,
+        44,
+        54,
+        77,
+        78
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 1.5-93",
+      "pdf_pages": [
+        1,
+        78
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 10223",
+      "pdf_pages": [
+        45
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 12.1.007",
+      "pdf_pages": [
+        66
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 12.1.007-76",
+      "pdf_pages": [
+        2
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 12.1.012",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 12.1.044",
+      "pdf_pages": [
+        2,
+        66
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 12.4.026",
+      "pdf_pages": [
+        72
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 13830",
+      "pdf_pages": [
+        45
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 15150",
+      "pdf_pages": [
+        65
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 15150-69",
+      "pdf_pages": [
+        2,
+        43
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 16131",
+      "pdf_pages": [
+        46
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 16519",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 16844",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 17471",
+      "pdf_pages": [
+        45
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 17527",
+      "pdf_pages": [
+        2,
+        79
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 17770",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 18337",
+      "pdf_pages": [
+        45
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.001-70",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.002-72",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.005",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.321",
+      "pdf_pages": [
+        31
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.321-84",
+      "pdf_pages": [
+        2
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.601",
+      "pdf_pages": [
+        2,
+        79
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.601-95",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.602-95",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.603-68",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 2.604-2000",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 20295",
+      "pdf_pages": [
+        45
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 21140",
+      "pdf_pages": [
+        64
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 21140-88",
+      "pdf_pages": [
+        2
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 24940-96",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 26927",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 26930",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 26934",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 30324.0-95",
+      "pdf_pages": [
+        76
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 30324.2-95",
+      "pdf_pages": [
+        76
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 30324.3-95",
+      "pdf_pages": [
+        76
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 30648.1-99",
+      "pdf_pages": [
+        76
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 30648.2-99",
+      "pdf_pages": [
+        76
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 30648.3-99",
+      "pdf_pages": [
+        76
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 30687-2000",
+      "pdf_pages": [
+        76
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 32001",
+      "pdf_pages": [
+        46
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 32565",
+      "pdf_pages": [
+        41
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 3489.2",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 3489.38",
+      "pdf_pages": [
+        42
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 3935-2000",
+      "pdf_pages": [
+        76
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 5631",
+      "pdf_pages": [
+        45
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 6268",
+      "pdf_pages": [
+        51
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 7.4",
+      "pdf_pages": [
+        55,
+        83
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 7396.0",
+      "pdf_pages": [
+        12
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 7501",
+      "pdf_pages": [
+        45
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 8.001-80",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 8.002-86",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 8.003-83",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 8.417",
+      "pdf_pages": [
+        49
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 8.417-2002",
+      "pdf_pages": [
+        2,
+        23
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 8.566",
+      "pdf_pages": [
+        2,
+        23
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ 8.571-2000",
+      "pdf_pages": [
+        77
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ Р 51095-97",
+      "pdf_pages": [
+        43
+      ],
+      "status": "candidate_requires_classification"
+    },
+    {
+      "source": "gost-1.5-2001@2019-copy",
+      "designation": "ГОСТ Р 51299",
+      "pdf_pages": [
+        61
+      ],
+      "status": "candidate_requires_classification"
+    }
+  ],
+  "limits": [
+    "Кандидат извлечения не является нормативным ребром.",
+    "ГОСТ, ГОСТ Р, датированные ссылки и переиздания сохраняются раздельно.",
+    "Международные СТ СЭВ/ИСО и классификаторы не охвачены данным извлекателем.",
+    "Датированные ссылки и изменения требуют политики выбора версии, а не правила брать самую новую.",
+    "Чекеры документов не реализованы этим графом; связи с локальными аудитами датасета лишь описаны."
+  ]
+}
