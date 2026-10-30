@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "synthetic_only": true,
+  "model_calls": 0,
+  "mlflow_version": "3.16.0",
+  "old_pending_reproduced": true,
+  "same_run_id": true,
+  "same_export_id": true,
+  "source_unchanged": true,
+  "full_record_equal": true,
+  "call_artifacts_exact": 2,
+  "native_data_uri_preserved": true,
+  "structured_base64_preserved": true,
+  "retry_stable": true,
+  "environment_restored": true,
+  "previous_transformed_trace_retained": true,
+  "final_trace_count": 3,
+  "logical_calls": 2,
+  "export_complete": true
+}

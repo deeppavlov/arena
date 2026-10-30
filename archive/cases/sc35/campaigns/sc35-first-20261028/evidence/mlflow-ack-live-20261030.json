@@ -1,0 +1,1501 @@
+{
+  "complete": true,
+  "stage": "complete",
+  "backlog": {
+    "utc": "2026-10-30T08:01:40.091801+00:00",
+    "targets": 15,
+    "exported": 15,
+    "pending": 0,
+    "elapsed_seconds": 2636.2,
+    "records": [
+      {
+        "index": 0,
+        "operator": false,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "ca00f09f38da4fe8a17e618109f6776a",
+        "attempts": 42
+      },
+      {
+        "index": 1,
+        "operator": false,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "e9ce60d5ee3042f7b00d2b644eb5c058",
+        "attempts": 45
+      },
+      {
+        "index": 2,
+        "operator": false,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "fb3e91b590f3490e91cecfea83bb61f2",
+        "attempts": 69
+      },
+      {
+        "index": 3,
+        "operator": false,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "72605893118d438f996216f57bb941bd",
+        "attempts": 46
+      },
+      {
+        "index": 4,
+        "operator": false,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "d23d6403a3a24329b5a8952dbc72b0c3",
+        "attempts": 76
+      },
+      {
+        "index": 5,
+        "operator": false,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "bc5348e6c52347299576eeb1fdeac40e",
+        "attempts": 3
+      },
+      {
+        "index": 6,
+        "operator": false,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "b90e2f63fae24cf28ba21232cb7b21ae",
+        "attempts": 46
+      },
+      {
+        "index": 7,
+        "operator": false,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "7f1de7cc99d1466eb0ce5726a53c3ee1",
+        "attempts": 68
+      },
+      {
+        "index": 8,
+        "operator": true,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "2f46f61f486247c3a784d963572561c9",
+        "attempts": 44
+      },
+      {
+        "index": 9,
+        "operator": true,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "533629fffa184d9086679a393493e025",
+        "attempts": 67
+      },
+      {
+        "index": 10,
+        "operator": true,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "a3d89a23143043d58ed5c68b1a06efdb",
+        "attempts": 45
+      },
+      {
+        "index": 11,
+        "operator": true,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "4d49e32a91c74ad7a8b211046f19759f",
+        "attempts": 41
+      },
+      {
+        "index": 12,
+        "operator": true,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "28c74045a02c41bb86d74420d7d79cbc",
+        "attempts": 45
+      },
+      {
+        "index": 13,
+        "operator": true,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "e93c1e35a124444ea5784d15bd57f76e",
+        "attempts": 66
+      },
+      {
+        "index": 14,
+        "operator": true,
+        "status": "exported",
+        "export_identity_same": true,
+        "run_id": "6b71a341111c40ff95985f9dcf76791e",
+        "attempts": 75
+      }
+    ],
+    "complete": true,
+    "remaining_estimate_seconds": 0,
+    "milestones": [
+      {
+        "utc": "2026-10-30T07:17:44.181504+00:00",
+        "targets": 15,
+        "exported": 0,
+        "pending": 15,
+        "elapsed_seconds": 0.3,
+        "complete": false
+      },
+      {
+        "utc": "2026-10-30T07:19:15.006537+00:00",
+        "targets": 15,
+        "exported": 1,
+        "pending": 14,
+        "elapsed_seconds": 91.1,
+        "complete": false,
+        "remaining_estimate_seconds": 1466
+      },
+      {
+        "utc": "2026-10-30T07:23:17.633307+00:00",
+        "targets": 15,
+        "exported": 2,
+        "pending": 13,
+        "elapsed_seconds": 333.7,
+        "complete": false,
+        "remaining_estimate_seconds": 2494
+      },
+      {
+        "utc": "2026-10-30T07:25:49.258415+00:00",
+        "targets": 15,
+        "exported": 3,
+        "pending": 12,
+        "elapsed_seconds": 485.3,
+        "complete": false,
+        "remaining_estimate_seconds": 2233
+      },
+      {
+        "utc": "2026-10-30T07:27:50.371662+00:00",
+        "targets": 15,
+        "exported": 4,
+        "pending": 11,
+        "elapsed_seconds": 606.4,
+        "complete": false,
+        "remaining_estimate_seconds": 1918
+      },
+      {
+        "utc": "2026-10-30T07:31:52.610117+00:00",
+        "targets": 15,
+        "exported": 5,
+        "pending": 10,
+        "elapsed_seconds": 848.7,
+        "complete": false,
+        "remaining_estimate_seconds": 1952
+      },
+      {
+        "utc": "2026-10-30T07:34:23.987718+00:00",
+        "targets": 15,
+        "exported": 6,
+        "pending": 9,
+        "elapsed_seconds": 1000.1,
+        "complete": false,
+        "remaining_estimate_seconds": 1725
+      },
+      {
+        "utc": "2026-10-30T07:36:25.075300+00:00",
+        "targets": 15,
+        "exported": 7,
+        "pending": 8,
+        "elapsed_seconds": 1121.1,
+        "complete": false,
+        "remaining_estimate_seconds": 1474
+      },
+      {
+        "utc": "2026-10-30T07:37:55.876141+00:00",
+        "targets": 15,
+        "exported": 8,
+        "pending": 7,
+        "elapsed_seconds": 1211.9,
+        "complete": false,
+        "remaining_estimate_seconds": 1220
+      },
+      {
+        "utc": "2026-10-30T07:41:27.778945+00:00",
+        "targets": 15,
+        "exported": 9,
+        "pending": 6,
+        "elapsed_seconds": 1423.9,
+        "complete": false,
+        "remaining_estimate_seconds": 1092
+      },
+      {
+        "utc": "2026-10-30T07:47:31.982011+00:00",
+        "targets": 15,
+        "exported": 10,
+        "pending": 5,
+        "elapsed_seconds": 1788.1,
+        "complete": false,
+        "remaining_estimate_seconds": 1028
+      },
+      {
+        "utc": "2026-10-30T07:50:33.591026+00:00",
+        "targets": 15,
+        "exported": 11,
+        "pending": 4,
+        "elapsed_seconds": 1969.7,
+        "complete": false,
+        "remaining_estimate_seconds": 824
+      },
+      {
+        "utc": "2026-10-30T07:53:35.472644+00:00",
+        "targets": 15,
+        "exported": 12,
+        "pending": 3,
+        "elapsed_seconds": 2151.5,
+        "complete": false,
+        "remaining_estimate_seconds": 619
+      },
+      {
+        "utc": "2026-10-30T07:57:37.581684+00:00",
+        "targets": 15,
+        "exported": 13,
+        "pending": 2,
+        "elapsed_seconds": 2393.7,
+        "complete": false,
+        "remaining_estimate_seconds": 423
+      },
+      {
+        "utc": "2026-10-30T07:59:39.052375+00:00",
+        "targets": 15,
+        "exported": 14,
+        "pending": 1,
+        "elapsed_seconds": 2515.1,
+        "complete": false,
+        "remaining_estimate_seconds": 207
+      },
+      {
+        "utc": "2026-10-30T08:01:40.091801+00:00",
+        "targets": 15,
+        "exported": 15,
+        "pending": 0,
+        "elapsed_seconds": 2636.2,
+        "complete": true,
+        "remaining_estimate_seconds": 0
+      }
+    ]
+  },
+  "utc": "2026-10-30T08:13:16.794193+00:00",
+  "train_verification": {
+    "verified": true,
+    "run_identity_verified": true,
+    "record_raw_equal": true,
+    "all_call_artifacts_raw_equal": true,
+    "all_calls_acknowledged": true,
+    "call_artifacts_verified": 227,
+    "calls_acknowledged": 227,
+    "trace_reads": 227,
+    "bounded_payloads_verified": 227,
+    "reference_payloads": 0,
+    "trace_bytes_max": 223541,
+    "stage": "complete",
+    "expected_calls": 227,
+    "queue_bytes": 51590892,
+    "run_id": "fb3e91b590f3490e91cecfea83bb61f2",
+    "operator": false,
+    "environment_secret_values_present": false,
+    "sanitize_equivalent": true,
+    "source_json_string_inputs": 113,
+    "source_json_string_outputs": 113,
+    "process_peak_rss_kib": 267600,
+    "completed_utc": "2026-10-30T07:39:05.895814+00:00",
+    "elapsed_seconds": 1280.9
+  },
+  "identities": [
+    {
+      "index": 0,
+      "operator": false,
+      "run_ids": [
+        "ca00f09f38da4fe8a17e618109f6776a"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 1,
+      "operator": false,
+      "run_ids": [
+        "e9ce60d5ee3042f7b00d2b644eb5c058"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 2,
+      "operator": false,
+      "run_ids": [
+        "fb3e91b590f3490e91cecfea83bb61f2"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 3,
+      "operator": false,
+      "run_ids": [
+        "72605893118d438f996216f57bb941bd"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 4,
+      "operator": false,
+      "run_ids": [
+        "d23d6403a3a24329b5a8952dbc72b0c3"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 5,
+      "operator": false,
+      "run_ids": [
+        "bc5348e6c52347299576eeb1fdeac40e"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 6,
+      "operator": false,
+      "run_ids": [
+        "b90e2f63fae24cf28ba21232cb7b21ae"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 7,
+      "operator": false,
+      "run_ids": [
+        "7f1de7cc99d1466eb0ce5726a53c3ee1"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 8,
+      "operator": true,
+      "run_ids": [
+        "2f46f61f486247c3a784d963572561c9"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 9,
+      "operator": true,
+      "run_ids": [
+        "533629fffa184d9086679a393493e025"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 10,
+      "operator": true,
+      "run_ids": [
+        "a3d89a23143043d58ed5c68b1a06efdb"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 11,
+      "operator": true,
+      "run_ids": [
+        "4d49e32a91c74ad7a8b211046f19759f"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 12,
+      "operator": true,
+      "run_ids": [
+        "28c74045a02c41bb86d74420d7d79cbc"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 13,
+      "operator": true,
+      "run_ids": [
+        "e93c1e35a124444ea5784d15bd57f76e"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    },
+    {
+      "index": 14,
+      "operator": true,
+      "run_ids": [
+        "6b71a341111c40ff95985f9dcf76791e"
+      ],
+      "run_identity_same": true,
+      "server_export_complete": true
+    }
+  ],
+  "cycles": {
+    "complete": true,
+    "samples": [
+      {
+        "utc": "2026-10-30T08:02:08.007029+00:00",
+        "containers": [
+          {
+            "name": "arena-sc35-first-researcher-1",
+            "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+            "image": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+            "started": "2026-10-28T08:17:41.865161515Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-research-monitor-1",
+            "id": "cc8d1d5888d8804fac6282a9055e7c39460884b6a1edb967318558b4231e3b90",
+            "image": "sha256:705dee0e97b7324b61286e667e38fa3a4639a0584bfe047826341590073bbef9",
+            "started": "2026-10-30T07:16:15.368837802Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-train-evaluator-1",
+            "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:39.148688222Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-public-evaluator-1",
+            "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:40:10.655461749Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-private-evaluator-1",
+            "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:40:10.654490509Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-model-gateway-1",
+            "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:07.748582329Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-researcher-gateway-1",
+            "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:07.748019605Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-internet-proxy-1",
+            "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+            "image": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+            "started": "2026-10-28T07:39:07.747383198Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "sc35-first-mlflow-shared-tracking-1",
+            "id": "a8b2ae26bce370ab1a9d337b94e4ef7ad5fa42c2ed60f34b2ba16d297178e869",
+            "image": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38",
+            "started": "2026-10-29T08:47:47.236333036Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": [
+              {
+                "Type": "volume",
+                "Name": "sc35-first-mlflow-shared-backend",
+                "Source": "/data/docker/volumes/sc35-first-mlflow-shared-backend/_data",
+                "Destination": "/mlflow/backend"
+              },
+              {
+                "Type": "volume",
+                "Name": "sc35-first-mlflow-shared-artifacts",
+                "Source": "/data/docker/volumes/sc35-first-mlflow-shared-artifacts/_data",
+                "Destination": "/mlflow/artifacts"
+              }
+            ]
+          },
+          {
+            "name": "sc35-first-mlflow-operator-tracking-1",
+            "id": "cf837a98494afaf5c55f03f127461a0c6e2138ed3e3028a3c0edd9d1b82f55bb",
+            "image": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+            "started": "2026-10-28T15:46:47.895769318Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": [
+              {
+                "Type": "bind",
+                "Name": null,
+                "Source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/deploy/mlflow/operator-nginx.conf",
+                "Destination": "/etc/nginx/nginx.conf"
+              }
+            ]
+          },
+          {
+            "name": "deus-ex-mlflow-tracking-1",
+            "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+            "image": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+            "started": "2026-10-05T13:01:36.158459624Z",
+            "finished": "2026-10-05T13:01:35.908234227Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": [
+              {
+                "Type": "volume",
+                "Name": "deus-ex-mlflow_artifacts",
+                "Source": "/data/docker/volumes/deus-ex-mlflow_artifacts/_data",
+                "Destination": "/mlflow/artifacts"
+              },
+              {
+                "Type": "volume",
+                "Name": "deus-ex-mlflow_backend",
+                "Source": "/data/docker/volumes/deus-ex-mlflow_backend/_data",
+                "Destination": "/mlflow/backend"
+              }
+            ]
+          }
+        ],
+        "unchanged_services": [
+          {
+            "name": "arena-sc35-first-researcher-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-train-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-public-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-private-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-model-gateway-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-researcher-gateway-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-internet-proxy-1",
+            "unchanged": true
+          },
+          {
+            "name": "sc35-first-mlflow-operator-tracking-1",
+            "unchanged": true
+          },
+          {
+            "name": "deus-ex-mlflow-tracking-1",
+            "unchanged": true
+          }
+        ],
+        "monitor": {
+          "flush_mtime_ns": 1793344099679752573,
+          "flush_age_seconds": 3228.6,
+          "progress_mtime_ns": 1793344576549872415,
+          "progress_age_seconds": 2751.8,
+          "progress": {
+            "status": "running",
+            "run_id": "17963c40-1367-4651-bc2b-fbbe5aa35e9e",
+            "container_status": "running"
+          },
+          "queues": [
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 8,
+              "index": 0,
+              "saved_entries": {
+                "exported": 22
+              }
+            },
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 1,
+              "saved_entries": {
+                "exported": 7,
+                "tracking_pending": 1
+              }
+            },
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 2,
+              "saved_entries": {}
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 8,
+              "index": 3,
+              "saved_entries": {
+                "exported": 22
+              }
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 4,
+              "saved_entries": {
+                "exported": 7,
+                "tracking_pending": 1
+              }
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 5,
+              "saved_entries": {}
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 6,
+              "saved_entries": {}
+            }
+          ]
+        },
+        "memory": {
+          "arena-sc35-first-research-monitor-1": {
+            "current_bytes": 2560389120,
+            "peak_bytes": 3146256384,
+            "limit_bytes": 4294967296,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          },
+          "sc35-first-mlflow-shared-tracking-1": {
+            "current_bytes": 2838294528,
+            "peak_bytes": 2937974784,
+            "limit_bytes": 4294967296,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          },
+          "sc35-first-mlflow-operator-tracking-1": {
+            "current_bytes": 3772416,
+            "peak_bytes": 6905856,
+            "limit_bytes": 134217728,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          }
+        },
+        "shared_health_http": 200,
+        "tracking_health": {
+          "shared-tracking": 200,
+          "operator-tracking": 200
+        }
+      },
+      {
+        "utc": "2026-10-30T08:06:25.150753+00:00",
+        "containers": [
+          {
+            "name": "arena-sc35-first-researcher-1",
+            "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+            "image": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+            "started": "2026-10-28T08:17:41.865161515Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-research-monitor-1",
+            "id": "cc8d1d5888d8804fac6282a9055e7c39460884b6a1edb967318558b4231e3b90",
+            "image": "sha256:705dee0e97b7324b61286e667e38fa3a4639a0584bfe047826341590073bbef9",
+            "started": "2026-10-30T07:16:15.368837802Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-train-evaluator-1",
+            "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:39.148688222Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-public-evaluator-1",
+            "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:40:10.655461749Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-private-evaluator-1",
+            "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:40:10.654490509Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-model-gateway-1",
+            "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:07.748582329Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-researcher-gateway-1",
+            "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:07.748019605Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-internet-proxy-1",
+            "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+            "image": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+            "started": "2026-10-28T07:39:07.747383198Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "sc35-first-mlflow-shared-tracking-1",
+            "id": "a8b2ae26bce370ab1a9d337b94e4ef7ad5fa42c2ed60f34b2ba16d297178e869",
+            "image": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38",
+            "started": "2026-10-29T08:47:47.236333036Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": [
+              {
+                "Type": "volume",
+                "Name": "sc35-first-mlflow-shared-backend",
+                "Source": "/data/docker/volumes/sc35-first-mlflow-shared-backend/_data",
+                "Destination": "/mlflow/backend"
+              },
+              {
+                "Type": "volume",
+                "Name": "sc35-first-mlflow-shared-artifacts",
+                "Source": "/data/docker/volumes/sc35-first-mlflow-shared-artifacts/_data",
+                "Destination": "/mlflow/artifacts"
+              }
+            ]
+          },
+          {
+            "name": "sc35-first-mlflow-operator-tracking-1",
+            "id": "cf837a98494afaf5c55f03f127461a0c6e2138ed3e3028a3c0edd9d1b82f55bb",
+            "image": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+            "started": "2026-10-28T15:46:47.895769318Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": [
+              {
+                "Type": "bind",
+                "Name": null,
+                "Source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/deploy/mlflow/operator-nginx.conf",
+                "Destination": "/etc/nginx/nginx.conf"
+              }
+            ]
+          },
+          {
+            "name": "deus-ex-mlflow-tracking-1",
+            "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+            "image": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+            "started": "2026-10-05T13:01:36.158459624Z",
+            "finished": "2026-10-05T13:01:35.908234227Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": [
+              {
+                "Type": "volume",
+                "Name": "deus-ex-mlflow_artifacts",
+                "Source": "/data/docker/volumes/deus-ex-mlflow_artifacts/_data",
+                "Destination": "/mlflow/artifacts"
+              },
+              {
+                "Type": "volume",
+                "Name": "deus-ex-mlflow_backend",
+                "Source": "/data/docker/volumes/deus-ex-mlflow_backend/_data",
+                "Destination": "/mlflow/backend"
+              }
+            ]
+          }
+        ],
+        "unchanged_services": [
+          {
+            "name": "arena-sc35-first-researcher-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-train-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-public-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-private-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-model-gateway-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-researcher-gateway-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-internet-proxy-1",
+            "unchanged": true
+          },
+          {
+            "name": "sc35-first-mlflow-operator-tracking-1",
+            "unchanged": true
+          },
+          {
+            "name": "deus-ex-mlflow-tracking-1",
+            "unchanged": true
+          }
+        ],
+        "monitor": {
+          "flush_mtime_ns": 1793347581481579738,
+          "flush_age_seconds": 4.0,
+          "progress_mtime_ns": 1793344576549872415,
+          "progress_age_seconds": 3008.9,
+          "progress": {
+            "status": "running",
+            "run_id": "17963c40-1367-4651-bc2b-fbbe5aa35e9e",
+            "container_status": "running"
+          },
+          "queues": [
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 0,
+              "saved_entries": {
+                "exported": 22
+              }
+            },
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 1,
+              "saved_entries": {
+                "exported": 7,
+                "tracking_pending": 1
+              }
+            },
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 2,
+              "saved_entries": {}
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 3,
+              "saved_entries": {
+                "exported": 22
+              }
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 4,
+              "saved_entries": {
+                "exported": 8
+              }
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 5,
+              "saved_entries": {}
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 6,
+              "saved_entries": {}
+            }
+          ]
+        },
+        "memory": {
+          "arena-sc35-first-research-monitor-1": {
+            "current_bytes": 2614444032,
+            "peak_bytes": 3650981888,
+            "limit_bytes": 4294967296,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          },
+          "sc35-first-mlflow-shared-tracking-1": {
+            "current_bytes": 2725625856,
+            "peak_bytes": 2937974784,
+            "limit_bytes": 4294967296,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          },
+          "sc35-first-mlflow-operator-tracking-1": {
+            "current_bytes": 4046848,
+            "peak_bytes": 6905856,
+            "limit_bytes": 134217728,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          }
+        },
+        "shared_health_http": 200,
+        "tracking_health": {
+          "shared-tracking": 200,
+          "operator-tracking": 200
+        }
+      },
+      {
+        "utc": "2026-10-30T08:13:15.816729+00:00",
+        "containers": [
+          {
+            "name": "arena-sc35-first-researcher-1",
+            "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+            "image": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+            "started": "2026-10-28T08:17:41.865161515Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-research-monitor-1",
+            "id": "cc8d1d5888d8804fac6282a9055e7c39460884b6a1edb967318558b4231e3b90",
+            "image": "sha256:705dee0e97b7324b61286e667e38fa3a4639a0584bfe047826341590073bbef9",
+            "started": "2026-10-30T07:16:15.368837802Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-train-evaluator-1",
+            "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:39.148688222Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-public-evaluator-1",
+            "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:40:10.655461749Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-private-evaluator-1",
+            "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:40:10.654490509Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-model-gateway-1",
+            "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:07.748582329Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-researcher-gateway-1",
+            "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:07.748019605Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-internet-proxy-1",
+            "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+            "image": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+            "started": "2026-10-28T07:39:07.747383198Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "sc35-first-mlflow-shared-tracking-1",
+            "id": "a8b2ae26bce370ab1a9d337b94e4ef7ad5fa42c2ed60f34b2ba16d297178e869",
+            "image": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38",
+            "started": "2026-10-29T08:47:47.236333036Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": [
+              {
+                "Type": "volume",
+                "Name": "sc35-first-mlflow-shared-backend",
+                "Source": "/data/docker/volumes/sc35-first-mlflow-shared-backend/_data",
+                "Destination": "/mlflow/backend"
+              },
+              {
+                "Type": "volume",
+                "Name": "sc35-first-mlflow-shared-artifacts",
+                "Source": "/data/docker/volumes/sc35-first-mlflow-shared-artifacts/_data",
+                "Destination": "/mlflow/artifacts"
+              }
+            ]
+          },
+          {
+            "name": "sc35-first-mlflow-operator-tracking-1",
+            "id": "cf837a98494afaf5c55f03f127461a0c6e2138ed3e3028a3c0edd9d1b82f55bb",
+            "image": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+            "started": "2026-10-28T15:46:47.895769318Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": [
+              {
+                "Type": "bind",
+                "Name": null,
+                "Source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/deploy/mlflow/operator-nginx.conf",
+                "Destination": "/etc/nginx/nginx.conf"
+              }
+            ]
+          },
+          {
+            "name": "deus-ex-mlflow-tracking-1",
+            "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+            "image": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+            "started": "2026-10-05T13:01:36.158459624Z",
+            "finished": "2026-10-05T13:01:35.908234227Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": [
+              {
+                "Type": "volume",
+                "Name": "deus-ex-mlflow_artifacts",
+                "Source": "/data/docker/volumes/deus-ex-mlflow_artifacts/_data",
+                "Destination": "/mlflow/artifacts"
+              },
+              {
+                "Type": "volume",
+                "Name": "deus-ex-mlflow_backend",
+                "Source": "/data/docker/volumes/deus-ex-mlflow_backend/_data",
+                "Destination": "/mlflow/backend"
+              }
+            ]
+          }
+        ],
+        "unchanged_services": [
+          {
+            "name": "arena-sc35-first-researcher-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-train-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-public-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-private-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-model-gateway-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-researcher-gateway-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-internet-proxy-1",
+            "unchanged": true
+          },
+          {
+            "name": "sc35-first-mlflow-operator-tracking-1",
+            "unchanged": true
+          },
+          {
+            "name": "deus-ex-mlflow-tracking-1",
+            "unchanged": true
+          }
+        ],
+        "monitor": {
+          "flush_mtime_ns": 1793347985601793242,
+          "flush_age_seconds": 10.5,
+          "progress_mtime_ns": 1793347641510350861,
+          "progress_age_seconds": 354.6,
+          "progress": {
+            "status": "running",
+            "run_id": "17963c40-1367-4651-bc2b-fbbe5aa35e9e",
+            "container_status": "running"
+          },
+          "queues": [
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 0,
+              "saved_entries": {
+                "exported": 22
+              }
+            },
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 1,
+              "saved_entries": {
+                "exported": 8
+              }
+            },
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 2,
+              "saved_entries": {}
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 3,
+              "saved_entries": {
+                "exported": 22
+              }
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 4,
+              "saved_entries": {
+                "exported": 8
+              }
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 5,
+              "saved_entries": {}
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 6,
+              "saved_entries": {}
+            }
+          ]
+        },
+        "memory": {
+          "arena-sc35-first-research-monitor-1": {
+            "current_bytes": 2937036800,
+            "peak_bytes": 4250472448,
+            "limit_bytes": 4294967296,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          },
+          "sc35-first-mlflow-shared-tracking-1": {
+            "current_bytes": 2692685824,
+            "peak_bytes": 2937974784,
+            "limit_bytes": 4294967296,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          },
+          "sc35-first-mlflow-operator-tracking-1": {
+            "current_bytes": 3829760,
+            "peak_bytes": 6905856,
+            "limit_bytes": 134217728,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          }
+        },
+        "shared_health_http": 200,
+        "tracking_health": {
+          "shared-tracking": 200,
+          "operator-tracking": 200
+        }
+      }
+    ]
+  },
+  "ack_phase_unchanged_services": [
+    {
+      "name": "arena-sc35-first-researcher-1",
+      "unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-train-evaluator-1",
+      "unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-public-evaluator-1",
+      "unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-private-evaluator-1",
+      "unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-model-gateway-1",
+      "unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-researcher-gateway-1",
+      "unchanged": true
+    },
+    {
+      "name": "arena-sc35-first-internet-proxy-1",
+      "unchanged": true
+    },
+    {
+      "name": "sc35-first-mlflow-shared-tracking-1",
+      "unchanged": true
+    },
+    {
+      "name": "sc35-first-mlflow-operator-tracking-1",
+      "unchanged": true
+    },
+    {
+      "name": "deus-ex-mlflow-tracking-1",
+      "unchanged": true
+    }
+  ]
+}

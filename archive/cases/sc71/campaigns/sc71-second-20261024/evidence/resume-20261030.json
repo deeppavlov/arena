@@ -1,0 +1,69 @@
+{
+  "run_id": "ba2b9086-12f2-435d-babd-43d159c14b80",
+  "container_id": "31e6d07a23d267bd61956b9cd89ec0877d48e8d814aa4c9c25901165443d8677",
+  "closed": false,
+  "active_requests": 1,
+  "attempts": 8,
+  "calls": [
+    {
+      "status": "OK",
+      "http_status": 200,
+      "attempt": 1,
+      "start_time_ns": 1793353243001934022,
+      "end_time_ns": 1793353244826296095
+    },
+    {
+      "status": "OK",
+      "http_status": 200,
+      "attempt": 1,
+      "start_time_ns": 1793353249954540450,
+      "end_time_ns": 1793353257195606016
+    },
+    {
+      "status": "OK",
+      "http_status": 200,
+      "attempt": 1,
+      "start_time_ns": 1793353246269800229,
+      "end_time_ns": 1793353248474113982
+    },
+    {
+      "status": "OK",
+      "http_status": 200,
+      "attempt": 1,
+      "start_time_ns": 1793353239370354832,
+      "end_time_ns": 1793353241971702273
+    },
+    {
+      "status": "OK",
+      "http_status": 200,
+      "attempt": 1,
+      "start_time_ns": 1793353257431515681,
+      "end_time_ns": 1793353258993081234
+    },
+    {
+      "status": "OK",
+      "http_status": 200,
+      "attempt": 1,
+      "start_time_ns": 1793353248689003259,
+      "end_time_ns": 1793353249761350399
+    },
+    {
+      "status": "OK",
+      "http_status": 200,
+      "attempt": 1,
+      "start_time_ns": 1793353245196285461,
+      "end_time_ns": 1793353246109538158
+    }
+  ],
+  "max_messages": 10000,
+  "retry_delays": [
+    30.0,
+    90.0,
+    240.0,
+    540.0,
+    900.0
+  ],
+  "researcher_status": "running",
+  "started_at": "2026-10-30T09:40:28.891783032Z",
+  "exit_code": 0
+}

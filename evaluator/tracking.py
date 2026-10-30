@@ -9,9 +9,11 @@ import re
 from contextlib import contextmanager
 from pathlib import Path
 from threading import RLock
-from typing import Any
+from typing import Any, BinaryIO, cast
 from urllib.parse import urlsplit
 from uuid import uuid4
+
+from evaluator.tracking_artifacts import _write_json, log_json_artifact, read_json_artifact
 
 _PUBLIC_PARAMS = {
     "campaign_id", "case_id", "candidate_id", "candidate_digest", "revision", "parent_ids",
@@ -24,6 +26,46 @@ _SECRET_KEY = re.compile(
     re.IGNORECASE,
 )
 _EXPORT_LOCK = RLock()
+MAX_TRACE_BYTES = 1024 * 1024
+MAX_TRACE_CALLS = 64
+
+
+class _SizeLimit(Exception):
+    pass
+
+
+class _SizeCounter:
+    def __init__(self, limit: int):
+        self.limit = limit
+        self.size = 0
+
+    def write(self, value: bytes) -> int:
+        self.size += len(value)
+        if self.size > self.limit:
+            raise _SizeLimit
+        return len(value)
+
+
+def _large_json(value: Any, limit: int = MAX_TRACE_BYTES) -> bool:
+    try:
+        _write_json(cast(BinaryIO, _SizeCounter(limit)), value)
+        return False
+    except _SizeLimit:
+        return True
+
+
+def _parameters(params: dict[str, Any]) -> dict[str, Any]:
+    result = {}
+    for key, value in params.items():
+        if value is None:
+            continue
+        pointer = str(key).replace("~", "~0").replace("/", "~1")
+        if _large_json(value, 6000):
+            result[key] = f"artifact://record.json#/params/{pointer}"
+        else:
+            result[key] = json.dumps(value, ensure_ascii=False) \
+                if isinstance(value, (dict, list)) else value
+    return result
 
 
 def redact(value: Any, *, secrets: tuple[str, ...] = ()) -> Any:
@@ -158,16 +200,21 @@ def _credentials(operator: bool):
 @contextmanager
 def _tracking_uri(mlflow: Any, uri: str):
     previous_uri = mlflow.get_tracking_uri()
-    previous_environment = os.environ.get("MLFLOW_TRACKING_URI")
+    previous_environment = {
+        key: os.environ.get(key)
+        for key in ("MLFLOW_TRACKING_URI", "MLFLOW_TRACE_EXTRACT_ATTACHMENTS")
+    }
     try:
+        os.environ["MLFLOW_TRACE_EXTRACT_ATTACHMENTS"] = "false"
         mlflow.set_tracking_uri(uri)
         yield
     finally:
         mlflow.set_tracking_uri(previous_uri)
-        if previous_environment is None:
-            os.environ.pop("MLFLOW_TRACKING_URI", None)
-        else:
-            os.environ["MLFLOW_TRACKING_URI"] = previous_environment
+        for key, value in previous_environment.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 def _publish(record: dict[str, Any], uri: str, export_id: str, operator: bool) -> str:
@@ -196,10 +243,12 @@ def _publish(record: dict[str, Any], uri: str, export_id: str, operator: bool) -
                 "arena_visibility": "operator" if operator else "shared",
                 "arena_execution_status": record["status"], "arena_export_complete": "false",
             }, synchronous=True)
+            params = _parameters(record["params"])
+            existing_params = getattr(existing[0].data, "params", {}) if existing else {}
             mlflow.log_params({
-                key: (json.dumps(value, ensure_ascii=False)
-                      if isinstance(value, (dict, list)) else value)
-                for key, value in record["params"].items() if value is not None
+                key: value for key, value in params.items()
+                if not (key in existing_params and isinstance(value, str)
+                        and value.startswith("artifact://record.json#/params/"))
             }, synchronous=True)
             mlflow.log_metrics({
                 key: value for key, value in record["metrics"].items()
@@ -210,18 +259,29 @@ def _publish(record: dict[str, Any], uri: str, export_id: str, operator: bool) -
                 artifact["call_artifacts"] = [
                     f"calls/{Path(path).name}" for path in record["call_files"]
                 ]
-            mlflow.log_dict(artifact, "record.json")
+            log_json_artifact(mlflow, client, run_id, artifact, "record.json")
             _publish_call_files(mlflow, client, record, experiment_id, run_id, export_id, secrets)
             if record.get("calls"):
-                traces = client.search_traces(
-                    locations=[experiment_id], run_id=run_id, max_results=1,
-                )
-                if not traces:
-                    _spans(mlflow, record, run_id)
-                    if not client.search_traces(
+                if len(record["calls"]) > MAX_TRACE_CALLS or _large_json({
+                    key: record[key] for key in ("calls", "params", "metrics")
+                }):
+                    for index, call in enumerate(_ordered_calls(record["calls"])):
+                        _publish_call(
+                            mlflow, client, record, experiment_id, run_id, export_id, secrets,
+                            index, call, f"calls/inline-{index:08d}.json",
+                        )
+                else:
+                    traces = client.search_traces(
                         locations=[experiment_id], run_id=run_id, max_results=1,
-                    ):
-                        raise RuntimeError("Exported trace is not available from tracking server")
+                    )
+                    if not traces:
+                        _spans(mlflow, record, run_id)
+                        if not client.search_traces(
+                            locations=[experiment_id], run_id=run_id, max_results=1,
+                        ):
+                            raise RuntimeError(
+                                "Exported trace is not available from tracking server",
+                            )
         client.set_terminated(run_id, status=record["status"])
         client.set_tag(run_id, "arena_export_complete", "true", synchronous=True)
         return run_id
@@ -234,39 +294,142 @@ def _publish_call_files(
     for index, filename in enumerate(record.get("call_files", [])):
         path = Path(filename)
         call = redact(json.loads(path.read_text(encoding="utf-8")), secrets=secrets)
-        call_id = hashlib.sha256(f"{export_id}:{index}".encode()).hexdigest()
-        query = {
-            "locations": [experiment_id], "run_id": run_id, "max_results": 1,
-            "filter_string": f"tag.arena_call_id = '{call_id}'", "include_spans": True,
-        }
-        if _call_trace_available(client, query, call["name"], secrets=secrets):
-            continue
-        mlflow.log_dict(call, f"calls/{path.name}")
-        span = mlflow.start_span_no_context(
-            call["name"], span_type=call.get("span_type", "UNKNOWN"),
-            inputs=call.get("inputs"), attributes={
-                **call.get("attributes", {}), "run_id": run_id,
-                "source_span_id": call.get("span_id"), "source_parent_id": call.get("parent_id"),
-            },
-            tags={"arena_call_id": call_id}, experiment_id=experiment_id,
-            start_time_ns=call.get("start_time_ns", record["start_time_ns"]),
+        _publish_call(
+            mlflow, client, record, experiment_id, run_id, export_id, secrets,
+            index, call, f"calls/{path.name}",
         )
-        span.end(
-            outputs=call.get("outputs"), status=call.get("status", "OK"),
-            end_time_ns=call.get("end_time_ns", record["end_time_ns"]),
+
+
+def _call_payload(call: dict[str, Any], run_id: str, artifact_path: str) -> dict[str, Any]:
+    attributes = {
+        **call.get("attributes", {}), "run_id": run_id,
+        "source_span_id": call.get("span_id"), "source_parent_id": call.get("parent_id"),
+    }
+    payload = {"name": call["name"], "inputs": call.get("inputs"),
+               "outputs": call.get("outputs"), "attributes": attributes}
+    if not _large_json(payload):
+        return payload
+    reference = {"arena_artifact": artifact_path}
+    attributes = {"run_id": run_id, "arena_artifact": artifact_path,
+                  "arena_payload_format": "json-artifact-v1"}
+    for key, value, pointer in (
+        ("source_span_id", call.get("span_id"), "span_id"),
+        ("source_parent_id", call.get("parent_id"), "parent_id"),
+        ("role", call.get("attributes", {}).get("role"), "attributes/role"),
+    ):
+        if value is not None:
+            attributes[key] = f"artifact://{artifact_path}#/{pointer}" \
+                if _large_json(value, MAX_TRACE_BYTES // 16) else value
+    name = call["name"]
+    if _large_json(name, MAX_TRACE_BYTES // 16):
+        name = "artifact_call"
+        attributes["source_name_artifact"] = f"artifact://{artifact_path}#/name"
+    return {"name": name, "inputs": reference, "outputs": reference, "attributes": attributes}
+
+
+def _publish_call(
+    mlflow: Any, client: Any, record: dict[str, Any], experiment_id: str, run_id: str,
+    export_id: str, secrets: tuple[str, ...], index: int, call: dict[str, Any], artifact_path: str,
+) -> None:
+    call_id = hashlib.sha256(f"{export_id}:{index}".encode()).hexdigest()
+    query = {"locations": [experiment_id], "run_id": run_id, "max_results": 1,
+             "filter_string": f"tag.arena_call_id = '{call_id}'", "include_spans": True}
+    payload = _call_payload(call, run_id, artifact_path)
+    tags = {"arena_call_id": call_id}
+    if payload["attributes"].get("arena_payload_format") == "json-artifact-v1":
+        query["filter_string"] += " AND tag.arena_payload_format = 'json-artifact-v1'"
+        tags["arena_payload_format"] = "json-artifact-v1"
+    expected = {"payload": payload, "call": call, "artifact_path": artifact_path, "run_id": run_id}
+    if _call_trace_available(client, query, payload["name"], secrets=secrets, expected=expected):
+        return
+    log_json_artifact(mlflow, client, run_id, call, artifact_path)
+    span = mlflow.start_span_no_context(
+        payload["name"], span_type=call.get("span_type", "UNKNOWN"),
+        inputs=payload["inputs"], attributes=payload["attributes"],
+        tags=tags, experiment_id=experiment_id,
+        start_time_ns=call.get("start_time_ns", record["start_time_ns"]),
+    )
+    span.end(
+        outputs=payload["outputs"], status=call.get("status", "OK"),
+        end_time_ns=call.get("end_time_ns", record["end_time_ns"]),
+    )
+    mlflow.flush_trace_async_logging()
+    if not _call_trace_available(
+        client, query, payload["name"], secrets=secrets, expected=expected,
+    ):
+        raise RuntimeError("Exported call trace is not available from tracking server")
+
+
+def _span_value(value: Any) -> Any:
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+        except ValueError:
+            return value
+        if isinstance(decoded, (str, dict, list)):
+            return decoded
+    return value
+
+
+def _json_equal(left: Any, right: Any) -> bool:
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return left.keys() == right.keys() and all(
+            _json_equal(value, right[key]) for key, value in left.items()
         )
-        mlflow.flush_trace_async_logging()
-        if not _call_trace_available(client, query, call["name"], secrets=secrets):
-            raise RuntimeError("Exported call trace is not available from tracking server")
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _json_equal(first, second) for first, second in zip(left, right, strict=True)
+        )
+    return left == right
 
 
 def _call_trace_available(
     client: Any, query: dict[str, Any], name: str, *, secrets: tuple[str, ...] = (),
+    expected: dict[str, Any] | None = None,
 ) -> bool:
+    payload = expected["payload"] if expected is not None else {}
+    normalized = {
+        key: _span_value(payload[key]) for key in ("inputs", "outputs")
+    } if expected is not None else {}
+    normalized_attributes = {
+        key: _span_value(value) for key, value in payload.get("attributes", {}).items()
+    }
+    artifact_required = (
+        any(not _json_equal(value, payload[key]) for key, value in normalized.items())
+        or not _json_equal(normalized_attributes, payload.get("attributes", {}))
+        or payload.get("attributes", {}).get("arena_payload_format") == "json-artifact-v1"
+    )
     while True:
         traces = client.search_traces(**query)
-        if any(len(trace.data.spans) == 1
-               and redact(trace.data.spans[0].name, secrets=secrets) == name for trace in traces):
+        for trace in traces:
+            if len(trace.data.spans) != 1:
+                continue
+            span = trace.data.spans[0]
+            if redact(span.name, secrets=secrets) != name:
+                continue
+            if expected is not None:
+                received = {
+                    key: redact(getattr(span, key, None), secrets=secrets) for key in normalized
+                }
+                if any(not (
+                    _json_equal(received[key], payload[key])
+                    or _json_equal(received[key], redact(value, secrets=secrets))
+                ) for key, value in normalized.items()):
+                    continue
+                attributes = redact(getattr(span, "attributes", {}), secrets=secrets)
+                if any(not (
+                    _json_equal(attributes.get(key), payload["attributes"][key])
+                    or _json_equal(attributes.get(key), redact(value, secrets=secrets))
+                ) for key, value in normalized_attributes.items() if value is not None):
+                    continue
+                if artifact_required:
+                    stored = read_json_artifact(
+                        client, expected["run_id"], expected["artifact_path"],
+                    )
+                    if not _json_equal(redact(stored, secrets=secrets), expected["call"]):
+                        continue
             return True
         token = getattr(traces, "token", None)
         if not token:
@@ -368,7 +531,8 @@ def _export(path: Path, entry: dict[str, Any]) -> dict[str, str]:
 
 
 def export_record(
-    record_path: Path, queue_dir: Path | None = None, *, operator: bool = False,
+    record_path: Path, queue_dir: Path | None = None, *,
+    operator: bool = False, defer: bool = False,
 ) -> dict[str, str]:
     uri = _destination(operator)
     record = sanitize_record(json.loads(record_path.read_text(encoding="utf-8")), operator=operator)
@@ -387,6 +551,8 @@ def export_record(
                 "status": "tracking_pending",
             }
             _save(path, entry)
+        if defer and entry["status"] != "exported":
+            return {"status": "tracking_pending"}
         return _export(path, entry)
 
 
@@ -399,6 +565,9 @@ def export_configured(
         raise ValueError("Unknown tracking split")
     directory = queue_dir if queue_dir is not None else record_path.parent / ".tracking"
     with _EXPORT_LOCK:
+        delivery = os.getenv("ARENA_TRACKING_DELIVERY", "inline")
+        if delivery not in {"inline", "queued"}:
+            raise ValueError("Tracking delivery must be inline or queued")
         configured = {
             "shared": bool(os.getenv("MLFLOW_TRACKING_URI", "").strip()),
             "operator": bool(os.getenv("ARENA_OPERATOR_MLFLOW_TRACKING_URI", "").strip()),
@@ -408,7 +577,9 @@ def export_configured(
     results = {}
     for name, operator in (("shared", False), ("operator", True)):
         if configured[name] and (split != "private" or operator):
-            results[name] = export_record(record_path, directory / name, operator=operator)
+            results[name] = export_record(
+                record_path, directory / name, operator=operator, defer=delivery == "queued",
+            )
     return results
 
 

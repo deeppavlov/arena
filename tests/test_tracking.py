@@ -474,8 +474,12 @@ def test_external_trace_retry_checks_each_call_and_uploads_only_missing_calls(
     client = Mock()
     client.get_experiment_by_name.return_value = SimpleNamespace(experiment_id="experiment-one")
     client.search_runs.return_value = [run]
-    first = SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name="model-0")]))
-    second = SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name="model-1")]))
+    first = SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(
+        name="model-0", inputs="0", outputs=None, attributes={"run_id": "run-one"},
+    )]))
+    second = SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(
+        name="model-1", inputs="1", outputs=None, attributes={"run_id": "run-one"},
+    )]))
     client.search_traces.side_effect = [[], [], [first], [], [second]]
     sdk = MagicMock()
     sdk.MlflowClient.return_value = client
@@ -592,7 +596,10 @@ def test_external_call_artifacts_and_spans_use_current_secrets(
     client.get_experiment_by_name.return_value = SimpleNamespace(experiment_id="experiment-one")
     client.search_runs.return_value = []
     client.search_traces.side_effect = [
-        [], [SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name="model")]))],
+        [], [SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(
+            name="model", inputs={"text": "[REDACTED]"}, outputs="[REDACTED]",
+            attributes={"run_id": "run-one", "note": "[REDACTED]"},
+        )]))],
     ]
     sdk.MlflowClient.side_effect = ConnectionError("offline") if retry else None
     sdk.MlflowClient.return_value = client
@@ -706,7 +713,9 @@ def test_new_secret_does_not_duplicate_previously_delivered_call(
     client = sdk.MlflowClient.return_value
     client.search_runs.return_value = [run]
     client.search_traces.return_value = [
-        SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(name=secret)])),
+        SimpleNamespace(data=SimpleNamespace(spans=[SimpleNamespace(
+            name=secret, inputs="question", outputs=None, attributes={"run_id": "run-one"},
+        )])),
     ]
     monkeypatch.setattr("evaluator.tracking.importlib.import_module", Mock(return_value=sdk))
     assert _publish(value, "http://tracking", "export-one", False) == "run-one"

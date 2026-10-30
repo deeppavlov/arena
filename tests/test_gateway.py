@@ -78,6 +78,33 @@ def test_gateway_forwards_fixed_configuration_and_sanitizes_response() -> None:
     }
 
 
+@pytest.mark.parametrize("message_count", [1001, 10000, 10001])
+def test_gateway_accepts_long_histories_up_to_ten_thousand_messages(message_count: int) -> None:
+    requests: list[httpx.Request] = []
+    messages = [{"role": "user", "content": str(index)} for index in range(message_count)]
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=valid_response())
+
+    app = create_gateway(
+        GatewaySettings(base_url="http://internal-model/v1", model="fixed-model"),
+        transport=httpx.MockTransport(upstream),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions", json={**request_body(), "messages": messages},
+        )
+    if message_count <= 10000:
+        assert response.status_code == 200
+        assert len(requests) == 1
+        assert json.loads(requests[0].content)["messages"] == messages
+    else:
+        assert response.status_code == 400
+        assert response.json() == {"detail": "Invalid model request"}
+        assert requests == []
+
+
 @pytest.mark.parametrize(
     "changes",
     [

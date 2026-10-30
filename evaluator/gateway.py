@@ -185,7 +185,7 @@ class ToolChoice(BaseModel):
 class ModelRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
     model: str
-    messages: list[Message] = Field(min_length=1, max_length=1000)
+    messages: list[Message] = Field(min_length=1, max_length=10000)
     tools: list[ToolDefinition] | None = Field(default=None, min_length=1)
     tool_choice: Literal["none", "auto", "required"] | ToolChoice | None = None
     stream: bool = False

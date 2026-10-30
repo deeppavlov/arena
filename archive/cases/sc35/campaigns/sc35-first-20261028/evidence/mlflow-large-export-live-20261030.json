@@ -1,0 +1,677 @@
+{
+  "observed_date": "2026-10-30",
+  "repair_complete": false,
+  "legacy_verification": {
+    "verified": true,
+    "record_verified": true,
+    "calls_verified": 396,
+    "traces_verified": 396,
+    "reference_traces": 1,
+    "trace_bytes_max": 1060590,
+    "stage": "complete",
+    "queue_bytes": 326098940,
+    "run_id": "6b4a16aa7c4b4ce18d29ffa6be972c53",
+    "calls_expected": 396,
+    "actual_trace_limit_bytes": 8388608,
+    "process_peak_rss_kib": 1567884,
+    "completed_utc": "2026-10-30T06:42:21.208352+00:00",
+    "elapsed_seconds": 102.5
+  },
+  "legacy_initial_verifier_guard_failure": {
+    "verified": false,
+    "record_verified": true,
+    "calls_verified": 274,
+    "traces_verified": 273,
+    "reference_traces": 0,
+    "trace_bytes_max": 931254,
+    "stage": "trace_metadata",
+    "queue_bytes": 326098940,
+    "run_id": "6b4a16aa7c4b4ce18d29ffa6be972c53",
+    "calls_expected": 396,
+    "error_type": "ValueError",
+    "process_peak_rss_kib": 1567508,
+    "completed_utc": "2026-10-29T08:57:41.117492+00:00",
+    "elapsed_seconds": 68.8
+  },
+  "legacy_manifest": {
+    "part_count": 58,
+    "total_bytes": 481606922,
+    "source": "operator metadata observed 2026-10-29T08:51:34Z"
+  },
+  "trace_size_explanation": {
+    "payload_limit_bytes": 1048576,
+    "actual_size_stats_max_bytes": 1060590,
+    "excess_over_payload_limit_bytes": 12014,
+    "reason": "MLflow SDK envelope and repeated JSON escaping; source payload guard remains enforced"
+  },
+  "rollout_stages": [
+    {
+      "utc": "2026-10-29T08:47:43.941882+00:00",
+      "stage": "prepared",
+      "monitor_image": "sha256:15dfb919f2abfac97c2d6f5ac62858150006add16c7270c927309b1a143c1887",
+      "pending_targets": 1
+    },
+    {
+      "utc": "2026-10-29T08:47:44.700911+00:00",
+      "stage": "old_monitor_stopped"
+    },
+    {
+      "utc": "2026-10-29T08:47:45.191039+00:00",
+      "stage": "telemetry_firewall_applied"
+    },
+    {
+      "utc": "2026-10-29T08:47:47.677124+00:00",
+      "stage": "shared_workers_one_started"
+    },
+    {
+      "utc": "2026-10-29T08:47:55.821796+00:00",
+      "stage": "shared_health_ready",
+      "http_status": 200
+    },
+    {
+      "utc": "2026-10-29T08:47:56.472118+00:00",
+      "stage": "new_monitor_started"
+    }
+  ],
+  "infra_overlay": {
+    "image_id": "sha256:426d12236fd225c4818b781b0952ef192950fb36c8706beb07331026cc65ee9c",
+    "firewall_bytes_match": true,
+    "squid_config_unchanged": true,
+    "only_infra_image_env_updated": true,
+    "internet_proxy_recreated": false
+  },
+  "telemetry_isolation": [
+    {
+      "evaluator": "train",
+      "results": [
+        {
+          "target": "172.31.91.20",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.93.20",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.95.2",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.95.3",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.28.0.2",
+          "blocked": true,
+          "error_type": "ConnectTimeout"
+        }
+      ]
+    },
+    {
+      "evaluator": "public",
+      "results": [
+        {
+          "target": "172.31.91.20",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.93.20",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.95.2",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.95.3",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.28.0.2",
+          "blocked": true,
+          "error_type": "ConnectTimeout"
+        }
+      ]
+    },
+    {
+      "evaluator": "private",
+      "results": [
+        {
+          "target": "172.31.91.20",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.93.20",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.95.2",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.31.95.3",
+          "blocked": true,
+          "error_type": "ConnectionError"
+        },
+        {
+          "target": "172.28.0.2",
+          "blocked": true,
+          "error_type": "ConnectTimeout"
+        }
+      ]
+    }
+  ],
+  "fresh_observations": {
+    "complete": false,
+    "samples": [
+      {
+        "utc": "2026-10-30T06:42:31.261125+00:00",
+        "containers": [
+          {
+            "name": "arena-sc35-first-researcher-1",
+            "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+            "image": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+            "started": "2026-10-28T08:17:41.865161515Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-research-monitor-1",
+            "id": "e8986aad9dcae00e472e8d73edd5a083f6fc751141d1d562ad8b31dfcb2252d4",
+            "image": "sha256:15dfb919f2abfac97c2d6f5ac62858150006add16c7270c927309b1a143c1887",
+            "started": "2026-10-29T08:47:56.045301272Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-train-evaluator-1",
+            "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:39.148688222Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-public-evaluator-1",
+            "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:40:10.655461749Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-private-evaluator-1",
+            "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:40:10.654490509Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-model-gateway-1",
+            "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:07.748582329Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-researcher-gateway-1",
+            "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+            "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+            "started": "2026-10-28T07:39:07.748019605Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": []
+          },
+          {
+            "name": "arena-sc35-first-internet-proxy-1",
+            "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+            "image": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+            "started": "2026-10-28T07:39:07.747383198Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": []
+          },
+          {
+            "name": "sc35-first-mlflow-shared-tracking-1",
+            "id": "a8b2ae26bce370ab1a9d337b94e4ef7ad5fa42c2ed60f34b2ba16d297178e869",
+            "image": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38",
+            "started": "2026-10-29T08:47:47.236333036Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": [
+              {
+                "Type": "volume",
+                "Name": "sc35-first-mlflow-shared-backend",
+                "Source": "/data/docker/volumes/sc35-first-mlflow-shared-backend/_data",
+                "Destination": "/mlflow/backend"
+              },
+              {
+                "Type": "volume",
+                "Name": "sc35-first-mlflow-shared-artifacts",
+                "Source": "/data/docker/volumes/sc35-first-mlflow-shared-artifacts/_data",
+                "Destination": "/mlflow/artifacts"
+              }
+            ]
+          },
+          {
+            "name": "sc35-first-mlflow-operator-tracking-1",
+            "id": "cf837a98494afaf5c55f03f127461a0c6e2138ed3e3028a3c0edd9d1b82f55bb",
+            "image": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+            "started": "2026-10-28T15:46:47.895769318Z",
+            "finished": "0001-01-01T00:00:00Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": null,
+            "volumes": [
+              {
+                "Type": "bind",
+                "Name": null,
+                "Source": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/release/deploy/mlflow/operator-nginx.conf",
+                "Destination": "/etc/nginx/nginx.conf"
+              }
+            ]
+          },
+          {
+            "name": "deus-ex-mlflow-tracking-1",
+            "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+            "image": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+            "started": "2026-10-05T13:01:36.158459624Z",
+            "finished": "2026-10-05T13:01:35.908234227Z",
+            "restarts": 0,
+            "oom": false,
+            "status": "running",
+            "exit_code": 0,
+            "health": "healthy",
+            "volumes": [
+              {
+                "Type": "volume",
+                "Name": "deus-ex-mlflow_artifacts",
+                "Source": "/data/docker/volumes/deus-ex-mlflow_artifacts/_data",
+                "Destination": "/mlflow/artifacts"
+              },
+              {
+                "Type": "volume",
+                "Name": "deus-ex-mlflow_backend",
+                "Source": "/data/docker/volumes/deus-ex-mlflow_backend/_data",
+                "Destination": "/mlflow/backend"
+              }
+            ]
+          }
+        ],
+        "unchanged_services": [
+          {
+            "name": "arena-sc35-first-researcher-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-train-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-public-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-private-evaluator-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-model-gateway-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-researcher-gateway-1",
+            "unchanged": true
+          },
+          {
+            "name": "arena-sc35-first-internet-proxy-1",
+            "unchanged": true
+          },
+          {
+            "name": "sc35-first-mlflow-operator-tracking-1",
+            "unchanged": true
+          },
+          {
+            "name": "deus-ex-mlflow-tracking-1",
+            "unchanged": true
+          }
+        ],
+        "monitor": {
+          "flush_mtime_ns": 1793342279402980304,
+          "flush_age_seconds": 272.1,
+          "progress_mtime_ns": 1793342339431701053,
+          "progress_age_seconds": 212.1,
+          "progress": {
+            "status": "running",
+            "run_id": "17963c40-1367-4651-bc2b-fbbe5aa35e9e",
+            "container_status": "running"
+          },
+          "queues": [
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 7,
+              "index": 0,
+              "saved_entries": {
+                "tracking_pending": 7,
+                "exported": 14
+              }
+            },
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 1,
+              "saved_entries": {
+                "exported": 7
+              }
+            },
+            {
+              "operator": false,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 2,
+              "saved_entries": {}
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 7,
+              "index": 3,
+              "saved_entries": {
+                "exported": 14,
+                "tracking_pending": 7
+              }
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 4,
+              "saved_entries": {
+                "exported": 7
+              }
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 5,
+              "saved_entries": {}
+            },
+            {
+              "operator": true,
+              "status": "ok",
+              "errors": 0,
+              "pending": 0,
+              "index": 6,
+              "saved_entries": {}
+            }
+          ]
+        },
+        "memory": {
+          "arena-sc35-first-research-monitor-1": {
+            "current_bytes": 3113082880,
+            "peak_bytes": 4294971392,
+            "limit_bytes": 4294967296,
+            "failcnt": 3606695,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          },
+          "sc35-first-mlflow-shared-tracking-1": {
+            "current_bytes": 1317548032,
+            "peak_bytes": 1322622976,
+            "limit_bytes": 4294967296,
+            "failcnt": 0,
+            "oom_control": {
+              "oom_kill_disable": 0,
+              "under_oom": 0,
+              "oom_kill": 0
+            }
+          },
+          "sc35-first-mlflow-operator-tracking-1": {
+            "error": "container_command_failed",
+            "exit_code": 127
+          }
+        },
+        "shared_health_http": 200,
+        "tracking_health": {
+          "shared-tracking": 200,
+          "operator-tracking": 200
+        }
+      }
+    ]
+  },
+  "new_issue": {
+    "split": "train",
+    "pending_shared": 7,
+    "pending_operator": 7,
+    "exact_error_code_match": "Exported call trace is not available from tracking server",
+    "classification": "per-call readback acknowledgement failed",
+    "http413_observed_in_pending_errors": false,
+    "status": "fix_pending",
+    "structural_diagnostic": {
+      "completed": true,
+      "mismatch_found": true,
+      "calls_inspected": 1,
+      "stage": "complete",
+      "queue_bytes": 51590924,
+      "queue_exported": false,
+      "operator": false,
+      "attempts": 67,
+      "environment_secret_values_present": false,
+      "experiment_exists": true,
+      "run_exists": true,
+      "server_export_complete": false,
+      "calls_total": 227,
+      "call_artifacts_count": 1,
+      "last_call": {
+        "call_index": 0,
+        "artifact_exists": true,
+        "artifact_equal": true,
+        "artifact_raw_equal": true,
+        "reference_payload": false,
+        "metadata_count": 66,
+        "trace_count": 66,
+        "trace_bytes_max": 216978,
+        "metadata_size_present": true,
+        "metadata_span_count_present": true,
+        "span_count": 1,
+        "comparison": {
+          "name": {
+            "expected_json_decode_valid": false,
+            "decoded_expected_shape": null,
+            "decoded_expected_equal_raw": false,
+            "decoded_expected_equal_redacted": false,
+            "equal_raw": true,
+            "equal_redacted": true,
+            "redaction_changed": false,
+            "expected": {
+              "type": "str",
+              "length": 6
+            },
+            "actual": {
+              "type": "str",
+              "length": 6
+            },
+            "redacted": {
+              "type": "str",
+              "length": 6
+            },
+            "first_difference": null
+          },
+          "inputs": {
+            "expected_json_decode_valid": true,
+            "decoded_expected_shape": {
+              "type": "dict",
+              "length": 4
+            },
+            "decoded_expected_equal_raw": true,
+            "decoded_expected_equal_redacted": true,
+            "equal_raw": false,
+            "equal_redacted": false,
+            "redaction_changed": false,
+            "expected": {
+              "type": "str",
+              "length": 146586
+            },
+            "actual": {
+              "type": "dict",
+              "length": 4
+            },
+            "redacted": {
+              "type": "dict",
+              "length": 4
+            },
+            "first_difference": {
+              "expected": {
+                "type": "str",
+                "length": 146586
+              },
+              "actual": {
+                "type": "dict",
+                "length": 4
+              }
+            }
+          },
+          "outputs": {
+            "expected_json_decode_valid": true,
+            "decoded_expected_shape": {
+              "type": "dict",
+              "length": 24
+            },
+            "decoded_expected_equal_raw": true,
+            "decoded_expected_equal_redacted": true,
+            "equal_raw": false,
+            "equal_redacted": false,
+            "redaction_changed": false,
+            "expected": {
+              "type": "str",
+              "length": 50317
+            },
+            "actual": {
+              "type": "dict",
+              "length": 24
+            },
+            "redacted": {
+              "type": "dict",
+              "length": 24
+            },
+            "first_difference": {
+              "expected": {
+                "type": "str",
+                "length": 50317
+              },
+              "actual": {
+                "type": "dict",
+                "length": 24
+              }
+            }
+          },
+          "attributes": {
+            "expected_count": 5,
+            "actual_count": 12,
+            "mismatch_count": 0,
+            "mismatches": []
+          }
+        },
+        "current_available": false
+      },
+      "process_peak_rss_kib": 234156
+    },
+    "cause": "MLflow parses JSON-encoded string inputs and outputs into objects; exact raw-type acknowledgement rejects matching content.",
+    "memory_snapshot": {
+      "observed_utc": "2026-10-30T06:45:21Z",
+      "cgroup_rss_bytes": 350949376,
+      "cgroup_cache_bytes": 2697105408,
+      "swap_bytes": 0,
+      "monitor_rss_kib": 352876,
+      "monitor_pss_kib": 335360,
+      "monitor_anonymous_kib": 333960,
+      "oom_kills": 0
+    }
+  },
+  "scope": {
+    "new_model_requests": 0,
+    "restarted_campaign_services": false,
+    "reexported_completed_legacy_run": false
+  },
+  "campaign_progress": {
+    "observed_utc": "2026-10-30T06:43:18.755026+00:00",
+    "max_solutions": 100,
+    "proposed": 21,
+    "completed_measurements": 28,
+    "running_measurements": 2,
+    "stopped": false,
+    "finalized": false
+  },
+  "observed_stage": "historical snapshot before ACK repair; see completion evidence",
+  "completion_evidence": "mlflow-ack-live-20261030.json",
+  "subsequent_async_delivery_evidence": "mlflow-async-delivery-final-20261030.json"
+}

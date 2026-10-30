@@ -1,0 +1,442 @@
+{
+  "case_id": "sc35",
+  "campaign_id": "sc35-first-20261028",
+  "stage": "before repair",
+  "repository_revision": "b2e8715",
+  "containers": {
+    "observed_utc": "2026-10-29T08:05:24.858004+00:00",
+    "containers": [
+      {
+        "name": "arena-sc35-first-researcher-1",
+        "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+        "image_id": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+        "started": "2026-10-28T08:17:41.865161515Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 34359738368
+      },
+      {
+        "name": "arena-sc35-first-research-monitor-1",
+        "id": "71e1f22cc9f67522d907f0f9a7be51ece050f09a3247bd90141ec61433132851",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.746631349Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-train-evaluator-1",
+        "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:39.148688222Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-public-evaluator-1",
+        "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:40:10.655461749Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-private-evaluator-1",
+        "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:40:10.654490509Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-model-gateway-1",
+        "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.748582329Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-researcher-gateway-1",
+        "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+        "image_id": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+        "started": "2026-10-28T07:39:07.748019605Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "arena-sc35-first-internet-proxy-1",
+        "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+        "image_id": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+        "started": "2026-10-28T07:39:07.747383198Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "sc35-first-mlflow-shared-tracking-1",
+        "id": "ae7a55f95cbfbc3885f7a2895e680fb623f1562d139aba76069cbdb16d2fc1c7",
+        "image_id": "sha256:9505f17c4a0596283d695527187cd574192c2ad9a056f3b66d6ba65f3c60da38",
+        "started": "2026-10-28T07:39:06.981400681Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": true,
+        "health": null,
+        "memory_limit": 4294967296
+      },
+      {
+        "name": "sc35-first-mlflow-operator-tracking-1",
+        "id": "cf837a98494afaf5c55f03f127461a0c6e2138ed3e3028a3c0edd9d1b82f55bb",
+        "image_id": "sha256:dc73b49f5124cf2ee538dfbdfbd121f0b4ccdcb20fea30f3a81bd477c02e2bb5",
+        "started": "2026-10-28T15:46:47.895769318Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": null,
+        "memory_limit": 134217728
+      },
+      {
+        "name": "deus-ex-mlflow-tracking-1",
+        "id": "c24aff9ca70a19414a9788747ba7f66e9438c4415213c89cf1856f05c7192e45",
+        "image_id": "sha256:512e48370a8d766fd6ab7237aa1ee12a5d7b59c4b8b812fd71a2f7d159f83d18",
+        "started": "2026-10-05T13:01:36.158459624Z",
+        "status": "running",
+        "restarts": 0,
+        "oom": false,
+        "health": "healthy",
+        "memory_limit": 0
+      }
+    ]
+  },
+  "host_capacity": {
+    "host_memory": {
+      "MemTotal_kib": 263998396,
+      "MemAvailable_kib": 173130360,
+      "SwapTotal_kib": 0,
+      "SwapFree_kib": 0
+    },
+    "disk": {
+      "docker": {
+        "total_bytes": 3779300532224,
+        "available_bytes": 1492950937600
+      },
+      "installation": {
+        "total_bytes": 28138935418880,
+        "available_bytes": 12469414133760
+      }
+    }
+  },
+  "shared_memory_and_processes": {
+    "shared_cgroup": {
+      "memory.usage_in_bytes": 2953322496,
+      "memory.max_usage_in_bytes": 4295053312,
+      "memory.limit_in_bytes": 4294967296,
+      "memory.failcnt": 310743,
+      "memory.oom_control": {
+        "oom_kill_disable": 0,
+        "under_oom": 0,
+        "oom_kill": 7
+      },
+      "memory.stat": {
+        "cache": 208416768,
+        "rss": 2719191040,
+        "rss_huge": 0,
+        "shmem": 4096,
+        "mapped_file": 4521984,
+        "dirty": 0,
+        "writeback": 0,
+        "swap": 0,
+        "pgpgin": 12673169,
+        "pgpgout": 11958402,
+        "pgfault": 16455315,
+        "pgmajfault": 1264,
+        "inactive_anon": 2719145984,
+        "active_anon": 36864,
+        "inactive_file": 208240640,
+        "active_file": 172032,
+        "unevictable": 0,
+        "hierarchical_memory_limit": 4294967296,
+        "hierarchical_memsw_limit": 8589934592,
+        "total_cache": 208416768,
+        "total_rss": 2719191040,
+        "total_rss_huge": 0,
+        "total_shmem": 4096,
+        "total_mapped_file": 4521984,
+        "total_dirty": 0,
+        "total_writeback": 0,
+        "total_swap": 0,
+        "total_pgpgin": 12673169,
+        "total_pgpgout": 11958402,
+        "total_pgfault": 16455315,
+        "total_pgmajfault": 1264,
+        "total_inactive_anon": 2719145984,
+        "total_active_anon": 36864,
+        "total_inactive_file": 208240640,
+        "total_active_file": 172032,
+        "total_unevictable": 0
+      }
+    },
+    "tmpfs_used_bytes": 4096,
+    "tmpfs_total_bytes": 135167176704,
+    "processes": [
+      {
+        "pid": 1,
+        "ppid": 0,
+        "name": "mlflow",
+        "rss_kib": 247808,
+        "workers_flag": [],
+        "is_uvicorn": false,
+        "is_mlflow": true
+      },
+      {
+        "pid": 50,
+        "ppid": 1,
+        "name": "python3.11",
+        "rss_kib": 29192,
+        "workers_flag": [
+          4
+        ],
+        "is_uvicorn": true,
+        "is_mlflow": true
+      },
+      {
+        "pid": 51,
+        "ppid": 50,
+        "name": "python3.11",
+        "rss_kib": 12576,
+        "workers_flag": [],
+        "is_uvicorn": false,
+        "is_mlflow": false
+      },
+      {
+        "pid": 53,
+        "ppid": 50,
+        "name": "python3.11",
+        "rss_kib": 1105764,
+        "workers_flag": [],
+        "is_uvicorn": false,
+        "is_mlflow": false
+      },
+      {
+        "pid": 55,
+        "ppid": 50,
+        "name": "python3.11",
+        "rss_kib": 1103960,
+        "workers_flag": [],
+        "is_uvicorn": false,
+        "is_mlflow": false
+      },
+      {
+        "pid": 421,
+        "ppid": 50,
+        "name": "python3.11",
+        "rss_kib": 240604,
+        "workers_flag": [],
+        "is_uvicorn": false,
+        "is_mlflow": false
+      },
+      {
+        "pid": 553,
+        "ppid": 50,
+        "name": "python3.11",
+        "rss_kib": 249576,
+        "workers_flag": [],
+        "is_uvicorn": false,
+        "is_mlflow": false
+      },
+      {
+        "pid": 604,
+        "ppid": 0,
+        "name": "python",
+        "rss_kib": 9956,
+        "workers_flag": [],
+        "is_uvicorn": false,
+        "is_mlflow": false
+      }
+    ]
+  },
+  "queues": {
+    "flush_modified_utc": "2026-10-29T08:03:21.528304+00:00",
+    "queues": [
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": false,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 1
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "operator": true,
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      }
+    ]
+  },
+  "pending_exports": {
+    "pending_queue_metadata": [
+      {
+        "split": "public",
+        "size_bytes": 326099302,
+        "attempts": 123,
+        "modified_utc": "2026-10-29T08:03:10.239406+00:00",
+        "http_statuses": [
+          "413"
+        ],
+        "endpoint_paths": [
+          "/api/2.0/mlflow-artifacts/artifacts/[id]/[id]/artifacts/record.json"
+        ]
+      }
+    ]
+  },
+  "pending_structure": {
+    "observed_utc": "2026-10-29T08:08:19.897679+00:00",
+    "queue_file_bytes": 326099302,
+    "record_bytes": 326098704,
+    "record_field_bytes": {
+      "split": 8,
+      "status": 10,
+      "params": 478,
+      "metrics": 212,
+      "calls": 149488074,
+      "start_time_ns": 19,
+      "end_time_ns": 19,
+      "examples": 176607898,
+      "aggregation": 1860
+    },
+    "arrays": {
+      "calls": {
+        "count": 396,
+        "item_bytes_total": 149487282,
+        "max_item_bytes": 550738
+      },
+      "examples": {
+        "count": 128,
+        "item_bytes_total": 176607642,
+        "max_item_bytes": 2560349
+      }
+    },
+    "call_field_sizes": {
+      "name": {
+        "total_bytes": 5269,
+        "max_bytes": 24
+      },
+      "span_type": {
+        "total_bytes": 2494,
+        "max_bytes": 7
+      },
+      "span_id": {
+        "total_bytes": 9766,
+        "max_bytes": 38
+      },
+      "inputs": {
+        "total_bytes": 104039300,
+        "max_bytes": 367990
+      },
+      "outputs": {
+        "total_bytes": 45303930,
+        "max_bytes": 260207
+      },
+      "attributes": {
+        "total_bytes": 54006,
+        "max_bytes": 399
+      },
+      "start_time_ns": {
+        "total_bytes": 7524,
+        "max_bytes": 19
+      },
+      "end_time_ns": {
+        "total_bytes": 7524,
+        "max_bytes": 19
+      },
+      "status": {
+        "total_bytes": 1617,
+        "max_bytes": 7
+      },
+      "parent_id": {
+        "total_bytes": 5282,
+        "max_bytes": 38
+      }
+    },
+    "example_field_sizes": {
+      "other": {
+        "total_bytes": 547034,
+        "max_bytes": 4440
+      },
+      "answer": {
+        "total_bytes": 26563405,
+        "max_bytes": 216004
+      },
+      "calls": {
+        "total_bytes": 149486451,
+        "max_bytes": 2344081
+      }
+    }
+  },
+  "production_server_source": {
+    "mlflow_version": "3.16.0",
+    "fastapi_app_path": "/usr/local/lib/python3.11/site-packages/mlflow/server/fastapi_app.py",
+    "artifact_router_exists": true,
+    "artifact_router_imported": true,
+    "artifact_router_included": true,
+    "router_has_request_stream": true,
+    "router_has_upload_routes": false
+  },
+  "scope": {
+    "read_only_remote": true,
+    "new_model_calls": 0,
+    "services_restarted": false,
+    "closed_payload_values_printed": false,
+    "structural_aggregates_only": true
+  }
+}

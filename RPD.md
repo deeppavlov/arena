@@ -40,7 +40,7 @@ Arena — универсальный репозиторий для поиска 
 | Модель и надёжность | [gateway.py](evaluator/gateway.py) — фиксированная модель, scoped-доступ, tools, схемы, повторы и учёт; [reliability.py](evaluator/reliability.py) — общие правила повторов и таймаутов; [capacity.py](evaluator/capacity.py) — слоты исполнения, отдельные от лимита предложенных решений |
 | Материалы и подготовка | [assets.py](evaluator/assets.py) — неизменяемые публикации; [build.py](evaluator/build.py) — измеряемая подготовка и зависимости; [build_receipts.py](evaluator/build_receipts.py) — доверенные квитанции и их проверка |
 | Снимки и файловые границы | [candidates.py](evaluator/candidates.py), [filesystem.py](evaluator/filesystem.py) — безопасные пути, digest, executable-права, восстановление и обход без симлинков |
-| Ресурсы и наблюдаемость | [usage.py](evaluator/usage.py) — доверенные счётчики; [trace_store.py](evaluator/trace_store.py) — модельные вызовы; [tracking.py](evaluator/tracking.py) — очистка и необязательный экспорт в MLflow |
+| Ресурсы и наблюдаемость | [usage.py](evaluator/usage.py) — доверенные счётчики; [trace_store.py](evaluator/trace_store.py) — модельные вызовы; [tracking.py](evaluator/tracking.py) — очистка, очередь и необязательный экспорт в MLflow; [tracking_artifacts.py](evaluator/tracking_artifacts.py) — передача крупных JSON частями и чтение полного артефакта |
 
 Типичный путь решения: `train.py` или `service.py` → `execution.py` → `evaluator/runner.py` → адаптер харнеса → ответ → `metrics.py`. Модельный решатель обращается через gateway; оценщик имеет отдельный учёт расходов. Комплектный адаптер поддерживает `solve.py` либо `prompt.md` с необязательным `prepare.py`; сторонние харнесы соблюдают общий протокол.
 
@@ -62,7 +62,7 @@ Build и выбор опубликованных материалов — отд
 | `cases/<case>/ways/`, `cases/<case>/results/` | Решения и результаты проверок; состав конкретного пакета уточняет README кейса |
 | [archive/](archive/README.md) | Исторические отчёты разработки, свидетельства кейсов и локальные материалы; не входят в стартовый контекст |
 | [Dockerfile](Dockerfile), [compose.yaml](compose.yaml), [deploy/README.md](deploy/README.md) | Общие образы и доверенный запуск; [runner/Dockerfile](runner/Dockerfile) — отдельный образ комплектного runner |
-| [deploy/mlflow/](deploy/mlflow/README.md) | Общий nginx proxy операторского MLflow и контейнерная проверка потоковой передачи крупных артефактов |
+| [deploy/mlflow/](deploy/mlflow/README.md) | Общий nginx proxy операторского MLflow, параметры сервера, дисковый TMPDIR экспортёра и контейнерные проверки транспорта и полного экспорта крупных записей |
 | [integrations/docker/](integrations/docker/README.md) | Необязательный монитор исследовательского контейнера; поиск не запускает и не возобновляет |
 
 В `<campaign_dir>`: `campaign.md` задаёт условия, `preparation.md` хранит свидетельства готовности, `board/claims/` и `board/findings/` — гипотезы и результаты, `board/reviews/` — допуск точных снимков и материалов, журнал — все версии и измерения, `selection.md` — основания отбора. Все worktree используют один абсолютный путь к состоянию и журналу. Не выбирай кампанию автоматически по имени или дате каталога.
@@ -98,3 +98,5 @@ uv run python -m evaluator.smoke
 Общие тесты и smoke используют синтетические входы и подставные ответы без реальных моделей и кампаний. [tests/docker_smoke.py](tests/docker_smoke.py) — отдельная контейнерная проверка с подставным upstream; она не заменяет приёмку нового образа на целевом узле.
 
 При изменении MLflow proxy дополнительно выполняйте `uv run python tests/mlflow_proxy_smoke.py`: настоящий nginx с ограниченной памятью и синтетические потоки, без MLflow и модельных вызовов. Подключение общего конфига всеми Compose проверяет `tests/test_mlflow_deploy.py` в обычном pytest.
+
+При изменении экспортёра или сервера MLflow дополнительно выполняйте `uv run python tests/mlflow_export_smoke.py`: настоящий MLflow и nginx с ограниченной памятью, синтетические совокупная запись и отдельный вызов больше 256 MiB, полное восстановление артефактов и повтор доставки. Требования к Docker, образам и дисковому TMPDIR — в [deploy/mlflow/README.md](deploy/mlflow/README.md). Реальные модели, датасеты и кампании эта проверка не использует.

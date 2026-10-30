@@ -1,0 +1,30 @@
+{
+  "utc": "2026-10-30T08:37:23.708232+00:00",
+  "public_shared": {
+    "saved_entries": {
+      "exported": 9
+    },
+    "pending": [],
+    "flush_status": "ok",
+    "flush_pending": 0,
+    "flush_errors": 0,
+    "flush_age_seconds": 238.8
+  },
+  "monitor_memory": {
+    "rss": 1094680576,
+    "cache": 1851027456,
+    "swap": 0,
+    "total_rss": 1094680576,
+    "total_cache": 1851027456,
+    "total_active_anon": 12288,
+    "total_inactive_anon": 1094664192,
+    "total_active_file": 1590104064,
+    "total_inactive_file": 260923392
+  },
+  "monitor_oom": {
+    "oom_kill_disable": "0",
+    "under_oom": "0",
+    "oom_kill": "0"
+  },
+  "monitor_failcnt": 36815
+}

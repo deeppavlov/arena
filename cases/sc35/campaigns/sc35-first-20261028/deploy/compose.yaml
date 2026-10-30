@@ -51,6 +51,7 @@ x-evaluator: &evaluator
     ARENA_SLOT_DIR: ${ARENA_ROOT}/operator/state/capacity
     ARENA_EXECUTION_SLOTS: "4"
     MLFLOW_ENABLE_ASYNC_TRACE_LOGGING: "false"
+    ARENA_TRACKING_DELIVERY: queued
     ARENA_RUNNER_SUPPORTS_BUILD: "true"
     ARENA_RUNNER_SUPPORTS_ASSET_SELECTION: "true"
     ARENA_INPUT_ASSETS_DIGEST: ${SC35_INPUT_ASSETS_DIGEST:?}
@@ -126,8 +127,8 @@ services:
     ports: ["127.0.0.1:18930:8080"]
     networks:
       research: {ipv4_address: 172.31.91.10}
-      control: {}
-      operator-tracking: {}
+      control: {ipv4_address: 172.31.93.5}
+      operator-tracking: {ipv4_address: 172.31.95.5}
   public-evaluator:
     <<: *evaluator
     depends_on:
@@ -154,8 +155,8 @@ services:
     ports: ["127.0.0.1:18931:8080"]
     networks:
       research: {ipv4_address: 172.31.91.11}
-      control: {}
-      operator-tracking: {}
+      control: {ipv4_address: 172.31.93.7}
+      operator-tracking: {ipv4_address: 172.31.95.6}
   private-evaluator:
     <<: *evaluator
     depends_on:
@@ -191,8 +192,8 @@ services:
     ports: ["127.0.0.1:18932:8080"]
     networks:
       research: {ipv4_address: 172.31.91.12}
-      control: {}
-      operator-tracking: {}
+      control: {ipv4_address: 172.31.93.6}
+      operator-tracking: {ipv4_address: 172.31.95.7}
   model-gateway:
     <<: *gateway
     networks:
@@ -221,10 +222,11 @@ services:
       egress: {}
   research-monitor:
     <<: *runtime
-    image: ${ARENA_EVALUATOR_IMAGE:?}
+    image: ${ARENA_MONITOR_IMAGE:-${ARENA_EVALUATOR_IMAGE:?}}
     command: [python, -m, integrations.docker.research_monitor, watch, --config, /run/research-monitor.json]
     group_add: ["${ARENA_DOCKER_GID:?}"]
     environment:
+      TMPDIR: ${ARENA_ROOT}/operator/state/research-monitor/tmp
       MLFLOW_TRACKING_URI: http://shared-tracking:5000
       ARENA_OPERATOR_MLFLOW_TRACKING_URI: http://operator-tracking:5000
       MLFLOW_ENABLE_ASYNC_TRACE_LOGGING: "false"

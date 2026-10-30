@@ -1,0 +1,126 @@
+{
+  "status": "passed",
+  "synthetic_only": true,
+  "model_calls": 0,
+  "mlflow_version": "3.16.0",
+  "workers": 1,
+  "cases": [
+    {
+      "status": "passed",
+      "case": "aggregate",
+      "source_bytes": 354088327,
+      "logical_calls": 320,
+      "run_id": "d7f807b3ce9d44638036d9fcc913de3d",
+      "full_record_equal": true,
+      "call_payloads_equal": true,
+      "stable_retry": true,
+      "max_http_request_bytes": 8388608,
+      "max_artifact_bytes": 8388608,
+      "http_status_counts": {
+        "404": 1,
+        "200": 4081
+      },
+      "client_peak_rss_bytes": 2273464320,
+      "elapsed_seconds": 110.852,
+      "memory": {
+        "backend": {
+          "memory_limit_bytes": 4294967296,
+          "restarts": 0,
+          "oom_killed": false,
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "current": 1188585472,
+          "peak": 1192382464
+        },
+        "proxy": {
+          "memory_limit_bytes": 134217728,
+          "restarts": 0,
+          "oom_killed": false,
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "current": 14024704,
+          "peak": 15540224
+        },
+        "client": {
+          "memory_limit_bytes": 4294967296,
+          "restarts": 0,
+          "oom_killed": false,
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "current": 735547392,
+          "peak": 2953093120
+        }
+      }
+    },
+    {
+      "status": "passed",
+      "case": "singleton",
+      "source_bytes": 309625564,
+      "logical_calls": 1,
+      "run_id": "230cdbebc8a74cf99e6a483eac63645d",
+      "full_record_equal": true,
+      "call_payloads_equal": true,
+      "stable_retry": true,
+      "max_http_request_bytes": 8388608,
+      "max_artifact_bytes": 8388608,
+      "http_status_counts": {
+        "200": 1153
+      },
+      "client_peak_rss_bytes": 2600939520,
+      "elapsed_seconds": 57.912,
+      "memory": {
+        "backend": {
+          "memory_limit_bytes": 4294967296,
+          "restarts": 0,
+          "oom_killed": false,
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "current": 1867673600,
+          "peak": 1869213696
+        },
+        "proxy": {
+          "memory_limit_bytes": 134217728,
+          "restarts": 0,
+          "oom_killed": false,
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "current": 14381056,
+          "peak": 16588800
+        },
+        "client": {
+          "memory_limit_bytes": 4294967296,
+          "restarts": 0,
+          "oom_killed": false,
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "current": 644669440,
+          "peak": 3245936640
+        }
+      }
+    }
+  ]
+}
