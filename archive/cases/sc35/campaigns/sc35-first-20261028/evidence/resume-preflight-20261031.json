@@ -1,0 +1,104 @@
+{
+  "utc": "2026-10-31T08:38:54.339859+00:00",
+  "containers": [
+    {
+      "name": "/arena-sc35-first-researcher-1",
+      "id": "c09627b58ceced01054f6d59b20e8dd63b5097e3f722f5216e392bcea147e1a8",
+      "image": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+      "started": "2026-10-28T08:17:41.865161515Z",
+      "state": "exited"
+    },
+    {
+      "name": "/arena-sc35-first-train-evaluator-1",
+      "id": "ff4928661827fd69c6210d09b0a353f8ec527e60ff6fb627c4f6ce60032de282",
+      "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+      "started": "2026-10-28T07:39:39.148688222Z",
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-public-evaluator-1",
+      "id": "fa018a81e59e0edfecdb7e63d38c4568786d8e04832d111cea183529d71aeea5",
+      "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+      "started": "2026-10-28T07:40:10.655461749Z",
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-private-evaluator-1",
+      "id": "1bbe6b350a757de7aef6f33e644af66d8640bd10273d4c7e6cba67b576ef9320",
+      "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+      "started": "2026-10-28T07:40:10.654490509Z",
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-model-gateway-1",
+      "id": "1164b2ead813f63bd6a4fb37b1914d5a53fae2ebd7791c9ce6fce6d3379b9176",
+      "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+      "started": "2026-10-28T07:39:07.748582329Z",
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-researcher-gateway-1",
+      "id": "06ffb0901233011ca95ac1aed4b324a7244bb80ef03149c921580d6fd1eaf0bd",
+      "image": "sha256:d05fa6686d89afb336a173abb6aad54eab40d952434b56a44499ca4abde06154",
+      "started": "2026-10-28T07:39:07.748019605Z",
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-research-monitor-1",
+      "id": "cc8d1d5888d8804fac6282a9055e7c39460884b6a1edb967318558b4231e3b90",
+      "image": "sha256:705dee0e97b7324b61286e667e38fa3a4639a0584bfe047826341590073bbef9",
+      "started": "2026-10-30T07:16:15.368837802Z",
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-internet-proxy-1",
+      "id": "b868af30c18ee3e355189524431d7763384ee1f6ebbd413e0f35168236836d5e",
+      "image": "sha256:8a92065165c1b37f8d29a64183b760b5138925604e6e1b01cb863b116ef42ba7",
+      "started": "2026-10-28T07:39:07.747383198Z",
+      "state": "running"
+    }
+  ],
+  "journal": {
+    "max_solutions": 100,
+    "stopped_at": null,
+    "stop_reason": null,
+    "finalization": null,
+    "stopped": false,
+    "proposed": 21,
+    "remaining_proposals": 79,
+    "running": [
+      "pub-semv3p2"
+    ],
+    "completed_measurements": 31
+  },
+  "readiness": {
+    "mode": "campaign",
+    "gate_enabled": true,
+    "journal_ready": true,
+    "max_solutions": 100,
+    "finalists": 10,
+    "output_count": 3,
+    "evaluation_enabled": true,
+    "release_id": "sc35-first-20261028"
+  },
+  "private_status": {
+    "status": "no_evaluation"
+  },
+  "scope": {
+    "closed": true,
+    "active_requests": 0,
+    "attempts": 713
+  },
+  "mlflow": {
+    "campaign_id": "sc35-first-20261028",
+    "marker": "SC35_FIRST_SYNTHETIC_TRACE_20261028",
+    "run_id": "10f7a8b1d27b4d258e53bec1c41ccc54",
+    "uri": "http://shared-tracking:5000",
+    "experiment_id": "1",
+    "trace_ids": [
+      "tr-0eb1683ef7518a0c8cabb97612b9c2df"
+    ],
+    "payload_verified": true
+  },
+  "metric_verified": true
+}

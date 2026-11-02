@@ -1,0 +1,35 @@
+{
+  "status": "applied",
+  "at": "2026-10-31T06:50:20.443541+00:00",
+  "reason": "User authorized applying the 30-minute retry schedule to all model paths and recovering the same failed private batch on 2026-10-31.",
+  "old_runner_image": "sha256:f732b1293904b9f70b6cde2744a0fd9d4af01273809c8f7a832740480c68cd7c",
+  "new_runner_image": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+  "evaluator_image": "sha256:42fb02490e6125781372ec0a60b8014bf68aa237049386558b600cd11e5063bc",
+  "old_build_environment": "07aaded885932dae2517dd95c3051796d83fd241c38b96309642df502d948727",
+  "compatible_build_environment": "f2a502e1480ec9cf65abe0300ca0b90815efd62754e762b4a2d01e8b04c15967",
+  "frozen_configuration_files": 19,
+  "public_records": 15,
+  "build_receipts_preserved": 1,
+  "private_batch_preserved": true,
+  "private_status": "failed",
+  "proposals": 100,
+  "measurements": 138,
+  "model_request_timeout": 131460,
+  "retry_delays": [
+    30,
+    90,
+    240,
+    540,
+    900
+  ],
+  "backup": "/operator/repair/full-retry-20261031T065020Z",
+  "env_written_by_deployment_owner": true,
+  "services_healthy": true,
+  "all_retry_paths_verified": true,
+  "checks": 13,
+  "resume_preflight": {
+    "status": "resume_ready",
+    "saved_answers": 55,
+    "completed_examples": 54
+  }
+}

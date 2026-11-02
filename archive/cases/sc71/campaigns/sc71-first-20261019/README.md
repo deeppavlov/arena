@@ -8,7 +8,7 @@
 - [local-notes/prompt.md](local-notes/prompt.md) — сохранённая переписка о подготовке.
 - [local-notes/watching.md](local-notes/watching.md) — исторические инструкции наблюдения за первым запуском.
 - [local-notes/repair-20261023.md](local-notes/repair-20261023.md) — разбор раннего завершения и восстановления экспорта MLflow.
-- [postmortem-20261023/](postmortem-20261023/README.md) — итоговый отчёт, графики эволюции, AUC и численные данные; операторские файлы с private-результатами хранятся локально и исключены из Git.
+- [postmortem-20261023/](postmortem-20261023/README.md) — полный итоговый отчёт в Markdown с результатами, расходами, графиками эволюции и AUC; документ и встроенные изображения хранятся в репозитории.
 
 [Условия кампании](../../../../../cases/sc71/campaigns/sc71-first-20261019/campaign.md), [стартовый промпт](../../../../../cases/sc71/campaigns/sc71-first-20261019/start.md) и [замороженная метрика](../../../../../cases/sc71/campaigns/sc71-first-20261019/metric/) остаются на прежних рабочих путях. Короткая запись [preparation.md](../../../../../cases/sc71/campaigns/sc71-first-20261019/preparation.md) сохраняет точку входа протокола и указывает на этот архив.
 

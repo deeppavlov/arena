@@ -1,0 +1,132 @@
+{
+  "utc": "2026-10-31T08:40:24.656017+00:00",
+  "run_id": "680c05db-3832-482c-9e98-308c21cfa452",
+  "container": {
+    "id": "5f01dca56d1368378a8c1867f1e67d4411550529acd7e8621c4ebc9e1d0fba71",
+    "name": "/arena-sc35-first-researcher-resume-20261031",
+    "image": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+    "state": "running",
+    "started": "2026-10-31T08:38:55.620598858Z",
+    "oom": false,
+    "exit_code": 0,
+    "restarts": 0
+  },
+  "model": {
+    "first_success": {
+      "status": "OK",
+      "start_time_ns": 1793435946094183383,
+      "end_time_ns": 1793435947916312397,
+      "http_status": 200,
+      "attempt": 1,
+      "error_reason": null,
+      "exception_type": null,
+      "usage_reason": "reported"
+    },
+    "completed_calls": 22,
+    "successful_calls": 22,
+    "failed_calls": 0,
+    "usage": {
+      "attempts": 23,
+      "active_requests": 1,
+      "closed": false
+    }
+  },
+  "monitor": {
+    "progress": {
+      "status": "failed",
+      "container_status": null,
+      "run_id": "17963c40-1367-4651-bc2b-fbbe5aa35e9e",
+      "error_type": null
+    },
+    "queues": [
+      {
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      },
+      {
+        "status": "ok",
+        "errors": 0,
+        "pending": 0
+      }
+    ]
+  },
+  "journal": {
+    "max_solutions": 100,
+    "stopped_at": null,
+    "stop_reason": null,
+    "finalization": null,
+    "stopped": false,
+    "proposed": 21,
+    "remaining_proposals": 79,
+    "running": [],
+    "completed_measurements": 32
+  },
+  "preserved_containers": [
+    {
+      "name": "/arena-sc35-first-researcher-1",
+      "unchanged": true,
+      "state": "exited"
+    },
+    {
+      "name": "/arena-sc35-first-train-evaluator-1",
+      "unchanged": true,
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-public-evaluator-1",
+      "unchanged": true,
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-private-evaluator-1",
+      "unchanged": true,
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-model-gateway-1",
+      "unchanged": true,
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-researcher-gateway-1",
+      "unchanged": true,
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-research-monitor-1",
+      "unchanged": true,
+      "state": "running"
+    },
+    {
+      "name": "/arena-sc35-first-internet-proxy-1",
+      "unchanged": true,
+      "state": "running"
+    }
+  ]
+}

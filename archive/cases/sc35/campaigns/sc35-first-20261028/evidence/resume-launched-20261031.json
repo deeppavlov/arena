@@ -1,0 +1,17 @@
+{
+  "utc": "2026-10-31T08:38:56.557271+00:00",
+  "resumed": true,
+  "state": "running",
+  "receipt": {
+    "run_id": "680c05db-3832-482c-9e98-308c21cfa452",
+    "previous_run_id": "17963c40-1367-4651-bc2b-fbbe5aa35e9e",
+    "resumed_at": "2026-10-31T08:38:54.340677+00:00",
+    "campaign_id": "sc35-first-20261028",
+    "prompt_file": "/workspace/cases/sc35/campaigns/sc35-first-20261028/resume-20261031.md",
+    "container_id": "5f01dca56d1368378a8c1867f1e67d4411550529acd7e8621c4ebc9e1d0fba71",
+    "container_name": "arena-sc35-first-researcher-resume-20261031"
+  },
+  "image": "sha256:de8e38dec21883e16b3bb998b4388ff75655bcb8811d5687798252967ffa5a94",
+  "started_at": "2026-10-31T08:38:55.620598858Z",
+  "preflight_passed": true
+}

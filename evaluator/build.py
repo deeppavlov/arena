@@ -19,7 +19,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from evaluator.assets import AssetPublisher
-from evaluator.build_receipts import bound_build_receipt, read_receipt
+from evaluator.build_receipts import bound_build_receipt, read_receipt, validate_build_environment
 from evaluator.candidates import materialize_candidate
 from evaluator.capacity import CapacityError, acquire_slot
 from evaluator.client import pack_candidate
@@ -41,6 +41,10 @@ def run_build(runner: HarnessRunner, candidate_dir: Path, output_dir: Path) -> S
     if not selected.supports_build:
         raise RunnerError("selected harness does not support trusted builds")
     return replace(selected, build_output_dir=output_dir)(candidate_dir, "", parameters=parameters)
+
+
+class BuildReadOnlyError(ValueError):
+    pass
 
 
 class BuildStore:
@@ -70,10 +74,14 @@ class BuildStore:
         with (root / "reservation.lock").open("a+b") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             path = root / "configuration.json"
-            if path.exists() and json.loads(path.read_text()) != self.configuration:
-                raise ValueError("build environment is frozen")
             if not path.exists():
                 _save(path, self.configuration)
+            validate_build_environment(root, environment_fingerprint, input_assets_digest)
+            self.read_only = (
+                json.loads(path.read_text())["environment_fingerprint"] != environment_fingerprint
+            )
+            if self.read_only:
+                return
             for path in (root / "receipts").glob("*.json"):
                 receipt = read_receipt(root, path.stem, require_complete=False)
                 if receipt["status"] != "RUNNING":
@@ -208,6 +216,8 @@ class BuildStore:
             fcntl.flock(lock, fcntl.LOCK_EX)
             if path.exists():
                 return self.read(digest), None
+            if self.read_only:
+                raise BuildReadOnlyError("new builds are disabled for a compatible runtime")
             slot = acquire_slot(self.slot_dir, self.slots)
             lease = None
             started = time.monotonic()
@@ -258,6 +268,8 @@ def install_build_routes(app: FastAPI, store: BuildStore) -> None:
     def submit(payload: BuildSubmission, background: BackgroundTasks) -> JSONResponse:
         try:
             receipt, completion = store.submit(payload.candidate)
+        except BuildReadOnlyError as error:
+            raise HTTPException(409, str(error)) from None
         except CapacityError:
             raise HTTPException(503, "evaluation capacity is busy",
                                 headers={"Retry-After": "60"}) from None

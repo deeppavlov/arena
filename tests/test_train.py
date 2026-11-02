@@ -542,6 +542,49 @@ def test_registered_ordinary_harness_preserves_adapter_parameters(settings, monk
     assert calls == [{"asset_digests": "adapter-owned"}]
 
 
+def test_train_starts_with_read_only_compatible_build_store(settings, tmp_path, monkeypatch):
+    from evaluator.build_receipts import build_environment
+    from evaluator.execution import make_runner
+
+    original = replace(settings, evaluation=replace(
+        settings.evaluation, runner_image="sha256:" + "a" * 64,
+        runner_supports_build=True, build_dir=tmp_path / "builds",
+        published_assets_dir=tmp_path / "published", input_assets_digest="c" * 64,
+    ))
+
+    def build(self, candidate, task, *, parameters=None):
+        assert self.image == original.evaluation.runner_image
+        assert self.build_output_dir is not None
+        (self.build_output_dir / "asset.txt").write_text("synthetic material")
+        return SolveResult("build complete", empty_usage(), 1)
+
+    monkeypatch.setattr("evaluator.runner.DockerRunner.__call__", build)
+    client = TestClient(create_app(original), headers={"Authorization": "Bearer test-token"})
+    item = payload()["candidate"]
+    item["files"]["build.py"] = base64.b64encode(b"recipe").decode()
+    response = client.post("/v1/builds", json={"candidate": item})
+    assert response.status_code == 202
+    digest = response.json()["candidate_digest"]
+    receipt = client.get("/v1/builds/" + digest).json()
+    updated = replace(original, evaluation=replace(
+        original.evaluation, runner_image="sha256:" + "b" * 64,
+        state_dir=tmp_path / "updated-state",
+    ))
+    path = tmp_path / "builds" / "configuration.json"
+    configuration = json.loads(path.read_text())
+    configuration["compatible_environment_fingerprints"] = [build_environment(
+        make_runner(updated.evaluation, tmp_path / "usage"), updated.evaluation.parameters,
+    )]
+    path.write_text(json.dumps(configuration))
+
+    restarted = TestClient(create_app(updated), headers={"Authorization": "Bearer test-token"})
+
+    assert restarted.get("/healthz").status_code == 200
+    assert restarted.get("/v1/builds/" + digest).json() == receipt
+    item["files"]["build.py"] = base64.b64encode(b"new recipe").decode()
+    assert restarted.post("/v1/builds", json={"candidate": item}).status_code == 409
+
+
 @pytest.mark.parametrize("build", [False, True])
 @pytest.mark.parametrize("harness,default_model,solver_model", [
     (None, False, False),

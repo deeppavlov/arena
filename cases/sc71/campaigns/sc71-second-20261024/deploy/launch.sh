@@ -47,6 +47,7 @@ with opener.open(health, timeout=5) as response:
         raise ValueError("Configured model gateway is not healthy")
 '
 done
+python3 cases/sc71/campaigns/sc71-second-20261024/deploy/retry_check.py --researcher-image "$ARENA_HERMES_IMAGE"
 docker run --rm --network none -v "$ARENA_ROOT/operator/metric:/metric:ro" "$ARENA_EVALUATOR_IMAGE" python -m evaluator.prepare verify --metric /metric
 docker run --rm --network none --user 10001:10001 \
   -v "$ARENA_ROOT/operator/outer-usage:$ARENA_ROOT/operator/outer-usage" \

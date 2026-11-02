@@ -1,0 +1,200 @@
+{
+  "campaign_id": "sc35-first-20261028",
+  "stopped_at": "2026-11-02T15:14:29.057161+00:00",
+  "inventory_kind": "existing_pre_stop_review_evidence",
+  "eligible": [
+    {
+      "candidate_id": "sc35-baseline-formal",
+      "candidate_digest": "c3a63660822f329b42aff252c0b7523973949bfff13f3e0a86d2b20f61b64467",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-baseline-formal.md",
+      "review_mtime_utc": "2026-10-28T17:41:44.766574+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "prefix"
+    },
+    {
+      "candidate_id": "sc35-extra-only",
+      "candidate_digest": "77cecdb230421713161dc83ae297e4d4fef08b077bf6e7f9078b0d3d7e2ad2dd",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-extra-only.md",
+      "review_mtime_utc": "2026-10-28T17:42:34.594557+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "prefix"
+    },
+    {
+      "candidate_id": "sc35-formal-exp",
+      "candidate_digest": "9b320e78b7b2cdacda4f9f37b51e49cae0f58f8d2d11aa2bdc3fb5500e4138aa",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-formal-exp.md",
+      "review_mtime_utc": "2026-10-31T09:54:59.447139+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-formal-exp2",
+      "candidate_digest": "5047de4889af7e64de00c4f695ceca71f813784774729f6c6db975c896493857",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-formal-exp2.md",
+      "review_mtime_utc": "2026-10-31T10:47:33.078848+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-formal-exp3",
+      "candidate_digest": "5cb6757a07c69d223051e6096328ad06275e0bcf38ed32c23976163eb42e1bd2",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-formal-exp3.md",
+      "review_mtime_utc": "2026-11-01T02:16:12.758208+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-formal-exp4",
+      "candidate_digest": "a35417e46e97494734e07769c6066f871ac165e649e5d30643dc66a8f841b714",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-formal-exp4.md",
+      "review_mtime_utc": "2026-11-02T09:43:05.692091+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-formal-nocanon",
+      "candidate_digest": "4848131800e91aa414776c7472d053bd918c9731edab5fc00058c0e3ff832b5b",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-formal-nocanon.md",
+      "review_mtime_utc": "2026-10-28T17:42:21.069476+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** (с оговоркой о неполной «non-canonical» абляции) |",
+      "snapshot_reference_kind": "prefix"
+    },
+    {
+      "candidate_id": "sc35-formal-v1",
+      "candidate_digest": "cb7243f6205752b763aa5c1a072de082887c57ff26fb654875f3b14841ea77c2",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-formal-v1.md",
+      "review_mtime_utc": "2026-10-28T17:41:57.595600+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "prefix"
+    },
+    {
+      "candidate_id": "sc35-formal-v2",
+      "candidate_digest": "6ebaecc7dadc71abc5d6f5d9008de5bd26efe1531f795156c45bd4129791e6c6",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-formal-v2.md",
+      "review_mtime_utc": "2026-10-28T17:42:43.147241+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "prefix"
+    },
+    {
+      "candidate_id": "sc35-formal-v3",
+      "candidate_digest": "cc437d2ae123c664256f62090edb93426f0ae88f157e8647760ed16c523d7716",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-formal-v3.md",
+      "review_mtime_utc": "2026-10-28T11:27:27.690016+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-nocanon-v2",
+      "candidate_digest": "5a8adb4de0d53eaba44dd2f3bb7292daf164dc3bc64ffeae956aa2f392579adf",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-nocanon-v2.md",
+      "review_mtime_utc": "2026-10-29T07:51:57.473912+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** (условия соблюдены; заявленный механизм «non-canonical» в коде реализован не полностью — роль в финальном наборе требует переформулировки) |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-robust-base",
+      "candidate_digest": "1e5df2f9d7524046c1b6d6ad22a29bffe10f0a8b6e4403204f5c21f3a3811e47",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-robust-base.md",
+      "review_mtime_utc": "2026-10-28T17:50:45.749844+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v2",
+      "candidate_digest": "5d2c69807bb4a5a1daab4e7820653a3b810b40bac08496b36dbee6f5e992cfd4",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v2.md",
+      "review_mtime_utc": "2026-10-28T11:25:09.915041+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v3-exp",
+      "candidate_digest": "78cac702dba2f227ebc24bd98afa433d3119f58f7500e961496e6bc2c43dfa96",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v3-exp.md",
+      "review_mtime_utc": "2026-11-01T11:19:03.509799+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v3-exp3-prec",
+      "candidate_digest": "e9357da2ae017f862ed61e98ea1d6052a95509cf87ac80bb9802dbc257185175",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v3-exp3-prec.md",
+      "review_mtime_utc": "2026-11-01T18:33:59.778316+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v3-exp3-prompt",
+      "candidate_digest": "0e4b9ec2a42d862f706ba6dbda1230f23985398d982045816b20a057d468ba8b",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v3-exp3-prompt.md",
+      "review_mtime_utc": "2026-11-01T18:34:27.704543+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v3-exp3",
+      "candidate_digest": "972e0bc073cf4572749de98b4f838a6eb87e2275b11493ed0d0e5490f6131137",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v3-exp3.md",
+      "review_mtime_utc": "2026-11-01T02:16:01.829336+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v3-exp4-prompt",
+      "candidate_digest": "be2a458eeb042d70128e710fdabd12f6791cb57511fe51746e065d6ebf421f79",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v3-exp4-prompt.md",
+      "review_mtime_utc": "2026-11-02T09:39:58.701209+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v3-prec",
+      "candidate_digest": "1829748d7557d782cee54e2f2e46d4a120fa2d12f5efc413b956d23d0e8de589",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v3-prec.md",
+      "review_mtime_utc": "2026-10-30T08:21:12.384802+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v3-prompt",
+      "candidate_digest": "8ba627c0f41bb8deac2d2190f3957d6b716f5cfd9ac2a1b7e8da34d08e18a929",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v3-prompt.md",
+      "review_mtime_utc": "2026-10-30T00:13:45.651062+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    },
+    {
+      "candidate_id": "sc35-sem-v3",
+      "candidate_digest": "6b326767d148d51ee1feeb3e47a3a1a2b8055a32f5a5da13a697858f51197127",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-v3.md",
+      "review_mtime_utc": "2026-10-28T17:49:57.618003+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **допустим** |",
+      "snapshot_reference_kind": "full"
+    }
+  ],
+  "excluded_reviewed": [
+    {
+      "candidate_id": "sc35-sem-nocanon",
+      "candidate_digest": "9ada6309824990ed805dc3f8870d625a254414118e425773cf23aced698c7003",
+      "review_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/board/reviews/sc35-sem-nocanon.md",
+      "review_mtime_utc": "2026-10-28T17:50:19.303734+00:00",
+      "existing_review_verdict": "| Вывод о допустимости | **нефункционален — к private-отправке не пригоден** (нарушений условий не выявлено; снимок не может произвести ни одного валидного ответа) |",
+      "snapshot_reference_kind": "full"
+    }
+  ],
+  "unreviewed_candidate_ids": [
+    "sc35-baseline-hybrid",
+    "sc35-sem-v1",
+    "sc35-graph-only",
+    "sc35-format-only",
+    "sc35-typography-only",
+    "sc35-no-graph",
+    "sc35-no-typography",
+    "sc35-no-format",
+    "sc35-sem-v3-prec2",
+    "sc35-sem-v3-prec3",
+    "sc35-sem-v3-exp3-tight",
+    "sc35-sem-v3-exp4-prec",
+    "sc35-sem-v3-exp4-base"
+  ]
+}

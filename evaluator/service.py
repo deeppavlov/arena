@@ -13,6 +13,7 @@ from concurrent.futures import Future
 from contextlib import ExitStack
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, BinaryIO, cast
 from uuid import uuid4
@@ -29,6 +30,7 @@ from evaluator.build_receipts import (
 )
 from evaluator.candidates import materialize_candidate
 from evaluator.capacity import CapacityError, acquire_slot
+from evaluator.client import pack_candidate
 from evaluator.contracts import Example, Submission
 from evaluator.execution import collect_model_calls, make_runner, solver_metadata
 from evaluator.judge import ModelClient
@@ -40,6 +42,7 @@ from evaluator.metrics import (
     command_provenance,
     evaluate_answer,
 )
+from evaluator.numeric import validate_score
 from evaluator.ranking import RANKING_POLICY, choose_winners
 from evaluator.reliability import (
     MODEL_RETRIES,
@@ -59,6 +62,7 @@ from evaluator.runner import (
 )
 from evaluator.search import Journal, SearchError
 from evaluator.tracking import export_configured
+from evaluator.usage import read_usage
 
 MAX_BODY_BYTES = 70 * 1024 * 1024
 
@@ -616,94 +620,137 @@ def create_app(
             return load_build_receipt(settings.build_dir, candidate_dir, digest)
         return None
 
+    def summarize_candidate(candidate: dict[str, Any], document: dict[str, Any]) -> dict[str, Any]:
+        details = document["examples"]
+        preparation = document.get("preparation", {}).get("resources", {}).get("solver", {})
+        preparation_usage = preparation.get("usage", empty_usage())
+        preparation_seconds = preparation.get("wall_seconds", 0.0)
+        aggregation = document["aggregation"]
+        aggregation_usage = aggregation["resources"]["judge"]["usage"]
+        aggregation_seconds = aggregation["resources"]["judge"]["wall_seconds"]
+        candidate_score = aggregation["score"]
+        return {
+            "candidate_id": candidate["id"],
+            "digest": candidate["digest"],
+            "score": candidate_score,
+            **{
+                f"{role}_{name}": sum(
+                    item["resources"][role]["usage"][key] for item in details
+                ) + (aggregation_usage[key] if role == "judge" else preparation_usage[key])
+                for role in ("solver", "judge")
+                for name, key in (
+                    ("tokens", "total_tokens"),
+                    ("unreported_attempts", "unreported_attempts"),
+                )
+            },
+            **{
+                f"{role}_seconds": validate_timing(
+                    sum(item["resources"][role]["wall_seconds"] for item in details)
+                    + (aggregation_seconds if role == "judge" else preparation_seconds),
+                    f"{role} total time", allow_zero=True,
+                )
+                for role in ("solver", "judge")
+            },
+        }
+
     def measure_candidate(
         candidate: dict[str, Any], details_path: Path, judge_complete, judge_usage,
+        checkpoint: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        details = []
-        document: dict[str, Any] = {"candidate_id": candidate["id"], "examples": details}
+        document = deepcopy(checkpoint) if checkpoint is not None else {
+            "candidate_id": candidate["id"], "examples": [],
+        }
+        if document.get("aggregation", {}).get("status") == "complete":
+            return summarize_candidate(candidate, document)
+        details = document["examples"]
         preparation = candidate_preparation(Path(candidate["path"]), candidate["digest"])
-        preparation_usage = empty_usage()
-        preparation_seconds = 0.0
         if preparation is not None:
-            document["preparation"] = preparation
             resources = preparation["resources"]["solver"]
-            preparation_usage = _usage(resources["usage"])
-            preparation_seconds = validate_timing(
-                resources["wall_seconds"], "preparation wall time", allow_zero=True,
-            )
+            _usage(resources["usage"])
+            validate_timing(resources["wall_seconds"], "preparation wall time", allow_zero=True)
+            document["preparation"] = preparation
             _write_json(details_path, document)
         access = replace(model_access, run_ids=[]) if model_access is not None else None
-        for example in examples:
-            solver_started = time.time_ns()
-            try:
-                solved = solve(Path(candidate["path"]), example.input)
-            except Exception as error:
-                failed_usage = None
-                failed_seconds = None
-                run_id = None
-                if isinstance(error, RunnerError):
-                    if error.usage is not None:
-                        try:
-                            failed_usage = _usage(error.usage)
-                        except ValueError:
-                            pass
-                    if isinstance(error.wall_seconds, (int, float)):
-                        try:
-                            failed_seconds = validate_timing(
-                                error.wall_seconds, "solver wall time", allow_zero=True,
-                            )
-                        except ValueError:
-                            pass
-                    if isinstance(error.run_id, str) and len(error.run_id) <= 64:
-                        run_id = error.run_id
-                failed_detail = {
-                    "example_id": example.id, "failure": "solver_failure",
-                    "error_type": type(error).__name__[:100],
-                    "resources_complete": False, "run_id": run_id,
+        for index, example in enumerate(examples):
+            previous_judge = None
+            if index < len(details):
+                detail = details[index]
+                if detail.get("failure") != "judge_failure":
+                    continue
+                solver = detail["resources"]["solver"]
+                solved = SolveResult(detail["answer"], solver["usage"], solver["wall_seconds"])
+                previous_judge = deepcopy(detail["resources"]["judge"])
+            else:
+                solver_started = time.time_ns()
+                try:
+                    solved = solve(Path(candidate["path"]), example.input)
+                except Exception as error:
+                    failed_usage = None
+                    failed_seconds = None
+                    run_id = None
+                    if isinstance(error, RunnerError):
+                        if error.usage is not None:
+                            try:
+                                failed_usage = _usage(error.usage)
+                            except ValueError:
+                                pass
+                        if isinstance(error.wall_seconds, (int, float)):
+                            try:
+                                failed_seconds = validate_timing(
+                                    error.wall_seconds, "solver wall time", allow_zero=True,
+                                )
+                            except ValueError:
+                                pass
+                        if isinstance(error.run_id, str) and len(error.run_id) <= 64:
+                            run_id = error.run_id
+                    failed_detail = {
+                        "example_id": example.id, "failure": "solver_failure",
+                        "error_type": type(error).__name__[:100],
+                        "resources_complete": False, "run_id": run_id,
+                        "resources": {
+                            "solver": {
+                                "usage": failed_usage, "wall_seconds": failed_seconds,
+                                **({"run_id": run_id} if run_id else {}),
+                            },
+                            "judge": {"usage": empty_usage(), "wall_seconds": 0.0},
+                        },
+                    }
+                    calls = stage_calls(
+                        "solver", {"example_id": example.id, "input": example.input},
+                        {"failure": "solver_failure"}, solver_started,
+                        [run_id] if run_id else [], failed=True,
+                    )
+                    if calls:
+                        failed_detail["calls"] = calls
+                    details.append(failed_detail)
+                    _write_json(details_path, document)
+                    raise
+                if not isinstance(solved, SolveResult) or not isinstance(solved.answer, str):
+                    raise ValueError("solver must return an answer with measured resources")
+                solver_usage = _usage(solved.usage)
+                if not isinstance(solved.wall_seconds, (int, float)):
+                    raise ValueError("solver wall time must be numeric")
+                solver_seconds = validate_timing(
+                    solved.wall_seconds, "solver wall time", allow_zero=True,
+                )
+                detail: dict[str, Any] = {
+                    "example_id": example.id, "answer": solved.answer, "status": "judging",
                     "resources": {
                         "solver": {
-                            "usage": failed_usage, "wall_seconds": failed_seconds,
-                            **({"run_id": run_id} if run_id else {}),
+                            "usage": solver_usage, "wall_seconds": solver_seconds,
+                            **({"run_id": solved.run_id} if solved.run_id else {}),
                         },
-                        "judge": {"usage": empty_usage(), "wall_seconds": 0.0},
                     },
                 }
                 calls = stage_calls(
                     "solver", {"example_id": example.id, "input": example.input},
-                    {"failure": "solver_failure"}, solver_started,
-                    [run_id] if run_id else [], failed=True,
+                    {"answer": solved.answer}, solver_started,
+                    [solved.run_id] if solved.run_id else [],
                 )
                 if calls:
-                    failed_detail["calls"] = calls
-                details.append(failed_detail)
+                    detail["calls"] = calls
+                details.append(detail)
                 _write_json(details_path, document)
-                raise
-            if not isinstance(solved, SolveResult) or not isinstance(solved.answer, str):
-                raise ValueError("solver must return an answer with measured resources")
-            solver_usage = _usage(solved.usage)
-            if not isinstance(solved.wall_seconds, (int, float)):
-                raise ValueError("solver wall time must be numeric")
-            solver_seconds = validate_timing(
-                solved.wall_seconds, "solver wall time", allow_zero=True,
-            )
-            detail: dict[str, Any] = {
-                "example_id": example.id, "answer": solved.answer, "status": "judging",
-                "resources": {
-                    "solver": {
-                        "usage": solver_usage, "wall_seconds": solver_seconds,
-                        **({"run_id": solved.run_id} if solved.run_id else {}),
-                    },
-                },
-            }
-            calls = stage_calls(
-                "solver", {"example_id": example.id, "input": example.input},
-                {"answer": solved.answer}, solver_started,
-                [solved.run_id] if solved.run_id else [],
-            )
-            if calls:
-                detail["calls"] = calls
-            details.append(detail)
-            _write_json(details_path, document)
             with judge_lock:
                 before_judge = _usage(judge_usage)
                 started = time.monotonic()
@@ -730,11 +777,23 @@ def create_app(
                         key: after_judge[key] - before_judge[key] for key in before_judge
                     })
                     run_ids = access.run_ids[before_ids:] if access is not None else []
-                    detail.pop("status", None)
+                    for key in ("status", "failure", "diagnostics", "resources_complete"):
+                        detail.pop(key, None)
                     detail.update(result)
-                    detail["resources"]["judge"] = _judge_resources(
+                    measured = _judge_resources(
                         example_judge_usage, judge_seconds, result.get("diagnostics"), run_ids,
                     )
+                    if previous_judge is not None:
+                        measured["usage"] = {
+                            key: value + previous_judge["usage"][key]
+                            for key, value in measured["usage"].items()
+                        }
+                        measured["wall_seconds"] += previous_judge["wall_seconds"]
+                        old_ids = previous_judge.get("run_ids", [])
+                        if not old_ids and previous_judge.get("run_id"):
+                            old_ids = [previous_judge["run_id"]]
+                        measured["run_ids"] = list(dict.fromkeys([*old_ids, *run_ids]))
+                    detail["resources"]["judge"] = measured
                     calls = stage_calls(
                         "judge", {"example": example.model_dump(), "answer": solved.answer},
                         result, judge_started, run_ids, failed="failure" in result,
@@ -784,36 +843,17 @@ def create_app(
                     aggregation["calls"] = calls
                 document["aggregation"] = aggregation
                 _write_json(details_path, document)
-        return {
-            "candidate_id": candidate["id"],
-            "digest": candidate["digest"],
-            "score": candidate_score,
-            **{
-                f"{role}_{name}": sum(
-                    item["resources"][role]["usage"][key] for item in details
-                ) + (aggregation_usage[key] if role == "judge" else preparation_usage[key])
-                for role in ("solver", "judge")
-                for name, key in (
-                    ("tokens", "total_tokens"),
-                    ("unreported_attempts", "unreported_attempts"),
-                )
-            },
-            **{
-                f"{role}_seconds": validate_timing(
-                    sum(item["resources"][role]["wall_seconds"] for item in details)
-                    + (aggregation_seconds if role == "judge" else preparation_seconds),
-                    f"{role} total time", allow_zero=True,
-                )
-                for role in ("solver", "judge")
-            },
-        }
+        return summarize_candidate(candidate, document)
 
     def candidate_score(
         candidate: dict[str, Any], run_dir: Path, judge_complete, judge_usage,
+        checkpoint: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         details_path = run_dir / "details" / f"{candidate['id']}.json"
         if settings.split == "private":
-            return measure_candidate(candidate, details_path, judge_complete, judge_usage)
+            return measure_candidate(
+                candidate, details_path, judge_complete, judge_usage, checkpoint,
+            )
         cache_dir = directory / "candidate-results" / candidate["digest"]
         cache_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         cache_path = cache_dir / "result.json"
@@ -904,12 +944,18 @@ def create_app(
             receipts = export_configured(path, queue)
             _write_json(path.with_suffix(".tracking.json"), receipts)
 
-    def evaluate(record: dict[str, Any], lease: BinaryIO, run_dir: Path) -> None:
+    def evaluate(
+        record: dict[str, Any], lease: BinaryIO, run_dir: Path,
+        checkpoints: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
         try:
             judge_complete, judge_usage = make_judge()
             scores = []
             for candidate in record["candidates"]:
-                scores.append(candidate_score(candidate, run_dir, judge_complete, judge_usage))
+                scores.append(candidate_score(
+                    candidate, run_dir, judge_complete, judge_usage,
+                    checkpoints.get(candidate["id"]) if checkpoints is not None else None,
+                ))
             record["scores"] = scores
             if settings.split == "private":
                 record["winners"] = choose_winners(
@@ -928,6 +974,10 @@ def create_app(
             record["failure"] = failure
         finally:
             try:
+                if checkpoints is not None:
+                    record["resumptions"][-1].update(
+                        status=record["status"], finished_at=datetime.now(UTC).isoformat(),
+                    )
                 _write_json(run_dir / "record.json", record)
                 try:
                     export_evaluation(record, run_dir)
@@ -967,6 +1017,180 @@ def create_app(
     @app.exception_handler(RequestValidationError)
     async def invalid_submission(request: Any, error: RequestValidationError) -> JSONResponse:
         return JSONResponse({"detail": "invalid submission"}, status_code=422)
+
+    def validate_resources(resources: dict[str, Any]) -> None:
+        _usage(resources["usage"])
+        validate_timing(resources["wall_seconds"], "checkpoint wall time", allow_zero=True)
+        if resources.get("usage_complete") is False:
+            raise ValueError("checkpoint accounting is incomplete")
+
+    def validate_failed_judge(detail: dict[str, Any], example: Example) -> None:
+        judge = detail["resources"]["judge"]
+        if detail.get("resources_complete") is False:
+            raise ValueError("checkpoint accounting is incomplete")
+        chains = [call for call in detail.get("calls", [])
+                  if call.get("span_type") == "CHAIN" and call.get("name") == "judge"]
+        if not chains or any(
+            chain.get("inputs") != {"example": example.model_dump(), "answer": detail["answer"]}
+            or chain.get("status") != "ERROR" or chain.get("attributes", {}).get("trace_errors")
+            for chain in chains
+        ):
+            raise ValueError("failed judge checkpoint lacks complete traces")
+        run_ids = judge.get("run_ids") or ([judge["run_id"]] if judge.get("run_id") else [])
+        counts = empty_usage()
+        for run_id in run_ids:
+            measured = read_usage(usage_dir, run_id)
+            ledger = json.loads((usage_dir / f"{run_id}.json").read_text())
+            if not ledger["closed"] or ledger["active_requests"]:
+                raise ValueError("checkpoint model usage is not closed")
+            for key in counts:
+                counts[key] += measured[key]
+        if counts != judge["usage"]:
+            raise ValueError("checkpoint judge accounting differs from ledger")
+        traces, errors = collect_model_calls(settings.trace_dir, run_ids)
+        parents = {chain["span_id"] for chain in chains}
+        recorded = [call for call in detail.get("calls", []) if call.get("span_type") == "LLM"
+                    and (call.get("parent_id") in parents
+                         or call.get("attributes", {}).get("run_id") in run_ids)]
+        if errors or len(traces) != counts["attempts"] or len(recorded) != len(traces):
+            raise ValueError("failed judge checkpoint lacks complete traces")
+        if any(call.get("status") != "ERROR" for call in [*traces, *recorded]):
+            raise ValueError("cannot repeat successful partial judge votes")
+
+        def normalize(call: dict[str, Any]) -> str:
+            return json.dumps(
+                {key: value for key, value in call.items() if key != "parent_id"}, sort_keys=True,
+            )
+
+        if sorted(map(normalize, traces)) != sorted(map(normalize, recorded)):
+            raise ValueError("checkpoint judge traces differ from saved model calls")
+
+    def resume_checkpoints(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        if _normalized_provenance(record["provenance"]) != normalized_provenance:
+            raise ValueError("evaluation dataset configuration is frozen")
+        if record.get("release_id") != settings.release_id:
+            raise ValueError("evaluation release differs from configured campaign")
+        candidates = record["candidates"]
+        if len(candidates) != settings.finalists:
+            raise ValueError("checkpoint finalist count differs")
+        packed = []
+        checkpoints = {}
+        incomplete = False
+        failed_judge = False
+        for candidate in candidates:
+            path = Path(candidate["path"])
+            if not path.resolve().is_relative_to(candidate_root):
+                raise ValueError("checkpoint candidate is outside candidate storage")
+            frozen = pack_candidate(candidate["id"], path)
+            if frozen.digest() != candidate["digest"]:
+                raise ValueError("checkpoint candidate contents changed")
+            packed.append(frozen)
+            if harness_runner is not None:
+                harness_runner.validate_candidate(path)
+            preparation = candidate_preparation(path, candidate["digest"])
+            details_path = directory / "details" / f"{candidate['id']}.json"
+            if not details_path.exists():
+                incomplete = True
+                continue
+            if incomplete:
+                raise ValueError("checkpoint candidates are not a completed prefix")
+            document = json.loads(details_path.read_text())
+            if document.get("candidate_id") != candidate["id"]:
+                raise ValueError("checkpoint candidate differs")
+            if document.get("preparation") != preparation:
+                raise ValueError("checkpoint preparation differs")
+            if preparation is not None:
+                validate_resources(preparation["resources"]["solver"])
+            details = document["examples"]
+            if not isinstance(details, list) or len(details) > len(examples):
+                raise ValueError("invalid checkpoint example prefix")
+            for index, detail in enumerate(details):
+                example = examples[index]
+                if (
+                    detail.get("example_id") != example.id
+                    or not isinstance(detail.get("answer"), str)
+                ):
+                    raise ValueError("checkpoint example or answer differs")
+                if "status" in detail or detail.get("failure") not in {
+                    None, "candidate_failure", "judge_failure",
+                }:
+                    raise ValueError("checkpoint example is not resumable")
+                for role in ("solver", "judge"):
+                    validate_resources(detail["resources"][role])
+                if detail.get("failure") == "judge_failure":
+                    if index != len(details) - 1:
+                        raise ValueError("checkpoint has results after a failed example")
+                    validate_failed_judge(detail, example)
+                    incomplete = True
+                    failed_judge = True
+                elif "score" in detail:
+                    validate_score(detail["score"])
+                elif metric.aggregation is None or not isinstance(detail.get("statistics"), dict):
+                    raise ValueError("checkpoint example has no completed evaluation")
+            aggregation = document.get("aggregation")
+            if aggregation is not None:
+                if (
+                    aggregation.get("status") != "complete"
+                    or incomplete or len(details) != len(examples)
+                ):
+                    raise ValueError("checkpoint aggregation is not complete")
+                validate_score(aggregation["score"])
+                validate_resources(aggregation["resources"]["judge"])
+            else:
+                incomplete = True
+            checkpoints[candidate["id"]] = document
+        if incomplete and (
+            not failed_judge or not isinstance(record.get("failure"), dict)
+            or record["failure"].get("type") != "CommandMetricError"
+        ):
+            raise ValueError("failed evaluation has no supported judge checkpoint")
+        if Submission(candidates=packed).digest() != record["batch_digest"]:
+            raise ValueError("checkpoint batch differs from its seal")
+        known = {candidate["id"] + ".json" for candidate in candidates}
+        if any(path.name not in known for path in (directory / "details").glob("*.json")):
+            raise ValueError("checkpoint contains unknown candidates")
+        return checkpoints
+
+    def resume_private(reason: str, *, check_only: bool = False) -> dict[str, Any]:
+        if settings.split != "private":
+            raise ValueError("resume requires a private evaluation")
+        if not isinstance(reason, str) or not reason.strip() or len(reason) > 2000:
+            raise ValueError("resume requires an operator reason")
+        with ExitStack() as guards:
+            with (directory / "reservation.lock").open("a+b") as reservation:
+                fcntl.flock(reservation, fcntl.LOCK_EX)
+                lease = guards.enter_context(execution_lease(directory))
+                record = read_record(directory)
+                if record is None or record.get("status") != "failed":
+                    raise ValueError("resume requires a failed evaluation")
+                checkpoints = resume_checkpoints(record)
+                slot = acquire_slot(settings.slot_dir, settings.execution_slots)
+                if slot is not None:
+                    guards.enter_context(slot)
+                if check_only:
+                    saved = [detail for document in checkpoints.values()
+                             for detail in document["examples"]]
+                    return {
+                        "status": "resume_ready", "saved_answers": len(saved),
+                        "completed_examples": sum(
+                            detail.get("failure") != "judge_failure" for detail in saved
+                        ),
+                    }
+                identifier = str(uuid4())
+                backup = directory / "resumptions" / identifier
+                _write_json(backup / "record.json", record)
+                for candidate_id, document in checkpoints.items():
+                    _write_json(backup / "details" / f"{candidate_id}.json", document)
+                record.setdefault("resumptions", []).append({
+                    "id": identifier, "reason": reason, "started_at": datetime.now(UTC).isoformat(),
+                    "previous_failure": record.pop("failure", None), "status": "running",
+                })
+                record["status"] = "running"
+                _write_json(directory / "record.json", record)
+            evaluate(record, lease, directory, checkpoints)
+        return {"status": record["status"]}
+
+    app.state.resume_private = resume_private
 
     @app.get("/healthz")
     def health() -> dict[str, str]:

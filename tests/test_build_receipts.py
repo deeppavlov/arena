@@ -328,6 +328,70 @@ def test_validate_build_environment_matches_frozen_configuration(build_store):
     )
 
 
+def test_compatible_runtime_reuses_original_receipt_without_rewriting_it(build_store):
+    root, candidate, _, receipt, path = build_store
+    original = path.read_bytes()
+    configuration_path = root / "configuration.json"
+    configuration = json.loads(configuration_path.read_text())
+    configuration["compatible_environment_fingerprints"] = ["e" * 64]
+    configuration_path.write_text(json.dumps(configuration))
+    bind_output(build_store)
+
+    validate_build_environment(root, "e" * 64, receipt["input_assets_digest"])
+    validate_build_environment(root, receipt["environment_fingerprint"])
+    assert load_build_receipt(root, candidate) == receipt
+    assert bound_build_receipt(root, receipt["output_digest"]) == receipt
+    assert path.read_bytes() == original
+    with pytest.raises(ValueError, match="environment"):
+        validate_build_environment(root, "f" * 64)
+    with pytest.raises(ValueError, match="input assets"):
+        validate_build_environment(root, "e" * 64, "f" * 64)
+
+
+def test_empty_compatible_environments_keep_original_runtime_restriction(build_store):
+    root, _, _, receipt, _ = build_store
+    path = root / "configuration.json"
+    configuration = json.loads(path.read_text())
+    configuration["compatible_environment_fingerprints"] = []
+    path.write_text(json.dumps(configuration))
+    validate_build_environment(root, receipt["environment_fingerprint"])
+    with pytest.raises(ValueError, match="environment"):
+        validate_build_environment(root, "e" * 64)
+
+
+@pytest.mark.parametrize("compatible", [
+    None, "e" * 64, {}, [None], [1], ["invalid"], ["E" * 64],
+    ["e" * 64, "e" * 64], [["e" * 64]],
+])
+def test_invalid_compatible_environments_reject_runtime_and_receipts(build_store, compatible):
+    root, _, digest, receipt, _ = build_store
+    path = root / "configuration.json"
+    configuration = json.loads(path.read_text())
+    configuration["compatible_environment_fingerprints"] = compatible
+    path.write_text(json.dumps(configuration))
+    with pytest.raises(ValueError):
+        validate_build_environment(root, receipt["environment_fingerprint"])
+    with pytest.raises(ValueError):
+        read_receipt(root, digest)
+
+
+def test_compatibility_does_not_relabel_receipt_build_environment(build_store):
+    root, _, digest, receipt, _ = build_store
+    receipt["compatible_environment_fingerprints"] = ["e" * 64]
+    write_receipt(build_store, receipt)
+    with pytest.raises(ValueError, match="environment"):
+        validate_build_environment(root, "e" * 64)
+
+    path = root / "configuration.json"
+    configuration = json.loads(path.read_text())
+    configuration["compatible_environment_fingerprints"] = ["e" * 64]
+    path.write_text(json.dumps(configuration))
+    receipt["environment_fingerprint"] = "e" * 64
+    write_receipt(build_store, receipt)
+    with pytest.raises(ValueError, match="frozen configuration"):
+        read_receipt(root, digest)
+
+
 @pytest.mark.parametrize(("environment", "input_assets"), [
     ("e" * 64, None), ("invalid", None), ("b" * 64, "e" * 64), ("b" * 64, "invalid"),
 ])

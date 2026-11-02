@@ -1,0 +1,51 @@
+{
+  "campaign_id": "sc35-first-20261028",
+  "stopped_at": "2026-11-02T15:14:29.057161+00:00",
+  "proposed_at_stop": 35,
+  "remaining_proposals": 65,
+  "completed_measurements_at_stop": 61,
+  "running_at_stop": [
+    "pub-semv3exp4base"
+  ],
+  "source_ref": "user-message-2026-11-02-graceful-stop-sc35",
+  "operator_source_path": "/cephfs/home/malyshev_sa/arena-sc35-first-20261028/operator/search/human-stop-source-20261102.json",
+  "researcher_notice_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/human-stop-20261102.json",
+  "wake": {
+    "utc": "2026-11-02T15:16:53.485783+00:00",
+    "sleep_pid": 24601,
+    "sleep_argv": [
+      "sleep",
+      "29600"
+    ],
+    "only_sleep_received_sigterm": true,
+    "notice_written_to_captured_stdout": true
+  },
+  "acknowledgement": {
+    "read_stop_notice_at": "2026-11-02T15:17:57.688313+00:00",
+    "read_finalists_prompt_at": "2026-11-02T15:18:03.928452+00:00",
+    "wrote_stop_ack_and_no_new_to_selection_draft_at": "2026-11-02T15:18:42.378783+00:00",
+    "then_waited_existing_public": true
+  },
+  "followup": {
+    "utc": "2026-11-02T15:25:56.451923+00:00",
+    "wait_wrapper_pid": 24469,
+    "process_interrupted": false,
+    "final_selection_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/selection.md",
+    "final_bundle_path": "/workspace/cases/sc35/campaigns/sc35-first-20261028/finalists.json",
+    "operator_authorized_marker": "/workspace/cases/sc35/campaigns/sc35-first-20261028/operator-stop-authorized.json"
+  },
+  "private_preflight": {
+    "utc": "2026-11-02T15:30:02.673088+00:00",
+    "mode": "campaign",
+    "gate_enabled": true,
+    "journal_ready": true,
+    "max_solutions": 100,
+    "finalists": 10,
+    "output_count": 3,
+    "evaluation_enabled": true,
+    "release_id": "sc35-first-20261028",
+    "status": "no_evaluation"
+  },
+  "evaluators_restarted": false,
+  "researcher_restarted": false
+}

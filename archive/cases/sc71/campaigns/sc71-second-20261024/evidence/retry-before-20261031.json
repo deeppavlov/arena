@@ -1,0 +1,257 @@
+{
+  "status": "failed",
+  "checks": [
+    {
+      "role": "model-gateway",
+      "image_id": "sha256:af510c46a19e6d78686b32d819bc6e9e3137572d37cbfe2568bab33e089e04f6",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0
+    },
+    {
+      "role": "researcher-gateway",
+      "image_id": "sha256:da617aba389bebc0f045e27518b99436a031d3db0df5d93c9d4f4d3180bfd02c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0
+    },
+    {
+      "role": "train-evaluator",
+      "image_id": "sha256:af510c46a19e6d78686b32d819bc6e9e3137572d37cbfe2568bab33e089e04f6",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0
+    },
+    {
+      "role": "train-evaluator/runner",
+      "image_id": "sha256:f732b1293904b9f70b6cde2744a0fd9d4af01273809c8f7a832740480c68cd7c",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0,
+      "hermes_timeout": 130410,
+      "config_timeout": 130410
+    },
+    {
+      "role": "train-evaluator/harness/hermes",
+      "image_id": "sha256:f732b1293904b9f70b6cde2744a0fd9d4af01273809c8f7a832740480c68cd7c",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0,
+      "hermes_timeout": 130410,
+      "config_timeout": 130410
+    },
+    {
+      "role": "public-evaluator",
+      "image_id": "sha256:af510c46a19e6d78686b32d819bc6e9e3137572d37cbfe2568bab33e089e04f6",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0
+    },
+    {
+      "role": "public-evaluator/runner",
+      "image_id": "sha256:f732b1293904b9f70b6cde2744a0fd9d4af01273809c8f7a832740480c68cd7c",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0,
+      "hermes_timeout": 130410,
+      "config_timeout": 130410
+    },
+    {
+      "role": "public-evaluator/harness/hermes",
+      "image_id": "sha256:f732b1293904b9f70b6cde2744a0fd9d4af01273809c8f7a832740480c68cd7c",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0,
+      "hermes_timeout": 130410,
+      "config_timeout": 130410
+    },
+    {
+      "role": "private-evaluator",
+      "image_id": "sha256:af510c46a19e6d78686b32d819bc6e9e3137572d37cbfe2568bab33e089e04f6",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0
+    },
+    {
+      "role": "private-evaluator/runner",
+      "image_id": "sha256:f732b1293904b9f70b6cde2744a0fd9d4af01273809c8f7a832740480c68cd7c",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0,
+      "hermes_timeout": 130410,
+      "config_timeout": 130410
+    },
+    {
+      "role": "private-evaluator/harness/hermes",
+      "image_id": "sha256:f732b1293904b9f70b6cde2744a0fd9d4af01273809c8f7a832740480c68cd7c",
+      "retry_delays": [
+        30.0,
+        60.0,
+        120.0,
+        240.0,
+        300
+      ],
+      "request_timeout": 130410.0,
+      "hermes_timeout": 130410,
+      "config_timeout": 130410
+    },
+    {
+      "role": "researcher",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0,
+      "hermes_timeout": 131460,
+      "config_timeout": 131460
+    },
+    {
+      "role": "researcher/access",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460
+    }
+  ],
+  "failures": [
+    {
+      "role": "model-gateway",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "model-gateway",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "train-evaluator",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "train-evaluator",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "train-evaluator/runner",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "train-evaluator/runner",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "train-evaluator/harness/hermes",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "train-evaluator/harness/hermes",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "public-evaluator",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "public-evaluator",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "public-evaluator/runner",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "public-evaluator/runner",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "public-evaluator/harness/hermes",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "public-evaluator/harness/hermes",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "private-evaluator",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "private-evaluator",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "private-evaluator/runner",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "private-evaluator/runner",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    },
+    {
+      "role": "private-evaluator/harness/hermes",
+      "reason": "Retry intervals differ from the required 30-minute schedule"
+    },
+    {
+      "role": "private-evaluator/harness/hermes",
+      "reason": "Client timeout differs from the required 131460 seconds"
+    }
+  ]
+}

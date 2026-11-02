@@ -1,0 +1,176 @@
+{
+  "status": "ok",
+  "checks": [
+    {
+      "role": "model-gateway",
+      "image_id": "sha256:42fb02490e6125781372ec0a60b8014bf68aa237049386558b600cd11e5063bc",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0
+    },
+    {
+      "role": "researcher-gateway",
+      "image_id": "sha256:da617aba389bebc0f045e27518b99436a031d3db0df5d93c9d4f4d3180bfd02c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0
+    },
+    {
+      "role": "train-evaluator",
+      "image_id": "sha256:42fb02490e6125781372ec0a60b8014bf68aa237049386558b600cd11e5063bc",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0
+    },
+    {
+      "role": "train-evaluator/runner",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0,
+      "hermes_timeout": 131460,
+      "config_timeout": 131460
+    },
+    {
+      "role": "train-evaluator/harness/hermes",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0,
+      "hermes_timeout": 131460,
+      "config_timeout": 131460
+    },
+    {
+      "role": "public-evaluator",
+      "image_id": "sha256:42fb02490e6125781372ec0a60b8014bf68aa237049386558b600cd11e5063bc",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0
+    },
+    {
+      "role": "public-evaluator/runner",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0,
+      "hermes_timeout": 131460,
+      "config_timeout": 131460
+    },
+    {
+      "role": "public-evaluator/harness/hermes",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0,
+      "hermes_timeout": 131460,
+      "config_timeout": 131460
+    },
+    {
+      "role": "private-evaluator",
+      "image_id": "sha256:42fb02490e6125781372ec0a60b8014bf68aa237049386558b600cd11e5063bc",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0
+    },
+    {
+      "role": "private-evaluator/runner",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0,
+      "hermes_timeout": 131460,
+      "config_timeout": 131460
+    },
+    {
+      "role": "private-evaluator/harness/hermes",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0,
+      "hermes_timeout": 131460,
+      "config_timeout": 131460
+    },
+    {
+      "role": "researcher",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460.0,
+      "hermes_timeout": 131460,
+      "config_timeout": 131460
+    },
+    {
+      "role": "researcher/access",
+      "image_id": "sha256:b294798c9f9757e6ca9ac40a58dc38d605be92cb27f6a69082bebe94937ed35c",
+      "retry_delays": [
+        30.0,
+        90.0,
+        240.0,
+        540.0,
+        900.0
+      ],
+      "request_timeout": 131460
+    }
+  ],
+  "failures": []
+}

@@ -44,6 +44,13 @@ def _configuration(value: dict[str, Any]) -> None:
         raise ValueError("Unsupported build receipt version")
     for key in ("input_assets_digest", "environment_fingerprint"):
         _digest(value.get(key))
+    compatible = value.get("compatible_environment_fingerprints", [])
+    if not isinstance(compatible, list):
+        raise ValueError("Compatible build environments must be a list")
+    for fingerprint in compatible:
+        _digest(fingerprint)
+    if len(compatible) != len(set(compatible)):
+        raise ValueError("Compatible build environments must be unique")
 
 
 def build_environment(runner: Any, parameters: dict[str, Any]) -> str:
@@ -79,7 +86,10 @@ def validate_build_environment(
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ValueError("Cannot read trusted build receipt configuration") from error
     _configuration(configuration)
-    if configuration["environment_fingerprint"] != environment_fingerprint:
+    if (configuration["environment_fingerprint"] != environment_fingerprint
+            and environment_fingerprint not in configuration.get(
+                "compatible_environment_fingerprints", [],
+            )):
         raise ValueError("Build environment differs from frozen configuration")
     if (input_assets_digest is not None
             and configuration["input_assets_digest"] != input_assets_digest):

@@ -156,6 +156,69 @@ def test_environment_is_frozen(tmp_path):
                    lambda candidate, output: SolveResult("", empty_usage(), 0))
 
 
+def test_compatible_runtime_reads_receipts_and_rejects_new_builds(tmp_path):
+    original = store(tmp_path)
+    item = candidate()
+    receipt = build_once(original, item)
+    receipt_path = original.root / "receipts" / (item.digest() + ".json")
+    receipt_bytes = receipt_path.read_bytes()
+    configuration_path = original.root / "configuration.json"
+    configuration = json.loads(configuration_path.read_text())
+    configuration["compatible_environment_fingerprints"] = ["e" * 64]
+    configuration_path.write_text(json.dumps(configuration))
+
+    def unexpected_build(candidate_dir, output):
+        pytest.fail("compatible runtime must not create a build")
+
+    compatible = BuildStore(original.root, tmp_path / "assets", "a" * 64, "e" * 64,
+                            unexpected_build)
+    assert compatible.read(item.digest()) == receipt
+    assert compatible.submit(item) == (receipt, None)
+    app = FastAPI()
+    install_build_routes(app, compatible)
+    client = TestClient(app)
+    assert client.get("/v1/builds/" + item.digest()).json() == receipt
+    response = client.post("/v1/builds", json={"candidate": candidate("new").model_dump()})
+    assert response.status_code == 409
+    assert response.json() == {"detail": "new builds are disabled for a compatible runtime"}
+    assert receipt_path.read_bytes() == receipt_bytes
+    assert not (original.root / "receipts" / (candidate("new").digest() + ".json")).exists()
+
+
+def test_original_runtime_can_build_with_compatible_runtime_approval(tmp_path):
+    original = store(tmp_path)
+    path = original.root / "configuration.json"
+    configuration = json.loads(path.read_text())
+    configuration["compatible_environment_fingerprints"] = ["e" * 64]
+    path.write_text(json.dumps(configuration))
+
+    receipt = build_once(store(tmp_path), candidate())
+
+    assert receipt["status"] == "FINISHED"
+    assert receipt["environment_fingerprint"] == "b" * 64
+    assert "compatible_environment_fingerprints" not in receipt
+
+
+def test_compatible_runtime_does_not_modify_interrupted_builds(tmp_path):
+    original = store(tmp_path)
+    item = candidate()
+    receipt = build_once(original, item)
+    receipt["status"] = "RUNNING"
+    receipt_path = original.root / "receipts" / (item.digest() + ".json")
+    receipt_path.write_text(json.dumps(receipt))
+    receipt_bytes = receipt_path.read_bytes()
+    path = original.root / "configuration.json"
+    configuration = json.loads(path.read_text())
+    configuration["compatible_environment_fingerprints"] = ["e" * 64]
+    path.write_text(json.dumps(configuration))
+
+    compatible = BuildStore(original.root, tmp_path / "assets", "a" * 64, "e" * 64,
+                            lambda candidate, output: SolveResult("", empty_usage(), 0))
+
+    assert compatible.read(item.digest()) == receipt
+    assert receipt_path.read_bytes() == receipt_bytes
+
+
 def test_build_does_not_interpret_adapter_parameters_without_asset_capability(tmp_path):
     item = candidate("custom")
     item.files["solution.json"] = base64.b64encode(json.dumps({
